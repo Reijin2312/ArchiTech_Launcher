@@ -1,0 +1,47 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+shadowJar {
+    archiveBaseName.set('ArchiTech_Launcher')
+    archiveVersion.set('1.0')
+    manifest {
+        attributes 'Main-Class': 'org.architech.launcher.MCLauncher'
+    }
+}
+
+application {
+    mainClass = 'org.architech.launcher.MCLauncher'
+}
+
+javafx {
+    version = "21"
+    modules = [ 'javafx.controls', 'javafx.fxml' ]
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation "org.openjfx:javafx-controls:21:win"
+    implementation "org.openjfx:javafx-fxml:21:win"
+    implementation "org.openjfx:javafx-graphics:21:win"
+    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'com.github.Vatuu:discord-rpc:1.6.2'
+    implementation 'org.json:json:20240303'
+}
+
+test {
+    useJUnitPlatform()
+}
