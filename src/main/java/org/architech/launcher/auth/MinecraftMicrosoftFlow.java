@@ -2,7 +2,6 @@ package org.architech.launcher.auth;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.time.Instant;
 
 public class MinecraftMicrosoftFlow {

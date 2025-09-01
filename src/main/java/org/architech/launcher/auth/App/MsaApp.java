@@ -7,7 +7,6 @@ public final class MsaApp {
             "XboxLive.signin", "offline_access", "openid", "profile", "email"
     };
 
-    // OAuth v2.0 (MSA «consumers» тенант)
     public static final String AUTH_URL  = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
     public static final String TOKEN_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
 

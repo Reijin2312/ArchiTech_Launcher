@@ -257,12 +257,10 @@ public class LauncherUI {
         this.currentAccount = a;
 
         if (a == null || a.type == AccountType.OFFLINE) {
-            // Оффлайн режим: редактируемый ник
             //accountBtn.setText("Войти");
             //accountAvatar.setImage(null);
             usernameField.setEditable(true);
-            if (a != null) usernameField.setText(a.username); // оффлайн ник из Account
-            // если a == null — оставляем, что было в поле
+            if (a != null) usernameField.setText(a.username);
         } else {
             // Онлайн аккаунт: имя фиксируется, поле нередактируемо
            // accountBtn.setText(a.username != null ? a.username : "Аккаунт");

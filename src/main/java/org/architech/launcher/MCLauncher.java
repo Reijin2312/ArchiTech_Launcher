@@ -121,7 +121,7 @@ public class MCLauncher extends Application {
                 }
 
                 NativesManager nativesManager = new NativesManager(GAME_DIR, MINECRAFT_VERSION);
-                Path nativesDir = nativesManager.prepareNatives(files);
+                nativesManager.prepareNatives(files);
 
                 NeoForgeInstaller.ensureInstalledAndReady(GAME_DIR, MINECRAFT_VERSION, ui);
 
@@ -148,10 +148,6 @@ public class MCLauncher extends Application {
                 Platform.runLater(() -> ui.showError("Ошибка: " + e.getMessage()));
             }
         }, "Launcher-Worker").start();
-    }
-
-    public static void main(String[] args) {
-        launch();
     }
 
     public static Path findJava21() {

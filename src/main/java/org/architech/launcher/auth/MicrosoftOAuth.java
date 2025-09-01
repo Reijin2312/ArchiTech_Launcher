@@ -2,7 +2,6 @@ package org.architech.launcher.auth;
 
 import org.architech.launcher.auth.App.MsaApp;
 import org.json.JSONObject;
-
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;

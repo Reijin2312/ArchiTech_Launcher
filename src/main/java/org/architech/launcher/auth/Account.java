@@ -1,4 +1,3 @@
-// org.architech.launcher.auth.Account
 package org.architech.launcher.auth;
 
 import java.nio.charset.StandardCharsets;

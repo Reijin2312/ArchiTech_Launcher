@@ -17,7 +17,7 @@ public class NativesManager {
         this.version = version;
     }
 
-    public Path prepareNatives(List<FileEntry> files) throws Exception {
+    public void prepareNatives(List<FileEntry> files) throws Exception {
         Path nativesRoot = gameDir.resolve("natives").resolve(version);
         Files.createDirectories(nativesRoot);
         try (DirectoryStream<Path> ds = Files.newDirectoryStream(nativesRoot)) {
@@ -28,7 +28,6 @@ public class NativesManager {
             if (!Files.exists(f.path)) continue;
             unzip(f.path, nativesRoot);
         }
-        return nativesRoot;
     }
 
     private void unzip(Path zipFile, Path destDir) throws Exception {
