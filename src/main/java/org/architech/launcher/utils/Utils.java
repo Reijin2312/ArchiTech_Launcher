@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.DigestInputStream;
@@ -18,7 +18,8 @@ public class Utils {
 
     public static long tryHeadSize(String url) {
         try {
-            HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+            URI uri = URI.create(url);
+            HttpURLConnection c = (HttpURLConnection) uri.toURL().openConnection();
             c.setRequestMethod("HEAD");
             c.connect();
             return c.getContentLengthLong();

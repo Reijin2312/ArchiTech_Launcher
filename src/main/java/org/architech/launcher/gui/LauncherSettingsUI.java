@@ -194,15 +194,12 @@ public class LauncherSettingsUI {
         HBox.setHgrow(control, grow ? Priority.ALWAYS : Priority.NEVER);
         if (control instanceof TextField) ((TextField)control).setPrefHeight(28);
 
-
-        if (control instanceof ComboBox) {
-            ComboBox<?> cb = (ComboBox<?>) control;
+        if (control instanceof ComboBox<?> cb) {
             cb.setMinHeight(28);
             cb.setPrefHeight(28);
             cb.setMaxHeight(28);
         }
-        if (control instanceof Spinner) {
-            Spinner<?> sp = (Spinner<?>) control;
+        if (control instanceof Spinner<?> sp) {
             sp.setMinHeight(28);
             sp.setPrefHeight(28);
             sp.setMaxHeight(28);

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
@@ -151,7 +152,8 @@ public class DownloadManager {
     }
 
     private void downloadAtomicOnce(FileEntry f) throws Exception {
-        HttpURLConnection conn = (HttpURLConnection) new URL(f.url).openConnection();
+        URI uri = new URI(f.url);
+        HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
         conn.setConnectTimeout(10_000);
         conn.setReadTimeout(30_000);
         conn.setRequestProperty("User-Agent", "ArchiTech-Launcher/1.0");

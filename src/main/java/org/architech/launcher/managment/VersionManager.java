@@ -4,7 +4,6 @@ import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.UtilsNet;
-
 import java.io.StringReader;
 import java.nio.file.*;
 import java.util.*;
@@ -62,7 +61,7 @@ public class VersionManager {
         long size = client.get("size").getAsLong();
         String sha1 = client.get("sha1").getAsString();
         Path target = versionsDir.resolve(version).resolve(version + ".jar");
-        validateFile(target, size, sha1); // проверка
+        validateFile(target, size, sha1);
         list.add(new FileEntry("client", "Minecraft " + version + " client", url, target, size, sha1));
 
         JsonArray libs = versionJson.getAsJsonArray("libraries");
@@ -105,7 +104,6 @@ public class VersionManager {
             }
         }
 
-        // asset index
         JsonObject assetIndex = versionJson.getAsJsonObject("assetIndex");
 
         System.out.println(assetIndex);

@@ -4,7 +4,6 @@ import com.google.gson.JsonObject;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
-import org.architech.launcher.auth.AuthService;
 import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.LauncherSettingsUI;
 import org.architech.launcher.gui.LauncherUI;

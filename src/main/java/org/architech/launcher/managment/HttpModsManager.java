@@ -89,7 +89,7 @@ public class HttpModsManager {
                 } else if (disabledExists) {
                     if (matchesFile(disabled, f)) validPresent = true;
                 }
-            } catch (Exception ex) {}
+            } catch (Exception ignored) {}
 
             if (validPresent) {
                 try {

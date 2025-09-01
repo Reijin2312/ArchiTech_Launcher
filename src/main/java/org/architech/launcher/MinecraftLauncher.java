@@ -136,7 +136,7 @@ public class MinecraftLauncher {
         return chain;
     }
 
-    private static List<String> getAllClasspathEntries(Path gameDir, List<JsonObject> versionChain) throws IOException {
+    private static List<String> getAllClasspathEntries(Path gameDir, List<JsonObject> versionChain) {
         List<String> classpathEntries = new ArrayList<>();
         Set<String> addedPaths = new HashSet<>();
         boolean isModded = versionChain.size() > 1;
@@ -145,7 +145,6 @@ public class MinecraftLauncher {
                 JsonArray libs = versionObj.getAsJsonArray("libraries");
                 for (JsonElement el : libs) {
                     JsonObject lib = el.getAsJsonObject();
-                    // TODO: check rules if any
                     if (!lib.has("downloads")) continue;
                     JsonObject downloads = lib.getAsJsonObject("downloads");
                     if (!downloads.has("artifact")) continue;
@@ -160,7 +159,6 @@ public class MinecraftLauncher {
                     }
                 }
             }
-            // Add version jar if exists, but conditionally for modded
             String ver = versionObj.get("id").getAsString();
             Path clientJar = gameDir.resolve("versions").resolve(ver).resolve(ver + ".jar");
             String jarAbs = clientJar.toString();
@@ -193,7 +191,6 @@ public class MinecraftLauncher {
                 JsonArray libs = versionObj.getAsJsonArray("libraries");
                 for (JsonElement el : libs) {
                     JsonObject lib = el.getAsJsonObject();
-                    // TODO: check rules
                     if (lib.has("natives")) {
                         JsonObject natives = lib.get("natives").getAsJsonObject();
                         if (natives.has(classifier)) {
@@ -239,7 +236,6 @@ public class MinecraftLauncher {
         } else if (el.isJsonObject()) {
             JsonObject ruleObj = el.getAsJsonObject();
             if (ruleObj.has("rules")) {
-                // Изменение: если правила есть, стартуем с false (по умолчанию аргумент НЕ добавляется)
                 boolean allow = false;
                 JsonArray rules = ruleObj.getAsJsonArray("rules");
                 for (JsonElement r : rules) {
@@ -250,7 +246,7 @@ public class MinecraftLauncher {
                         JsonObject os = rr.getAsJsonObject("os");
                         if (os.has("name")) {
                             String osReq = os.get("name").getAsString();
-                            if (!osName.contains(osReq)) {  // Проверяем contains, как в вашем коде (для совместимости с "windows", "osx" и т.д.)
+                            if (!osName.contains(osReq)) {
                                 ruleMatch = false;
                             }
                         }
@@ -260,12 +256,9 @@ public class MinecraftLauncher {
                                 ruleMatch = false;
                             }
                         }
-                        // TODO: если нужно, добавить проверку os.version (regex)
                     }
                     if (rr.has("features")) {
-                        // Для features вроде is_demo_user, has_custom_resolution, has_quick_plays_support
-                        // В оффлайн-режиме обычно false, но можно расширить логику по необходимости
-                        ruleMatch = false;  // Как в вашем коде
+                        ruleMatch = false;
                     }
                     if (ruleMatch) {
                         if ("allow".equals(action)) {
@@ -291,7 +284,6 @@ public class MinecraftLauncher {
                     }
                 }
             } else {
-                // Если правил нет, добавляем value по умолчанию (как строка или массив)
                 JsonElement value = ruleObj.get("value");
                 if (value != null) {
                     if (value.isJsonPrimitive()) {
