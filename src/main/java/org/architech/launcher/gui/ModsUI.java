@@ -9,7 +9,6 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -65,7 +64,6 @@ public class ModsUI {
         try {
             Files.createDirectories(modsDir);
 
-            // Шапка (без "Иконка"), заголовки по центру
             HBox header = new HBox(12);
             header.setAlignment(Pos.CENTER_LEFT);
             header.setStyle("-fx-font-weight: bold; -fx-padding: 4 0 8 0;");
@@ -84,7 +82,6 @@ public class ModsUI {
                     row.setAlignment(Pos.CENTER_LEFT);
                     row.setMinHeight(48);
 
-                    // robust icon loader
                     Image iconImg = robustLoadIcon(modPath);
                     ImageView icon = new ImageView(iconImg);
                     icon.setFitHeight(24);
@@ -173,7 +170,6 @@ public class ModsUI {
         stage.setMinHeight(h);
     }
 
-    // === layout helpers ===
     private static Pane fixedCell(javafx.scene.Node node, double width, Pos align) {
         StackPane box = new StackPane(node);
         box.setAlignment(align);
@@ -203,19 +199,15 @@ public class ModsUI {
         a.showAndWait();
     }
 
-    // === robust icon loading ===
-
     private static final String FALLBACK_PNG_BASE64 =
             "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAF0lEQVR42mP8z/CfAQgwYGBgYGLAAQBVmgJ3jzg9HwAAAABJRU5ErkJggg==";
 
     private Image robustLoadIcon(Path jarPath) {
         try (FileSystem fs = FileSystems.newFileSystem(jarPath, (ClassLoader) null)) {
-            // get potential modId for heuristics
             String modId = extractFirstModId(fs);
 
             List<IconCandidate> candidates = new ArrayList<>();
 
-            // 1) mods.toml explicit logoFile (highest priority)
             try {
                 Path toml = fs.getPath("META-INF", "mods.toml");
                 if (Files.exists(toml)) {
@@ -225,7 +217,6 @@ public class ModsUI {
                         Path p = safeFsPath(fs, m.group(1));
                         if (p != null && Files.exists(p)) candidates.add(new IconCandidate(p, 200));
                     }
-                    // also try to pick any png paths referenced in the toml (fallback)
                     Matcher anyPng = Pattern.compile("([\\w/\\\\\\-]+\\.(?i:png))").matcher(content);
                     while (anyPng.find()) {
                         Path p = safeFsPath(fs, anyPng.group(1));
@@ -234,19 +225,16 @@ public class ModsUI {
                 }
             } catch (Exception ignored) {}
 
-            // 2) fabric/quilt json icon entries (high priority)
             for (String jfn : new String[]{"fabric.mod.json", "quilt.mod.json", "mods.json", "mod.json"}) {
                 try {
                     Path json = fs.getPath(jfn);
                     if (Files.exists(json)) {
                         String content = Files.readString(json, StandardCharsets.UTF_8);
-                        // "icon": "file.png"
                         Matcher m1 = Pattern.compile("\"icon\"\\s*:\\s*\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE).matcher(content);
                         if (m1.find()) {
                             Path p = safeFsPath(fs, m1.group(1));
                             if (p != null && Files.exists(p)) candidates.add(new IconCandidate(p, 190));
                         }
-                        // "icon": [ "a.png", ... ]
                         Matcher mArr = Pattern.compile("\"icon\"\\s*:\\s*\\[(.*?)\\]", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(content);
                         if (mArr.find()) {
                             Matcher png = Pattern.compile("\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE).matcher(mArr.group(1));
@@ -255,7 +243,6 @@ public class ModsUI {
                                 if (p != null && Files.exists(p)) candidates.add(new IconCandidate(p, 180));
                             }
                         }
-                        // "icon": { "file": "..." }
                         Matcher mObj = Pattern.compile("\"icon\"\\s*:\\s*\\{([^}]+)\\}", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(content);
                         if (mObj.find()) {
                             Matcher mf = Pattern.compile("\"file\"\\s*:\\s*\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE).matcher(mObj.group(1));
@@ -268,23 +255,20 @@ public class ModsUI {
                 } catch (Exception ignored) {}
             }
 
-            // 3) assets/* typical locations (assets/<ns>/icon.png, assets/<ns>/logo.png, assets/<ns>/textures/gui/logo.png)
             try {
                 Path assets = fs.getPath("assets");
                 if (Files.exists(assets) && Files.isDirectory(assets)) {
                     try (DirectoryStream<Path> ns = Files.newDirectoryStream(assets)) {
                         for (Path nsDir : ns) {
-                            // try common filenames
                             for (String fname : new String[]{"icon.png", "logo.png", "textures/icon.png", "textures/logo.png", "textures/gui/logo.png", "textures/gui/icon.png"}) {
                                 Path candidate = nsDir.resolve(fname);
-                                if (Files.exists(candidate)) candidates.add(new IconCandidate(candidate, 180 + (modId != null && nsDir.getFileName().toString().equalsIgnoreCase(modId) ? 20 : 0)));
+                                if (Files.exists(candidate)) candidates.add(new IconCandidate(candidate, 180 + (nsDir.getFileName().toString().equalsIgnoreCase(modId) ? 20 : 0)));
                             }
                         }
                     }
                 }
             } catch (Exception ignored) {}
 
-            // 4) root-level typical files: pack.png, icon.png, logo.png
             for (String rootName : new String[]{"pack.png", "icon.png", "logo.png", "mod_icon.png"}) {
                 try {
                     Path p = fs.getPath(rootName);
@@ -292,7 +276,6 @@ public class ModsUI {
                 } catch (Exception ignored) {}
             }
 
-            // 5) deep scan: find any png and score by name & depth
             try {
                 for (Path root : fs.getRootDirectories()) {
                     try (Stream<Path> walk = Files.walk(root, 6)) {
@@ -318,7 +301,6 @@ public class ModsUI {
                 }
             } catch (Exception ignored) {}
 
-            // choose best candidate by score (and existence)
             Optional<IconCandidate> best = candidates.stream()
                     .filter(c -> c.path != null)
                     .filter(c -> {
@@ -334,7 +316,6 @@ public class ModsUI {
             }
         } catch (Exception ignored) { }
 
-        // fallback resource
         try (InputStream res = getClass().getResourceAsStream("/img/mod_placeholder.png")) {
             if (res != null) return new Image(res);
         } catch (Exception ignored) {}
@@ -343,11 +324,7 @@ public class ModsUI {
         return new Image(new ByteArrayInputStream(png));
     }
 
-    private static class IconCandidate {
-        final Path path;
-        final int score;
-        IconCandidate(Path p, int score) { this.path = p; this.score = score; }
-    }
+    private record IconCandidate(Path path, int score) {}
 
     private Path safeFsPath(FileSystem fs, String raw) {
         if (raw == null) return null;
@@ -401,7 +378,7 @@ public class ModsUI {
         return "???";
     }
 
-    private boolean isGood(String v) {
+    private boolean isGood(String v) { 
         return v != null && !v.isBlank() && !v.contains("${") && !v.equalsIgnoreCase("unspecified");
     }
 

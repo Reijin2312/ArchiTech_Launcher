@@ -31,7 +31,6 @@ import static org.architech.launcher.MCLauncher.GAME_DIR;
 
 public class LauncherUI {
     private final TextField usernameField;
-    private final ScrollPane newsScroll;
     private final ProgressBar progressBar;
     private final Label progressLabel;
     private final Label percentLabel;
@@ -393,7 +392,7 @@ public class LauncherUI {
                 new NewsItem("Заголовок 7", "https://example.com/img2.png")
         );
 
-        newsScroll = buildNewsList(newsItems);
+        ScrollPane newsScroll = buildNewsList(newsItems);
 
         StackPane newsWrapper = new StackPane(newsScroll);
         newsWrapper.setPadding(new Insets(6));
