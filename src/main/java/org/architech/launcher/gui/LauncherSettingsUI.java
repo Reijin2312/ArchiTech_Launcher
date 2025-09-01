@@ -303,7 +303,17 @@ public static void createDefaultConfigIfMissing() {
             List<String> gpus = detectGPUs();
             def.put("gpu", (gpus.isEmpty() ? "Автоматический выбор" : gpus.getFirst()));
 
-            int recommended = getRecommended();
+            int recommended = 2048;
+            try {
+                com.sun.management.OperatingSystemMXBean os =
+                        (com.sun.management.OperatingSystemMXBean)
+                                java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+                long totalMb = os.getTotalMemorySize() / (1024L * 1024L);
+                if (totalMb > 0) {
+                    recommended = (int) Math.max(1024, Math.min(totalMb / 4, 32768));
+                }
+            } catch (Throwable ignored) {
+            }
             def.put("maxMemory", recommended);
 
             def.put("closeOnLaunch", false);
@@ -327,21 +337,6 @@ public static void createDefaultConfigIfMissing() {
         } catch (IOException e) {
             throw new RuntimeException("Не удалось создать дефолтный конфиг: " + e.getMessage(), e);
         }
-    }
-
-    private static int getRecommended() {
-        int recommended = 2048;
-        try {
-            com.sun.management.OperatingSystemMXBean os =
-                    (com.sun.management.OperatingSystemMXBean)
-                            java.lang.management.ManagementFactory.getOperatingSystemMXBean();
-            long totalMb = os.getTotalMemorySize() / (1024L * 1024L);
-            if (totalMb > 0) {
-                recommended = (int) Math.max(1024, Math.min(totalMb / 4, 32768));
-            }
-        } catch (Throwable ignored) {
-        }
-        return recommended;
     }
 }
 

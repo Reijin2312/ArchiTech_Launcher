@@ -3,7 +3,6 @@ package org.architech.launcher.managment;
 import com.google.gson.Gson;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.Utils;
-
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;

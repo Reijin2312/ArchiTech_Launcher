@@ -35,9 +35,7 @@ public class LauncherUI {
     private final Label progressLabel;
     private final Label percentLabel;
     private final Label timerLabel;
-
     private final Scene mainScene;
-
     private final Button accountBtn;
     private final ContextMenu accountMenu;
     private ImageView accountAvatar;
