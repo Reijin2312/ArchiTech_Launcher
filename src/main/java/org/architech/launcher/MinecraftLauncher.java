@@ -11,7 +11,7 @@ import java.util.zip.*;
 
 import static org.architech.launcher.MCLauncher.CONFIG_PATH;
 import static org.architech.launcher.MCLauncher.JAVA_PATH;
-import static org.architech.launcher.gui.LauncherSettingsUI.GSON;
+import static org.architech.launcher.gui.AllSettingsUI.GSON;
 
 public class MinecraftLauncher {
     public static void launchMinecraft(Path gameDir, String version) throws IOException {

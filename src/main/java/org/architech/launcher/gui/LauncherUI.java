@@ -20,7 +20,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -449,7 +448,7 @@ public class LauncherUI {
         );
         root.setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
 
-        settingsBtn.setOnAction(e -> new SettingsMenuUI(stage, mainScene).show());
+        settingsBtn.setOnAction(e -> new MainSettingsUI(stage, mainScene).show());
 
         stage.setScene(mainScene);
         stage.show();

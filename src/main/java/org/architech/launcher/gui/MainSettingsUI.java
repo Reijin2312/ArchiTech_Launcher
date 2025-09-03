@@ -4,17 +4,18 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import java.util.Objects;
 
-public class SettingsMenuUI {
+public class MainSettingsUI {
     private final Stage stage;
-    private final Scene parentScene; // LauncherUI main scene
+    private final Scene parentScene;
 
-    public SettingsMenuUI(Stage stage, Scene parentScene) {
+    public MainSettingsUI(Stage stage, Scene parentScene) {
         this.stage = stage;
         this.parentScene = parentScene;
     }
@@ -25,39 +26,29 @@ public class SettingsMenuUI {
 
         BorderPane root = new BorderPane();
 
-        Label title = new Label("Меню настроек");
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-        BorderPane.setAlignment(title, Pos.CENTER);
-        BorderPane.setMargin(title, new Insets(16,16,8,16));
-        root.setTop(title);
+        TabPane tabs = new TabPane();
+        tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        VBox menu = new VBox(15);
-        menu.setPadding(new Insets(20));
-        menu.setAlignment(Pos.CENTER);
+        ModsUI modsUI = new ModsUI(stage, parentScene);
+        AllSettingsUI allSettingsUI = new AllSettingsUI(stage, parentScene);
 
-        Button modsBtn = new Button("Управление модами");
-        styleMainButton(modsBtn);
-        modsBtn.setOnAction(e -> new ModsUI(stage, buildScene(root)).show());
+        Tab modsTab = new Tab("Моды", modsUI.createContent(true));
+        Tab settingsTab = new Tab("Настройки", allSettingsUI.createContent(true));
 
-        Button settingsBtn = new Button("Настройки лаунчера");
-        styleMainButton(settingsBtn);
-        settingsBtn.setOnAction(e -> new LauncherSettingsUI(stage, parentScene).show());
+        tabs.getTabs().addAll(modsTab, settingsTab);
+        root.setCenter(tabs);
 
         Button backBtn = new Button("Назад в главное меню");
         styleMainButton(backBtn);
         backBtn.setOnAction(e -> stage.setScene(parentScene));
-
-        menu.getChildren().addAll(modsBtn, settingsBtn, backBtn);
-
-        root.setCenter(menu);
+        HBox bottom = new HBox(backBtn);
+        bottom.setAlignment(Pos.CENTER_LEFT);
+        bottom.setPadding(new Insets(12,16,16,16));
+        root.setBottom(bottom);
 
         Scene scene = new Scene(root, w, h);
         scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
         stage.setScene(scene);
-    }
-
-    private Scene buildScene(BorderPane root) {
-        return root.getScene();
     }
 
     private void styleMainButton(Button btn) {

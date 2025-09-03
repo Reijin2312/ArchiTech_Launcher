@@ -2,6 +2,7 @@ package org.architech.launcher.gui;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.OverrunStyle;
@@ -43,10 +44,7 @@ public class ModsUI {
         this.settingsMenuScene = settingsMenuScene;
     }
 
-    public void show() {
-        double w = (stage.getScene() != null ? stage.getScene().getWidth() : settingsMenuScene.getWidth());
-        double h = (stage.getScene() != null ? stage.getScene().getHeight() : settingsMenuScene.getHeight());
-
+    public Parent createContent(boolean embedded) {
         BorderPane modsRoot = new BorderPane();
         modsRoot.getStyleClass().add("mods-pane");
 
@@ -153,19 +151,26 @@ public class ModsUI {
         scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         if (scroll.getContent() != null) scroll.getContent().setStyle("-fx-background-color: transparent;");
 
-        Button back = new Button("Назад");
-        styleMainButton(back);
-        back.setOnAction(e -> stage.setScene(settingsMenuScene));
+        if (!embedded) {
+            Button back = new Button("Назад");
+            styleMainButton(back);
+            back.setOnAction(e -> stage.setScene(settingsMenuScene));
+            HBox bottom = new HBox(back);
+            bottom.setAlignment(Pos.CENTER_LEFT);
+            bottom.setPadding(new Insets(12, 16, 16, 16));
+            modsRoot.setBottom(bottom);
+        }
+        return modsRoot;
+    }
 
-        HBox bottom = new HBox(back);
-        bottom.setAlignment(Pos.CENTER_LEFT);
-        bottom.setPadding(new Insets(12, 16, 16, 16));
-        modsRoot.setBottom(bottom);
+    public void show() {
+        double w = (stage.getScene() != null ? stage.getScene().getWidth() : settingsMenuScene.getWidth());
+        double h = (stage.getScene() != null ? stage.getScene().getHeight() : settingsMenuScene.getHeight());
 
-        Scene modsScene = new Scene(modsRoot, w, h);
+        Parent root = createContent(false);
+        Scene modsScene = new Scene((Parent) root, w, h);
         modsScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
         stage.setScene(modsScene);
-
         stage.setMinWidth(w);
         stage.setMinHeight(h);
     }
@@ -199,8 +204,7 @@ public class ModsUI {
         a.showAndWait();
     }
 
-    private static final String FALLBACK_PNG_BASE64 =
-            "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAF0lEQVR42mP8z/CfAQgwYGBgYGLAAQBVmgJ3jzg9HwAAAABJRU5ErkJggg==";
+    private static final String FALLBACK_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAF0lEQVR42mP8z/CfAQgwYGBgYGLAAQBVmgJ3jzg9HwAAAABJRU5ErkJggg==";
 
     private Image robustLoadIcon(Path jarPath) {
         try (FileSystem fs = FileSystems.newFileSystem(jarPath, (ClassLoader) null)) {
@@ -378,7 +382,7 @@ public class ModsUI {
         return "???";
     }
 
-    private boolean isGood(String v) { 
+    private boolean isGood(String v) {
         return v != null && !v.isBlank() && !v.contains("${") && !v.equalsIgnoreCase("unspecified");
     }
 

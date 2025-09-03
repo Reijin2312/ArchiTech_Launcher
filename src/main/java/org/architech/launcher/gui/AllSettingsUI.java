@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -19,7 +20,7 @@ import java.util.*;
 import static org.architech.launcher.MCLauncher.CONFIG_PATH;
 import static org.architech.launcher.MCLauncher.GAME_DIR;
 
-public class LauncherSettingsUI {
+public class AllSettingsUI {
     private final Stage stage;
     private final Scene parentScene;
 
@@ -47,7 +48,7 @@ public class LauncherSettingsUI {
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    public LauncherSettingsUI(Stage stage, Scene parentScene) {
+    public AllSettingsUI(Stage stage, Scene parentScene) {
         this.stage = stage;
         this.parentScene = parentScene;
     }
@@ -55,15 +56,20 @@ public class LauncherSettingsUI {
     public void show() {
         double w = (stage.getScene() != null ? stage.getScene().getWidth() : parentScene.getWidth());
         double h = (stage.getScene() != null ? stage.getScene().getHeight() : parentScene.getHeight());
+        Parent root = createContent(false);
+        Scene settingsScene = new Scene((Parent) root, w, h);
+        settingsScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
+        stage.setScene(settingsScene);
+        stage.setMinWidth(600);
+        stage.setMinHeight(500);
+    }
+
+    public Parent createContent(boolean embedded) {
+        double w = (stage.getScene() != null ? stage.getScene().getWidth() : parentScene.getWidth());
+        double h = (stage.getScene() != null ? stage.getScene().getHeight() : parentScene.getHeight());
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("settings-pane");
-
-        Label title = new Label("Настройки лаунчера и игры");
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-        BorderPane.setAlignment(title, Pos.CENTER);
-        BorderPane.setMargin(title, new Insets(16,16,8,16));
-        root.setTop(title);
 
         VBox box = new VBox(14);
         box.setPadding(new Insets(0,16,16,16));
@@ -167,24 +173,32 @@ public class LauncherSettingsUI {
         scroll.setFitToWidth(true);
         root.setCenter(scroll);
 
-        Button back = new Button("Назад");
-        back.setOnAction(e -> stage.setScene(parentScene));
         Button save = new Button("Сохранить");
-        save.setOnAction(e -> { saveConfig(); stage.setScene(parentScene); });
-        HBox bottom = new HBox(10, back, save);
-        bottom.setAlignment(Pos.CENTER_RIGHT);
-        bottom.setPadding(new Insets(12,16,16,16));
-        root.setBottom(bottom);
+        save.setOnAction(e -> { saveConfig(); if (!embedded) stage.setScene(parentScene); });
 
-        Scene settingsScene = new Scene(root, w, h);
-        settingsScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
-        stage.setScene(settingsScene);
-        stage.setMinWidth(600);
-        stage.setMinHeight(500);
+        if (embedded) {
+            HBox bottom = new HBox(10, save);
+            bottom.setAlignment(Pos.CENTER_RIGHT);
+            bottom.setPadding(new Insets(12,16,16,16));
+            root.setBottom(bottom);
+        } else {
+            Button back = new Button("Назад");
+            back.setOnAction(e -> stage.setScene(parentScene));
+            HBox bottom = new HBox(10, back, save);
+            bottom.setAlignment(Pos.CENTER_RIGHT);
+            bottom.setPadding(new Insets(12,16,16,16));
+            root.setBottom(bottom);
+        }
 
-        loadConfig();
+        loadConfig(); // заполни значения полей
+        return root;
     }
-    
+
+
+
+
+
+
     private HBox leftRow(String label, javafx.scene.Node control, boolean grow) {
         Label lbl = new Label(label);
         HBox row = new HBox(10, lbl, control);

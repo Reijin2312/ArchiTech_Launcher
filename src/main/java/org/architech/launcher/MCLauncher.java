@@ -5,7 +5,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 import org.architech.launcher.discord.DiscordIntegration;
-import org.architech.launcher.gui.LauncherSettingsUI;
+import org.architech.launcher.gui.AllSettingsUI;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.managment.DownloadManager;
 import org.architech.launcher.managment.HttpModsManager;
@@ -25,7 +25,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.architech.launcher.gui.LauncherSettingsUI.GSON;
+import static org.architech.launcher.gui.AllSettingsUI.GSON;
 import static org.architech.launcher.neoforge.NeoForgeInstaller.getInstalledVersion;
 import static org.architech.launcher.utils.ServersDatWriter.writeServersDat;
 
@@ -47,9 +47,9 @@ public class MCLauncher extends Application {
 
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
-        LAUNCHER_DIR = Paths.get(LauncherSettingsUI.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
+        LAUNCHER_DIR = Paths.get(AllSettingsUI.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
         CONFIG_PATH = LAUNCHER_DIR.resolve("launcher_config.json");
-        LauncherSettingsUI.createDefaultConfigIfMissing();
+        AllSettingsUI.createDefaultConfigIfMissing();
 
         ACCOUNT_FILE = LAUNCHER_DIR.resolve(".account.json");
 
