@@ -1,21 +1,42 @@
 package org.architech.launcher.utils;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
 import java.io.*;
+import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.time.Duration;
 
 public class UtilsNet {
     public static String readUrl(String urlStr) throws Exception {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new URL(urlStr).openStream(), StandardCharsets.UTF_8))) {
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) sb.append(line).append("\n");
-            return sb.toString();
-        }
+        SSLContext ssl = SSLContext.getDefault();
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .version(HttpClient.Version.HTTP_1_1)
+                .sslContext(ssl)
+                .build();
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(urlStr))
+                .timeout(Duration.ofSeconds(30))
+                .header("User-Agent", "ArchiTech-Launcher/1.0")
+                .GET()
+                .build();
+
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (resp.statusCode() >= 400) throw new IOException("HTTP error " + resp.statusCode() + " for " + urlStr);
+        return resp.body();
     }
+
 
     public static String sha1(Path file) {
         try (InputStream in = Files.newInputStream(file)) {

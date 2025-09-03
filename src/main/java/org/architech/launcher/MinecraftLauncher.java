@@ -56,7 +56,7 @@ public class MinecraftLauncher {
 
         Account acc = Auth.current();
         placeholders.put("auth_player_name", acc.username);
-        placeholders.put("auth_uuid", acc.uuid.replace("-", ""));  // MC ожидает без дефисов
+        placeholders.put("auth_uuid", acc.uuid.replace("-", ""));
         placeholders.put("auth_access_token", acc.accessToken);
 
         //placeholders.put("user_type", acc.userType);

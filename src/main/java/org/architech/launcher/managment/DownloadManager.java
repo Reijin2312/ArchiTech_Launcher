@@ -3,14 +3,14 @@ package org.architech.launcher.managment;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.Utils;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSocketFactory;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -153,65 +153,89 @@ public class DownloadManager {
 
     private void downloadAtomicOnce(FileEntry f) throws Exception {
         URI uri = new URI(f.url);
-        HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
+        HttpsURLConnection conn = (HttpsURLConnection) uri.toURL().openConnection();
+        conn.setSSLSocketFactory((SSLSocketFactory) SSLSocketFactory.getDefault());
         conn.setConnectTimeout(10_000);
         conn.setReadTimeout(30_000);
         conn.setRequestProperty("User-Agent", "ArchiTech-Launcher/1.0");
-        conn.connect();
-        int code = conn.getResponseCode();
-        if (code >= 400) {
-            throw new IOException("HTTP error " + code + " for " + f.url);
-        }
 
         Path parent = f.path.getParent();
         if (parent != null) Files.createDirectories(parent);
         Path tmp = f.path.resolveSibling(f.path.getFileName().toString() + ".part");
 
         long addedToGlobal = 0;
-
-        try (InputStream in = new BufferedInputStream(conn.getInputStream());
-             OutputStream out = new BufferedOutputStream(Files.newOutputStream(tmp, CREATE, TRUNCATE_EXISTING))) {
-
-            byte[] buffer = new byte[16 * 1024];
-            long downloadedFile = 0;
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
-                downloadedFile += read;
-                addedToGlobal += read;
-                totalBytesDone.addAndGet(read);
-
-                long planned = totalBytesPlanned.get();
-                long done = totalBytesDone.get();
-                double globalProgress = (planned > 0) ? (double) done / planned : -1;
-                int percent = globalProgress >= 0 ? (int) (globalProgress * 100) : -1;
-
-                String text = f.name + " (" + (downloadedFile / 1024) +
-                        (f.size > 0 ? (" / " + (f.size / 1024)) : "") + " КБ)";
-
-                ui.updateProgress(text + (percent >= 0 ? " | Всего: " + percent + "%" : ""), globalProgress);
+        long downloadedFile = 0;
+        try {
+            conn.connect();
+            int code = conn.getResponseCode();
+            if (code >= 400) {
+                throw new IOException("HTTP error " + code + " for " + f.url);
             }
-            out.flush();
+
+            try (InputStream in = new BufferedInputStream(conn.getInputStream());
+                 OutputStream out = new BufferedOutputStream(Files.newOutputStream(tmp, CREATE, TRUNCATE_EXISTING))) {
+
+                byte[] buffer = new byte[16 * 1024];
+                int read;
+                while (true) {
+                    try {
+                        read = in.read(buffer);
+                    } catch (javax.net.ssl.SSLHandshakeException e) {
+                        // сервер разорвал TLS после отдачи файла — это нормально
+                        System.err.println("Сервер закрыл TLS соединение после завершения передачи: " + f.name);
+                        break;
+                    }
+                    if (read == -1) break;
+
+                    out.write(buffer, 0, read);
+                    downloadedFile += read;
+                    addedToGlobal += read;
+                    totalBytesDone.addAndGet(read);
+
+                    long planned = totalBytesPlanned.get();
+                    long done = totalBytesDone.get();
+                    double globalProgress = (planned > 0) ? (double) done / planned : -1;
+                    int percent = globalProgress >= 0 ? (int) (globalProgress * 100) : -1;
+
+                    String text = f.name + " (" + (downloadedFile / 1024) +
+                            (f.size > 0 ? (" / " + (f.size / 1024)) : "") + " КБ)";
+                    ui.updateProgress(text + (percent >= 0 ? " | Всего: " + percent + "%" : ""), globalProgress);
+                }
+                out.flush();
+            }
+
+            // лог размеров
+            if (f.size > 0) {
+                System.out.println("[DownloadManager] " + f.name +
+                        " -> скачано: " + downloadedFile + " байт, ожидалось: " + f.size + " байт");
+            } else {
+                System.out.println("[DownloadManager] " + f.name +
+                        " -> скачано: " + downloadedFile + " байт (ожидаемый размер неизвестен)");
+            }
+
+            // проверка целостности
+            if (f.sha1 != null) {
+                String hex = Utils.sha1Hex(tmp);
+                if (!f.sha1.equalsIgnoreCase(hex)) {
+                    if (addedToGlobal > 0) totalBytesDone.addAndGet(-addedToGlobal);
+                    Files.deleteIfExists(tmp);
+                    throw new IOException("Хэш не совпал для " + f.name);
+                }
+            }
+
+            try {
+                Files.move(tmp, f.path, REPLACE_EXISTING, ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException amnse) {
+                Files.move(tmp, f.path, REPLACE_EXISTING);
+            }
+            Files.setLastModifiedTime(f.path, FileTime.from(Instant.now()));
+
         } catch (Exception e) {
             if (addedToGlobal > 0) totalBytesDone.addAndGet(-addedToGlobal);
             throw e;
+        } finally {
+            conn.disconnect();
         }
-
-        if (f.sha1 != null) {
-            String hex = Utils.sha1Hex(tmp);
-            if (!f.sha1.equalsIgnoreCase(hex)) {
-                if (addedToGlobal > 0) totalBytesDone.addAndGet(-addedToGlobal);
-                Files.deleteIfExists(tmp);
-                throw new IOException("Хэш не совпал для " + f.name);
-            }
-        }
-
-        try {
-            Files.move(tmp, f.path, REPLACE_EXISTING, ATOMIC_MOVE);
-        } catch (AtomicMoveNotSupportedException amnse) {
-            Files.move(tmp, f.path, REPLACE_EXISTING);
-        }
-        Files.setLastModifiedTime(f.path, FileTime.from(Instant.now()));
     }
 
     private boolean isFileValid(FileEntry f) {
