@@ -508,14 +508,7 @@ public class LauncherUI {
         new ModsUI(stage, mainScene).show();
     }
 
-
-
-
-    private static final class NewsItem {
-        final String title;
-        final String imageUrl;
-        NewsItem(String title, String imageUrl) { this.title = title; this.imageUrl = imageUrl; }
-    }
+    private record NewsItem(String title, String imageUrl) {}
 
     private ScrollPane buildNewsList(List<NewsItem> items) {
         VBox list = new VBox(12);
@@ -536,7 +529,7 @@ public class LauncherUI {
             } catch (Exception ignored) {}
             img.setFitWidth(64);
             img.setFitHeight(64);
-            img.setPreserveRatio(true); // картинки квадратные — сохранение формы
+            img.setPreserveRatio(true);
             card.setTop(img);
 
             Label title = new Label(n.title);
@@ -558,7 +551,4 @@ public class LauncherUI {
 
         return sp;
     }
-
-
-
 }

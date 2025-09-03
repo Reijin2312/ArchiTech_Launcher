@@ -38,7 +38,7 @@ public class MainSettingsUI {
         tabs.getTabs().addAll(modsTab, settingsTab);
         root.setCenter(tabs);
 
-        Button backBtn = new Button("Назад в главное меню");
+        Button backBtn = new Button("Назад");
         styleMainButton(backBtn);
         backBtn.setOnAction(e -> stage.setScene(parentScene));
         HBox bottom = new HBox(backBtn);
@@ -53,7 +53,5 @@ public class MainSettingsUI {
 
     private void styleMainButton(Button btn) {
         btn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
-        btn.setPrefWidth(250);
-        btn.setPrefHeight(40);
     }
 }
