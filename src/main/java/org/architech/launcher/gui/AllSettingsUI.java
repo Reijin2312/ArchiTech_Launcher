@@ -65,9 +65,6 @@ public class AllSettingsUI {
     }
 
     public Parent createContent(boolean embedded) {
-        double w = (stage.getScene() != null ? stage.getScene().getWidth() : parentScene.getWidth());
-        double h = (stage.getScene() != null ? stage.getScene().getHeight() : parentScene.getHeight());
-
         BorderPane root = new BorderPane();
         root.getStyleClass().add("settings-pane");
 

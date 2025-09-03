@@ -48,11 +48,11 @@ public class ModsUI {
         BorderPane modsRoot = new BorderPane();
         modsRoot.getStyleClass().add("mods-pane");
 
-        Label title = new Label("Управление модами");
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-        BorderPane.setAlignment(title, Pos.CENTER);
-        BorderPane.setMargin(title, new Insets(16, 16, 8, 16));
-        modsRoot.setTop(title);
+        //Label title = new Label("Управление модами");
+        //title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        //BorderPane.setAlignment(title, Pos.CENTER);
+        //BorderPane.setMargin(title, new Insets(16, 16, 8, 16));
+        //modsRoot.setTop(title);
 
         VBox modsList = new VBox(10);
         modsList.setFillWidth(true);
