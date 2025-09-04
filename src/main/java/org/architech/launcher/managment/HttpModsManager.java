@@ -3,6 +3,8 @@ package org.architech.launcher.managment;
 import com.google.gson.Gson;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.Utils;
+
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -25,15 +27,25 @@ public class HttpModsManager {
                 .uri(URI.create(BACKEND_URL + "/api/files/manifest"))
                 .GET()
                 .build();
-        String manifestJson = HTTP.send(req, HttpResponse.BodyHandlers.ofString()).body();
-        Manifest newManifest = GSON.fromJson(manifestJson, Manifest.class);
-        if (newManifest == null || newManifest.files == null) newManifest = new Manifest();
-
-        if (newManifest.files != null) {
-            newManifest.files = newManifest.files.stream()
-                    .filter(f -> !normalizePath(f.path).startsWith("launcher/"))
-                    .collect(Collectors.toList());
+        HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (res.statusCode() != 200) {
+            throw new IOException("manifest HTTP " + res.statusCode() + ": " + res.body());
         }
+
+        String manifestJson = res.body();
+        Manifest newManifest = GSON.fromJson(res.body(), Manifest.class);
+
+        if (newManifest == null) {
+            throw new IOException("manifest parse error: empty/invalid JSON");
+        }
+
+        if (newManifest.files == null) {
+            newManifest.files = new ArrayList<>();
+        }
+
+        newManifest.files = newManifest.files.stream()
+                .filter(f -> !normalizePath(f.path).startsWith("launcher/"))
+                .collect(Collectors.toList());
 
         Files.createDirectories(modsDir);
 
@@ -68,8 +80,8 @@ public class HttpModsManager {
             }
         }
 
-        assert newManifest.files != null;
         long totalBytes = newManifest.files.stream().mapToLong(f -> Math.max(0, f.size)).sum();
+
         long downloaded = 0;
         boolean allOk = true;
 
@@ -97,8 +109,6 @@ public class HttpModsManager {
                 continue;
             }
 
-            boolean shouldPreserveDisabled = disabledExists;
-
             if (ui != null) ui.updateProgress("Скачивание файла: " + relPath, totalBytes > 0 ? (double) downloaded / totalBytes : -1);
 
             try {
@@ -108,9 +118,14 @@ public class HttpModsManager {
                         .uri(URI.create(BACKEND_URL + "/api/files/file/" + encodedPath))
                         .GET()
                         .build();
-                byte[] data = HTTP.send(dlReq, HttpResponse.BodyHandlers.ofByteArray()).body();
 
-                Path target = shouldPreserveDisabled ? disabled : enabled;
+                HttpResponse<byte[]> dlRes = HTTP.send(dlReq, HttpResponse.BodyHandlers.ofByteArray());
+                if (dlRes.statusCode() != 200) {
+                    throw new IOException("HTTP " + dlRes.statusCode() + " при скачивании " + relPath);
+                }
+                byte[] data = dlRes.body();
+
+                Path target = disabledExists ? disabled : enabled;
                 Files.createDirectories(target.getParent());
                 Files.write(target, data, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 

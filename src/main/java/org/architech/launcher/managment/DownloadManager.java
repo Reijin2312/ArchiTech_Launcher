@@ -181,7 +181,6 @@ public class DownloadManager {
                     try {
                         read = in.read(buffer);
                     } catch (javax.net.ssl.SSLHandshakeException e) {
-                        // сервер разорвал TLS после отдачи файла — это нормально
                         System.err.println("Сервер закрыл TLS соединение после завершения передачи: " + f.name);
                         break;
                     }
@@ -204,7 +203,6 @@ public class DownloadManager {
                 out.flush();
             }
 
-            // лог размеров
             if (f.size > 0) {
                 System.out.println("[DownloadManager] " + f.name +
                         " -> скачано: " + downloadedFile + " байт, ожидалось: " + f.size + " байт");
@@ -213,7 +211,6 @@ public class DownloadManager {
                         " -> скачано: " + downloadedFile + " байт (ожидаемый размер неизвестен)");
             }
 
-            // проверка целостности
             if (f.sha1 != null) {
                 String hex = Utils.sha1Hex(tmp);
                 if (!f.sha1.equalsIgnoreCase(hex)) {

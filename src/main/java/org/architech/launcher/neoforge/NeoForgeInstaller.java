@@ -14,6 +14,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -64,7 +65,8 @@ public class NeoForgeInstaller {
     }
 
     public static void ensureInstalledAndReady(Path gameDir, String mcVersion, LauncherUI ui) throws Exception {
-        String latest = fetchLatestVersion();
+        String pinned = fetchPinnedServerVersionAndSave(gameDir);
+        String latest = (pinned != null && !pinned.isBlank()) ? pinned : fetchLatestVersion();
         if (latest == null) throw new IOException("Не удалось получить актуальную версию NeoForge!");
 
         String installedVersion = getInstalledVersion(gameDir);
@@ -106,6 +108,61 @@ public class NeoForgeInstaller {
         Files.writeString(manifestDir.resolve("installed.json"), GSON.toJson(im), StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
         if (ui != null) ui.updateProgress("NeoForge установлен и проверен", 1.0);
+    }
+
+    private static String fetchPinnedServerVersionAndSave(Path gameDir) {
+        try {
+            String serverPath = "neoforge/version";
+            String encoded = encodePathForUri(serverPath);
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(org.architech.launcher.MCLauncher.BACKEND_URL + "/api/files/file/" + encoded))
+                    .timeout(Duration.ofSeconds(10))
+                    .GET()
+                    .build();
+            HttpResponse<byte[]> res = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofByteArray());
+
+            if (res.statusCode() != 200) return null;
+            String ver = new String(res.body(), StandardCharsets.UTF_8).trim();
+
+            if (ver.isEmpty()) return null;
+            Path manifestDir = gameDir.resolve(MANIFEST_DIR);
+            Files.createDirectories(manifestDir);
+            Files.writeString(manifestDir.resolve("server_version"), ver, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            return ver;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static String encodePathForUri(String path) {
+        String[] segments = path.split("/");
+        StringBuilder encoded = new StringBuilder();
+        for (int i = 0; i < segments.length; i++) {
+            if (i > 0) encoded.append("/");
+            encoded.append(encodeSegment(segments[i]));
+        }
+        return encoded.toString();
+    }
+    private static String encodeSegment(String segment) {
+        StringBuilder sb = new StringBuilder();
+        for (int j = 0; j < segment.length(); j++) {
+            char c = segment.charAt(j);
+            if (isAllowedInPath(c)) {
+                sb.append(c);
+            } else {
+                byte[] bytes = String.valueOf(c).getBytes(StandardCharsets.UTF_8);
+                for (byte b : bytes) sb.append(String.format("%%%02X", b));
+            }
+        }
+        return sb.toString();
+    }
+    private static boolean isAllowedInPath(char c) {
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                c == '-' || c == '_' || c == '.' || c == '~') return true;
+        if (c == '!' || c == '$' || c == '&' || c == '\'' || c == '(' || c == ')' ||
+                c == '*' || c == '+' || c == ',' || c == ';' || c == '=' || c == ':' || c == '@') return true;
+        return false;
     }
 
     public static String fetchLatestVersion() throws Exception {

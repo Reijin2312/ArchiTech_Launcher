@@ -11,14 +11,7 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import java.util.Objects;
 
-public class MainSettingsUI {
-    private final Stage stage;
-    private final Scene parentScene;
-
-    public MainSettingsUI(Stage stage, Scene parentScene) {
-        this.stage = stage;
-        this.parentScene = parentScene;
-    }
+public record MainSettingsUI(Stage stage, Scene parentScene) {
 
     public void show() {
         double w = (stage.getScene() != null ? stage.getScene().getWidth() : parentScene.getWidth());
@@ -43,7 +36,7 @@ public class MainSettingsUI {
         backBtn.setOnAction(e -> stage.setScene(parentScene));
         HBox bottom = new HBox(backBtn);
         bottom.setAlignment(Pos.CENTER_LEFT);
-        bottom.setPadding(new Insets(12,16,16,16));
+        bottom.setPadding(new Insets(12, 16, 16, 16));
         root.setBottom(bottom);
 
         Scene scene = new Scene(root, w, h);

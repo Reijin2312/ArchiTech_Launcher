@@ -53,17 +53,6 @@ public class AllSettingsUI {
         this.parentScene = parentScene;
     }
 
-    public void show() {
-        double w = (stage.getScene() != null ? stage.getScene().getWidth() : parentScene.getWidth());
-        double h = (stage.getScene() != null ? stage.getScene().getHeight() : parentScene.getHeight());
-        Parent root = createContent(false);
-        Scene settingsScene = new Scene((Parent) root, w, h);
-        settingsScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
-        stage.setScene(settingsScene);
-        stage.setMinWidth(600);
-        stage.setMinHeight(500);
-    }
-
     public Parent createContent(boolean embedded) {
         BorderPane root = new BorderPane();
         root.getStyleClass().add("settings-pane");
