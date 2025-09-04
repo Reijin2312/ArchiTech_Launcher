@@ -8,21 +8,15 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipEntry;
 import java.io.*;
 
-public class NativesManager {
-    private final Path gameDir;
-    private final String version;
-
-    public NativesManager(Path gameDir, String version) {
-        this.gameDir = gameDir;
-        this.version = version;
-    }
+public record NativesManager(Path gameDir, String version) {
 
     public void prepareNatives(List<FileEntry> files) throws Exception {
         Path nativesRoot = gameDir.resolve("natives").resolve(version);
         Files.createDirectories(nativesRoot);
         try (DirectoryStream<Path> ds = Files.newDirectoryStream(nativesRoot)) {
             for (Path p : ds) Files.deleteIfExists(p);
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+        }
         for (FileEntry f : files) {
             if (!"natives".equals(f.kind)) continue;
             if (!Files.exists(f.path)) continue;

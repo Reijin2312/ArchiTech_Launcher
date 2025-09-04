@@ -40,7 +40,7 @@ public class MCLauncher extends Application {
     public static Path JAVA_PATH;
     public static Path ACCOUNT_FILE;
     public static final String MINECRAFT_VERSION = "1.21.1";
-    public static final String BACKEND_URL = System.getenv().getOrDefault("ARCHITECH_BACKEND_URL", "http://26.66.122.141:8080");
+    public static final String BACKEND_URL = System.getenv().getOrDefault("ARCHITECH_BACKEND_URL", "http://26.66.122.141:51789");
     public static boolean closeOnLaunch = false;
 
     private LauncherUI ui;
@@ -151,12 +151,7 @@ public class MCLauncher extends Application {
     }
 
     public static Path findJava21() {
-        String[] searchDirs = {
-                "C:/Program Files/Java",
-                "C:/Program Files (x86)/Java",
-                "/usr/lib/jvm",
-                "/Library/Java/JavaVirtualMachines"
-        };
+        String[] searchDirs = {"C:/Program Files/Java", "C:/Program Files (x86)/Java", "/usr/lib/jvm", "/Library/Java/JavaVirtualMachines"};
         for (String base : searchDirs) {
             File dir = new File(base);
             if (!dir.exists()) continue;
@@ -187,5 +182,4 @@ public class MCLauncher extends Application {
         }
         return null;
     }
-
 }

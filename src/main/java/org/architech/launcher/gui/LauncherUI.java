@@ -269,10 +269,15 @@ public class LauncherUI {
 
             if (a.avatarUrl != null && !a.avatarUrl.isBlank()) {
                 try {
-                    accountAvatar.setImage(new Image(a.avatarUrl, 20, 20, true, true));
+                    Image img = HeadImage.forAccount(a, 20);
+                    if (accountAvatar != null) accountAvatar.setImage(img);
                 } catch (Exception ignored) {}
             } else {
-                //accountAvatar.setImage(null);
+                // fallback — всегда ставим картинку через HeadImage (учёт uuid/name)
+                try {
+                    Image img = HeadImage.forAccount(a, 20);
+                    if (accountAvatar != null) accountAvatar.setImage(img);
+                } catch (Exception ignored) {}
             }
         }
     }

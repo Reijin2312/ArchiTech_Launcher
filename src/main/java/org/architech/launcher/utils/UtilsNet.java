@@ -33,7 +33,6 @@ public class UtilsNet {
         return resp.body();
     }
 
-
     public static String sha1(Path file) {
         try (InputStream in = Files.newInputStream(file)) {
             MessageDigest digest = MessageDigest.getInstance("SHA-1");
@@ -52,5 +51,4 @@ public class UtilsNet {
             return null;
         }
     }
-
 }
