@@ -176,14 +176,9 @@ public class AllSettingsUI {
             root.setBottom(bottom);
         }
 
-        loadConfig(); // заполни значения полей
+        loadConfig();
         return root;
     }
-
-
-
-
-
 
     private HBox leftRow(String label, javafx.scene.Node control, boolean grow) {
         Label lbl = new Label(label);
@@ -317,7 +312,6 @@ public static void createDefaultConfigIfMissing() {
                 def.put("winWidth", "854");
                 def.put("winHeight", "480");
             }
-
 
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {

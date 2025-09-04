@@ -255,16 +255,17 @@ public class LauncherUI {
     private void setCurrentAccount(Account a) {
         this.currentAccount = a;
 
+        usernameField.setEditable(false);
+        usernameField.setFocusTraversable(false);
+        usernameField.setMouseTransparent(true);
+
         if (a == null || a.type == AccountType.OFFLINE) {
             //accountBtn.setText("Войти");
             //accountAvatar.setImage(null);
-            usernameField.setEditable(true);
             if (a != null) usernameField.setText(a.username);
         } else {
-            // Онлайн аккаунт: имя фиксируется, поле нередактируемо
            // accountBtn.setText(a.username != null ? a.username : "Аккаунт");
             usernameField.setText(a.username != null ? a.username : "");
-            usernameField.setEditable(false);
 
             if (a.avatarUrl != null && !a.avatarUrl.isBlank()) {
                 try {
