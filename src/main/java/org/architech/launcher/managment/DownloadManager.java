@@ -2,6 +2,7 @@ package org.architech.launcher.managment;
 
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.gui.LauncherUI;
+import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSocketFactory;
@@ -216,6 +217,7 @@ public class DownloadManager {
                 if (!f.sha1.equalsIgnoreCase(hex)) {
                     if (addedToGlobal > 0) totalBytesDone.addAndGet(-addedToGlobal);
                     Files.deleteIfExists(tmp);
+                    LogManager.getLogger().warning("Хэш не совпал для файла " + f.name);
                     throw new IOException("Хэш не совпал для " + f.name);
                 }
             }

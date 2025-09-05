@@ -8,6 +8,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -113,7 +114,6 @@ public class AuthService {
         return MicrosoftOAuth.buildAuthorizeUrl(ctx.state, ctx.codeChallenge);
     }
 
-    // вызывается после возврата из браузера с ?code=..&state=..
     public static Account finishMicrosoftLogin(String authCode, MsAuthContext ctx) throws Exception {
         // 1) exchange code -> MSA tokens
         var msa = MicrosoftOAuth.exchangeCode(authCode, ctx.codeVerifier);
@@ -134,7 +134,6 @@ public class AuthService {
         return acc;
     }
 
-    // «Тихий» вход: обновить refresh->access и снова прокрутить XBL/XSTS/MC
     public static Account tryMicrosoftSilentRefresh(Account acc) throws Exception {
         if (acc == null || acc.msaRefreshToken == null) return null;
         var msa = MicrosoftOAuth.refresh(acc.msaRefreshToken);
@@ -145,6 +144,25 @@ public class AuthService {
         acc.username = session.username;
         acc.uuid = session.uuid;
         acc.ownsMinecraft = session.ownsMinecraft;
+        return acc;
+    }
+
+    public static Account offlineLogin(String nickname) {
+        if (nickname == null || nickname.isBlank()) {
+            nickname = "Player";
+        }
+
+        Account acc = new Account();
+
+        UUID uuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + nickname).getBytes(StandardCharsets.UTF_8));
+
+        acc.type = AccountType.OFFLINE;
+        acc.userType = "legacy";
+        acc.username = nickname;
+        acc.uuid = uuid.toString();
+        acc.accessToken = "0";
+        acc.expiresAtSec = System.currentTimeMillis() / 1000L + (365L * 24 * 3600); // год вперёд
+        acc.avatarUrl = "https://crafatar.com/avatars/" + uuid.toString().replace("-", "") + "?size=20&overlay";
         return acc;
     }
 }

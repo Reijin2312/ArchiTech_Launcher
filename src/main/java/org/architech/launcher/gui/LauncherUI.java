@@ -67,11 +67,13 @@ public class LauncherUI {
         d.setTitle("Оффлайн вход");
         d.setHeaderText("Введите ник для оффлайн-режима");
         d.setContentText("Ник:");
+
         d.showAndWait().ifPresent(nick -> {
             if (nick.isBlank()) return;
             try {
-                //Account a = AuthService.loginOffline(nick.trim());
-                //setCurrentAccount(a); // оффлайн-акк с детерминированным UUID
+                Account a = AuthService.offlineLogin(nick.trim());
+                setCurrentAccount(a);
+                Auth.set(a);
             } catch (Exception ex) {
                 showError("Не удалось установить оффлайн ник: " + ex.getMessage());
             }
@@ -260,11 +262,9 @@ public class LauncherUI {
         usernameField.setMouseTransparent(true);
 
         if (a == null || a.type == AccountType.OFFLINE) {
-            //accountBtn.setText("Войти");
             //accountAvatar.setImage(null);
             if (a != null) usernameField.setText(a.username);
         } else {
-           // accountBtn.setText(a.username != null ? a.username : "Аккаунт");
             usernameField.setText(a.username != null ? a.username : "");
 
             if (a.avatarUrl != null && !a.avatarUrl.isBlank()) {
@@ -273,7 +273,6 @@ public class LauncherUI {
                     if (accountAvatar != null) accountAvatar.setImage(img);
                 } catch (Exception ignored) {}
             } else {
-                // fallback — всегда ставим картинку через HeadImage (учёт uuid/name)
                 try {
                     Image img = HeadImage.forAccount(a, 20);
                     if (accountAvatar != null) accountAvatar.setImage(img);
@@ -287,7 +286,6 @@ public class LauncherUI {
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(20));
 
-        // Левая панель управления
         usernameField = new TextField("Имя пользователя");
         usernameField.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-border-color: #6b6b6b;");
         usernameField.setPrefColumnCount(14);

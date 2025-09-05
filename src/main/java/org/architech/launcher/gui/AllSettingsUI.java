@@ -10,6 +10,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import org.architech.launcher.utils.LogManager;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -289,6 +291,8 @@ public static void createDefaultConfigIfMissing() {
         try {
             if (Files.exists(CONFIG_PATH)) return;
 
+            LogManager.getLogger().info("Не найден файл настроек, создаю...");
+
             Map<String, Object> def = new LinkedHashMap<>();
 
             def.put("gameDir", GAME_DIR.toAbsolutePath().toString());
@@ -318,6 +322,7 @@ public static void createDefaultConfigIfMissing() {
                 GSON.toJson(def, w);
             }
         } catch (IOException e) {
+            LogManager.getLogger().severe("Не удалось создать файл настроек: " + e.getMessage());
             throw new RuntimeException("Не удалось создать дефолтный конфиг: " + e.getMessage(), e);
         }
     }

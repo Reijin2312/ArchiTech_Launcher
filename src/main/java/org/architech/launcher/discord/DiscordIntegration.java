@@ -3,6 +3,7 @@ package org.architech.launcher.discord;
 import net.arikia.dev.drpc.DiscordEventHandlers;
 import net.arikia.dev.drpc.DiscordRichPresence;
 import net.arikia.dev.drpc.DiscordRPC;
+import org.architech.launcher.utils.LogManager;
 
 public class DiscordIntegration {
     private static final String APP_ID = "1409949210568298647";
@@ -33,6 +34,8 @@ public class DiscordIntegration {
 
         rpcThread.setDaemon(true);
         rpcThread.start();
+
+        LogManager.getLogger().info("Запуск интеграции с discord...");
     }
 
     public static void stop() {
@@ -40,8 +43,11 @@ public class DiscordIntegration {
             rpcThread.interrupt();
             try {
                 rpcThread.join(1000);
-            } catch (InterruptedException ignored) {}
+            } catch (InterruptedException ex) {
+                LogManager.getLogger().severe("Ошибка прерывания процесса интеграции с дискорд...");
+            }
         }
         DiscordRPC.discordShutdown();
+        LogManager.getLogger().info("Остановка интеграции с discord...");
     }
 }

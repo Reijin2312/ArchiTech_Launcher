@@ -12,10 +12,8 @@ import org.architech.launcher.managment.HttpModsManager;
 import org.architech.launcher.managment.NativesManager;
 import org.architech.launcher.managment.VersionManager;
 import org.architech.launcher.neoforge.NeoForgeInstaller;
-import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.utils.ServersDatGenerator;
-import org.architech.launcher.utils.ServersDatWriter;
-import org.architech.launcher.utils.Utils;
+import org.architech.launcher.utils.*;
+
 import java.io.*;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static org.architech.launcher.gui.AllSettingsUI.GSON;
@@ -47,6 +46,7 @@ public class MCLauncher extends Application {
 
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
+        LogManager.setupLogger();
         LAUNCHER_DIR = Paths.get(AllSettingsUI.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
         CONFIG_PATH = LAUNCHER_DIR.resolve("launcher_config.json");
         AllSettingsUI.createDefaultConfigIfMissing();
@@ -61,6 +61,7 @@ public class MCLauncher extends Application {
         } else if (Files.isExecutable(candidate)) {
             JAVA_PATH = candidate;
         } else {
+            LogManager.getLogger().severe("Не найден java.exe в " + base);
             throw new IllegalStateException("Не найден java.exe в " + base);
         }
 
