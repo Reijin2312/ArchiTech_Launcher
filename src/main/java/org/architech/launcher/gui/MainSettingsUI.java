@@ -23,7 +23,7 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         ModsUI modsUI = new ModsUI(stage, parentScene);
-        AllSettingsUI allSettingsUI = new AllSettingsUI(stage, parentScene);
+        AllSettingsUI allSettingsUI = new AllSettingsUI(stage);
 
         Tab modsTab = new Tab("Моды", modsUI.createContent(true));
         Tab settingsTab = new Tab("Настройки", allSettingsUI.createContent(true));

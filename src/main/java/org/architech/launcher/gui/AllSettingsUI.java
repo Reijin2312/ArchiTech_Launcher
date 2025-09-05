@@ -5,13 +5,11 @@ import com.google.gson.GsonBuilder;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import org.architech.launcher.utils.LogManager;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -24,7 +22,6 @@ import static org.architech.launcher.MCLauncher.GAME_DIR;
 
 public class AllSettingsUI {
     private final Stage stage;
-    private final Scene parentScene;
 
     private TextField gameDirField;
     private TextField javaField;
@@ -50,10 +47,7 @@ public class AllSettingsUI {
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    public AllSettingsUI(Stage stage, Scene parentScene) {
-        this.stage = stage;
-        this.parentScene = parentScene;
-    }
+    public AllSettingsUI(Stage stage) { this.stage = stage; }
 
     public Parent createContent(boolean embedded) {
         BorderPane root = new BorderPane();
@@ -161,22 +155,25 @@ public class AllSettingsUI {
         scroll.setFitToWidth(true);
         root.setCenter(scroll);
 
-        Button save = new Button("Сохранить");
-        save.setOnAction(e -> { saveConfig(); if (!embedded) stage.setScene(parentScene); });
+        languageCombo.valueProperty().addListener((obs, o, n) -> saveConfig());
+        themeCombo.valueProperty().addListener((obs, o, n) -> saveConfig());
+        ramSlider.valueProperty().addListener((obs, o, n) -> saveConfig());
+        soundVolumeSlider.valueProperty().addListener((obs, o, n) -> saveConfig());
+        scaleSlider.valueProperty().addListener((obs, o, n) -> saveConfig());
+        gpuCombo.valueProperty().addListener((obs, o, n) -> saveConfig());
+        fpsSpinner.valueProperty().addListener((obs, o, n) -> saveConfig());
+        netTimeoutSpinner.valueProperty().addListener((obs, o, n) -> saveConfig());
 
-        if (embedded) {
-            HBox bottom = new HBox(10, save);
-            bottom.setAlignment(Pos.CENTER_RIGHT);
-            bottom.setPadding(new Insets(12,16,16,16));
-            root.setBottom(bottom);
-        } else {
-            Button back = new Button("Назад");
-            back.setOnAction(e -> stage.setScene(parentScene));
-            HBox bottom = new HBox(10, back, save);
-            bottom.setAlignment(Pos.CENTER_RIGHT);
-            bottom.setPadding(new Insets(12,16,16,16));
-            root.setBottom(bottom);
-        }
+        closeOnLaunch.selectedProperty().addListener((obs, o, n) -> saveConfig());
+        fullscreenCheck.selectedProperty().addListener((obs, o, n) -> saveConfig());
+        autoUpdate.selectedProperty().addListener((obs, o, n) -> saveConfig());
+
+        gameDirField.textProperty().addListener((obs, o, n) -> saveConfig());
+        javaField.textProperty().addListener((obs, o, n) -> saveConfig());
+        widthField.textProperty().addListener((obs, o, n) -> saveConfig());
+        heightField.textProperty().addListener((obs, o, n) -> saveConfig());
+        proxyField.textProperty().addListener((obs, o, n) -> saveConfig());
+        jvmArgsArea.textProperty().addListener((obs, o, n) -> saveConfig());
 
         loadConfig();
         return root;
