@@ -7,12 +7,20 @@ import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.architech.launcher.auth.*;
+import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
+
+import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -21,10 +29,12 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static org.architech.launcher.MCLauncher.GAME_DIR;
 
@@ -59,8 +69,7 @@ public class LauncherUI {
     }
 
     private void showOfflineDialog() {
-        TextInputDialog d = new TextInputDialog(
-                (currentAccount != null && currentAccount.type == AccountType.OFFLINE)
+        TextInputDialog d = new TextInputDialog((currentAccount != null && currentAccount.type == AccountType.OFFLINE)
                         ? currentAccount.username
                         : (usernameField.getText() == null ? "Player" : usernameField.getText())
         );
@@ -75,7 +84,8 @@ public class LauncherUI {
                 setCurrentAccount(a);
                 Auth.set(a);
             } catch (Exception ex) {
-                showError("Не удалось установить оффлайн ник: " + ex.getMessage());
+                LogManager.getLogger().severe("Не удалось установить оффлайн ник " + ex.getMessage());
+                showError("Упс! Не удалось установить оффлайн ник :(");
             }
         });
     }
@@ -109,13 +119,16 @@ public class LauncherUI {
                                 silent.skinUrl = "http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png";
                             Auth.set(silent);
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ex) {
+                        LogManager.getLogger().severe("Ошибка получения параметров аккаунта: " + ex.getMessage());
+                        Platform.runLater(() -> showError("Упс! :( Ошибка получения параметров аккаунта"));
+                    }
                     final Account accSilent = silent;
-                    javafx.application.Platform.runLater(() -> setCurrentAccount(accSilent));
+                    Platform.runLater(() -> setCurrentAccount(accSilent));
                     return;
                 }
 
-                String state = java.util.UUID.randomUUID().toString();
+                String state = UUID.randomUUID().toString();
                 String url = ElyOAuth.buildAuthorizeUrl(state, null);
                 openInBrowser(url);
 
@@ -136,35 +149,36 @@ public class LauncherUI {
                                 a.skinUrl = "http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png";
                             Auth.set(a);
                         }
-                    } catch (Exception e) {
-                        final String em = e.getMessage();
-                        javafx.application.Platform.runLater(() -> showError("Ошибка получения игровых параметров: " + em));
+                    } catch (Exception ex) {
+                        LogManager.getLogger().severe("Ошибка получения параметров аккаунта: " + ex.getMessage());
+                        Platform.runLater(() -> showError("Упс! :( Ошибка получения параметров аккаунта"));
                     }
                 }
 
                 final Account acc = a;
-                javafx.application.Platform.runLater(() -> setCurrentAccount(acc));
+                Platform.runLater(() -> setCurrentAccount(acc));
 
             } catch (Exception ex) {
                 try {
                     Account fallback = AuthService.tryElySilentLogin();
                     if (fallback != null) {
-                        javafx.application.Platform.runLater(() -> setCurrentAccount(fallback));
+                        Platform.runLater(() -> setCurrentAccount(fallback));
                         return;
                     }
                 } catch (Exception ignore) {}
                 final String msg = ex.getMessage();
-                javafx.application.Platform.runLater(() -> showError("Ely.by вход не удался: " + msg));
+                Platform.runLater(() -> showError("Вход через ely.by не удался: " + msg));
             } finally {
-                javafx.application.Platform.runLater(() -> accountBtn.setDisable(false));
+                Platform.runLater(() -> accountBtn.setDisable(false));
             }
         }, "ely-login").start();
     }
 
     private void openInBrowser(String url) {
         try {
-            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+            Desktop.getDesktop().browse(new java.net.URI(url));
         } catch (Exception e) {
+            LogManager.getLogger().severe("Не удалось открыть браузер: " + e.getMessage());
             showError("Не удалось открыть браузер: " + e.getMessage());
         }
     }
@@ -188,8 +202,7 @@ public class LauncherUI {
                 codeHolder[0] = code;
             }
 
-            String html = buildCallbackHtml(ok ? "Авторизация успешно завершена"
-                    : "Ошибка авторизации");
+            String html = buildCallbackHtml(ok ? "Авторизация успешно завершена" : "Ошибка авторизации");
             byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
             exchange.getResponseHeaders().add("Cache-Control", "no-store");
@@ -221,7 +234,7 @@ public class LauncherUI {
                         "background-size:cover;background-position:center;background-repeat:no-repeat;";
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            LogManager.getLogger().warning("Не удалось получить фон для страницы логина " + e.getMessage());
         }
 
         return "<!doctype html><html lang=\"ru\"><head><meta charset=\"utf-8\">" +
@@ -281,8 +294,7 @@ public class LauncherUI {
         }
     }
 
-    public LauncherUI(Stage stage, java.util.function.Consumer<String> launchHandler) {
-
+    public LauncherUI(Stage stage, Consumer<String> launchHandler) {
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(20));
 
@@ -333,9 +345,7 @@ public class LauncherUI {
         styleSmallButton(checkUpdates);
         checkUpdates.setOnAction(e -> showInfo("Проверка обновлений пока не реализована"));
 
-        Image telegramIcon = new Image(
-                Objects.requireNonNull(getClass().getResource("/images/tg.png")).toExternalForm()
-        );
+        Image telegramIcon = new Image(Objects.requireNonNull(getClass().getResource("/images/tg.png")).toExternalForm());
         ImageView telegramView = new ImageView(telegramIcon);
         telegramView.setFitWidth(20);
         telegramView.setFitHeight(20);
@@ -345,16 +355,15 @@ public class LauncherUI {
         faqBtn.setGraphic(telegramView);
         faqBtn.setOnAction(e -> {
             try {
-                java.awt.Desktop.getDesktop().browse(new URI("https://t.me/archi_tech_official"));
+                Desktop.getDesktop().browse(new URI("https://t.me/archi_tech_official"));
             } catch (Exception ex) {
-                showError("Не удалось открыть Telegram");
+                LogManager.getLogger().severe("Не удалось открыть Telegram");
+                showError("Упс! Не удалось открыть Telegram :(");
             }
         });
 
         Button settingsBtn = new Button("⚙");
         styleSmallButton(settingsBtn);
-        //settingsBtn.setOnAction(e -> openModsSettings(stage));
-
 
         buttons.getChildren().addAll(openFolder, checkUpdates, faqBtn, settingsBtn);
 
@@ -425,7 +434,6 @@ public class LauncherUI {
             r.setBackground(Background.EMPTY);
         }
 
-
         root.setCenter(centerBox);
         BorderPane.setMargin(centerBox, new Insets(0, 0, 0, 20));
 
@@ -442,14 +450,10 @@ public class LauncherUI {
         root.setBottom(bottom);
 
         stage.setTitle("ArchiTech - лаунчер");
-        stage.getIcons().add(
-                new Image(Objects.requireNonNull(getClass().getResource("/images/icon.jpg")).toExternalForm())
-        );
+        stage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResource("/images/icon.jpg")).toExternalForm()));
 
         mainScene = new Scene(root, 900, 560);
-        mainScene.getStylesheets().add(
-                Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm()
-        );
+        mainScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
         root.setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
 
         settingsBtn.setOnAction(e -> new MainSettingsUI(stage, mainScene).show());
@@ -505,11 +509,12 @@ public class LauncherUI {
     }
 
     private void openGameDir() {
-        try { java.awt.Desktop.getDesktop().open(GAME_DIR.toFile()); } catch (Exception e) { showError("Не удалось открыть папку"); }
-    }
-
-    private void openModsSettings(Stage stage) {
-        new ModsUI(stage, mainScene).show();
+        try {
+            Desktop.getDesktop().open(GAME_DIR.toFile());
+        } catch (Exception ex) {
+            LogManager.getLogger().severe("Не удалось открыть папку игры " + ex.getMessage());
+            showError("Упс! Не удалось открыть папку игры :( ");
+        }
     }
 
     private record NewsItem(String title, String imageUrl) {}
@@ -530,7 +535,9 @@ public class LauncherUI {
             try {
                 Image im = new Image(n.imageUrl, 32, 32, true, true);
                 img.setImage(im);
-            } catch (Exception ignored) {}
+            } catch (Exception ex) {
+                LogManager.getLogger().severe("Ошибка создания иконки новостей " + ex.getMessage());
+            }
             img.setFitWidth(64);
             img.setFitHeight(64);
             img.setPreserveRatio(true);

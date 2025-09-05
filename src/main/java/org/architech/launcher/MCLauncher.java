@@ -41,7 +41,6 @@ public class MCLauncher extends Application {
     public static final String MINECRAFT_VERSION = "1.21.1";
     public static final String BACKEND_URL = System.getenv().getOrDefault("ARCHITECH_BACKEND_URL", "http://26.66.122.141:51789");
     public static boolean closeOnLaunch = false;
-
     private LauncherUI ui;
 
     @Override
@@ -118,6 +117,7 @@ public class MCLauncher extends Application {
 
                 if (!failed.isEmpty()) {
                     String names = failed.stream().map(f -> f.name).collect(Collectors.joining(", "));
+                    LogManager.getLogger().severe("Не удалось скачать некоторые файлы: " + names);
                     throw new IOException("Не удалось скачать некоторые файлы: " + names);
                 }
 
@@ -129,6 +129,7 @@ public class MCLauncher extends Application {
                 try {
                     HttpModsManager.syncMods(GAME_DIR, ui);
                 } catch (Exception ex) {
+                    LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
                     Platform.runLater(() -> ui.showError("Ошибка синхронизации модов: " + ex.getMessage()));
                 }
 
@@ -178,7 +179,9 @@ public class MCLauncher extends Application {
                             }
                         }
                     }
-                } catch (IOException ignored) {}
+                } catch (IOException ex) {
+                    LogManager.getLogger().severe("Ошибка нахождения Java 21 " + ex.getMessage());
+                }
             }
         }
         return null;

@@ -21,7 +21,7 @@ public class LogManager {
         logger.setUseParentHandlers(false);
 
         try {
-            FileHandler fh = new FileHandler("application.log", false);
+            FileHandler fh = new FileHandler("launcher.log", false);
             fh.setEncoding("UTF-8");
 
             fh.setFormatter(new SimpleFormatter());
