@@ -3,10 +3,12 @@ package org.architech.launcher.managment;
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 import org.architech.launcher.utils.FileEntry;
+import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.UtilsNet;
 import java.io.StringReader;
 import java.nio.file.*;
 import java.util.*;
+import java.util.logging.Logger;
 
 import static java.nio.file.StandardOpenOption.*;
 
@@ -155,6 +157,7 @@ public class VersionManager {
                 }
             }
         } catch (Exception ignored) {
+            LogManager.getLogger().warning("Ошибка валидации файла " + file);
         }
     }
 

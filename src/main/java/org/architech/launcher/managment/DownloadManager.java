@@ -19,6 +19,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -33,9 +36,7 @@ public class DownloadManager {
 
     private static final ConcurrentHashMap<Path, Object> fileLocks = new ConcurrentHashMap<>();
 
-    public DownloadManager(LauncherUI ui) {
-        this.ui = ui;
-    }
+    public DownloadManager(LauncherUI ui) { this.ui = ui; }
 
     public void setTotalBytesPlanned(long total) { this.totalBytesPlanned.set(total); }
 
@@ -66,7 +67,10 @@ public class DownloadManager {
 
     public void ensureFilePresentAndValid(FileEntry f) throws Exception {
         boolean ok = downloadWithRoundsSingleFile(f, 3, 2000);
-        if (!ok) throw new IOException("Файл не удалось корректно скачать: " + f.name);
+        if (!ok) {
+            LogManager.getLogger().warning("Файл не удалось корректно скачать: " + f.name);
+            throw new IOException("Файл не удалось корректно скачать: " + f.name);
+        }
     }
 
     public List<FileEntry> downloadFilesInParallel(List<FileEntry> files, int threads, int rounds) throws InterruptedException {
@@ -81,8 +85,8 @@ public class DownloadManager {
         }
 
         for (int round = 1; round <= Math.max(1, rounds) && !remaining.isEmpty(); round++) {
-            java.util.concurrent.ConcurrentLinkedQueue<FileEntry> failedThisRound;
-            try (java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads)) {
+            ConcurrentLinkedQueue<FileEntry> failedThisRound;
+            try (ExecutorService pool = Executors.newFixedThreadPool(threads)) {
                 failedThisRound = new java.util.concurrent.ConcurrentLinkedQueue<>();
 
                 for (FileEntry f : remaining) {
@@ -90,7 +94,7 @@ public class DownloadManager {
                         try {
                             Path parent = f.path.getParent();
                             if (parent != null) Files.createDirectories(parent);
-                            boolean ok = downloadWithRoundsSingleFile(f, 1, 0); // один "попыточный" вызов в раунде
+                            boolean ok = downloadWithRoundsSingleFile(f, 1, 0);
                             if (!ok) failedThisRound.add(f);
                         } catch (Throwable t) {
                             failedThisRound.add(f);
@@ -134,12 +138,25 @@ public class DownloadManager {
                     try {
                         downloadAtomicOnce(f);
                         if (isFileValid(f)) return true;
-                        try { Files.deleteIfExists(f.path); } catch (Exception ignored) {}
+                        try {
+                            Files.deleteIfExists(f.path);
+                        } catch (Exception ex) {
+                            LogManager.getLogger().severe("Ошибка удаления файла " + f.path);
+                        }
                     } catch (Exception e) {
-                        System.err.println("Попытка скачивания " + attempt + " провалилась для " + f.name + ": " + e.getMessage());
-                        try { Files.deleteIfExists(f.path.resolveSibling(f.path.getFileName().toString() + ".part")); } catch (Exception ignored) {}
+                        LogManager.getLogger().severe("Попытка скачивания " + attempt + " провалилась для файла" + f.name + ": " + e.getMessage());
+                        try {
+                            Files.deleteIfExists(f.path.resolveSibling(f.path.getFileName().toString() + ".part"));
+                        } catch (Exception ignored) {
+                            LogManager.getLogger().severe("Ошибка удаления файла " + f.path.resolveSibling(f.path.getFileName().toString() + ".part"));
+                        }
                         if (waitBetweenAttemptsMs > 0) {
-                            try { Thread.sleep(waitBetweenAttemptsMs); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+                            try {
+                                Thread.sleep(waitBetweenAttemptsMs);
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
+                                break;
+                            }
                         }
                     }
                 }
@@ -170,6 +187,7 @@ public class DownloadManager {
             conn.connect();
             int code = conn.getResponseCode();
             if (code >= 400) {
+                LogManager.getLogger().severe("HTTP error " + code + " for " + f.url);
                 throw new IOException("HTTP error " + code + " for " + f.url);
             }
 
@@ -182,7 +200,7 @@ public class DownloadManager {
                     try {
                         read = in.read(buffer);
                     } catch (javax.net.ssl.SSLHandshakeException e) {
-                        System.err.println("Сервер закрыл TLS соединение после завершения передачи: " + f.name);
+                        LogManager.getLogger().severe("Сервер закрыл TLS соединение после завершения передачи: " + f.name);
                         break;
                     }
                     if (read == -1) break;
@@ -205,11 +223,9 @@ public class DownloadManager {
             }
 
             if (f.size > 0) {
-                System.out.println("[DownloadManager] " + f.name +
-                        " -> скачано: " + downloadedFile + " байт, ожидалось: " + f.size + " байт");
+                LogManager.getLogger().info(f.name + " -> скачано: " + downloadedFile + " байт, ожидалось: " + f.size + " байт");
             } else {
-                System.out.println("[DownloadManager] " + f.name +
-                        " -> скачано: " + downloadedFile + " байт (ожидаемый размер неизвестен)");
+                LogManager.getLogger().info(f.name + " -> скачано: " + downloadedFile + " байт (ожидаемый размер неизвестен)");
             }
 
             if (f.sha1 != null) {
@@ -218,7 +234,7 @@ public class DownloadManager {
                     if (addedToGlobal > 0) totalBytesDone.addAndGet(-addedToGlobal);
                     Files.deleteIfExists(tmp);
                     LogManager.getLogger().warning("Хэш не совпал для файла " + f.name);
-                    throw new IOException("Хэш не совпал для " + f.name);
+                    throw new IOException("Хэш не совпал для файла " + f.name);
                 }
             }
 

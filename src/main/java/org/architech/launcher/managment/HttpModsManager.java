@@ -2,6 +2,7 @@ package org.architech.launcher.managment;
 
 import com.google.gson.Gson;
 import org.architech.launcher.gui.LauncherUI;
+import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
 
 import java.io.IOException;
@@ -29,6 +30,7 @@ public class HttpModsManager {
                 .build();
         HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (res.statusCode() != 200) {
+            LogManager.getLogger().severe("manifest HTTP " + res.statusCode() + ": " + res.body());
             throw new IOException("manifest HTTP " + res.statusCode() + ": " + res.body());
         }
 
@@ -36,6 +38,7 @@ public class HttpModsManager {
         Manifest newManifest = GSON.fromJson(res.body(), Manifest.class);
 
         if (newManifest == null) {
+            LogManager.getLogger().severe("manifest parse error: empty/invalid JSON");
             throw new IOException("manifest parse error: empty/invalid JSON");
         }
 
@@ -77,6 +80,7 @@ public class HttpModsManager {
                 Files.deleteIfExists(disabled);
             } catch (Exception ex) {
                 if (ui != null) ui.updateProgress("Ошибка при удалении мода: " + rel + " — " + ex.getMessage(), -1);
+                LogManager.getLogger().severe("Ошибка при удалении мода: " + rel + " — " + ex.getMessage());
             }
         }
 

@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import org.architech.launcher.managment.DownloadManager;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.gui.LauncherUI;
+import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
 import java.io.*;
 import java.net.URI;
@@ -67,7 +68,10 @@ public class NeoForgeInstaller {
     public static void ensureInstalledAndReady(Path gameDir, String mcVersion, LauncherUI ui) throws Exception {
         String pinned = fetchPinnedServerVersionAndSave(gameDir);
         String latest = (pinned != null && !pinned.isBlank()) ? pinned : fetchLatestVersion();
-        if (latest == null) throw new IOException("Не удалось получить актуальную версию NeoForge!");
+        if (latest == null) {
+            LogManager.getLogger().severe("Не удалось получить актуальную версию NeoForge!");
+            throw new IOException("Не удалось получить актуальную версию NeoForge!");
+        }
 
         String installedVersion = getInstalledVersion(gameDir);
 
@@ -98,6 +102,7 @@ public class NeoForgeInstaller {
         int rc = p.waitFor();
 
         if (rc != 0) {
+            LogManager.getLogger().severe("Упс! Установщик NeoForge сломался :( (exit " + rc + "):\n" + output);
             throw new IOException("Упс! Установщик NeoForge сломался :( (exit " + rc + "):\n" + output);
         }
 
@@ -144,6 +149,7 @@ public class NeoForgeInstaller {
         }
         return encoded.toString();
     }
+
     private static String encodeSegment(String segment) {
         StringBuilder sb = new StringBuilder();
         for (int j = 0; j < segment.length(); j++) {
@@ -157,6 +163,7 @@ public class NeoForgeInstaller {
         }
         return sb.toString();
     }
+
     private static boolean isAllowedInPath(char c) {
         if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
                 c == '-' || c == '_' || c == '.' || c == '~') return true;
@@ -186,7 +193,8 @@ public class NeoForgeInstaller {
         try {
             InstalledManifest im = GSON.fromJson(Files.readString(manifest, StandardCharsets.UTF_8), InstalledManifest.class);
             return im.version;
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            LogManager.getLogger().severe("Ошибка получения установленной версии neoforge " + gameDir + " " + ex.getMessage());
             return null;
         }
     }
@@ -206,7 +214,9 @@ public class NeoForgeInstaller {
             Utils.deleteDirectory(gameDir.resolve("versions").resolve("neoforge-"+getInstalledVersion(gameDir)));
             Utils.deleteDirectory(gameDir.resolve("libraries/net/neoforged/neoforge").resolve(Objects.requireNonNull(getInstalledVersion(gameDir))));
             Files.deleteIfExists(manifest);
-        } catch (Exception ignored) {}
+        } catch (Exception ex) {
+            LogManager.getLogger().severe("Ошибка удаления старой версии neoforge " + gameDir + " " + ex.getMessage());
+        }
     }
 
     private static String readProcessAllOutputWithEncodingFallback(InputStream in) throws IOException {
@@ -251,7 +261,7 @@ public class NeoForgeInstaller {
                             e.sha1 = sha;
                             im.files.add(e);
                         } catch (Exception ex) {
-                            // пропускаем проблемные файлы
+                            LogManager.getLogger().warning("Пропускаю проблемный файл " + p.getFileName() + " " + ex.getMessage());
                         }
                     });
         }

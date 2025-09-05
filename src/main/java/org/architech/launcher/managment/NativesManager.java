@@ -1,6 +1,7 @@
 package org.architech.launcher.managment;
 
 import org.architech.launcher.utils.FileEntry;
+import org.architech.launcher.utils.LogManager;
 
 import java.nio.file.*;
 import java.util.List;
@@ -15,7 +16,8 @@ public record NativesManager(Path gameDir, String version) {
         Files.createDirectories(nativesRoot);
         try (DirectoryStream<Path> ds = Files.newDirectoryStream(nativesRoot)) {
             for (Path p : ds) Files.deleteIfExists(p);
-        } catch (IOException ignored) {
+        } catch (IOException ex) {
+            LogManager.getLogger().severe("Ошибка удаления файла " + ex);
         }
         for (FileEntry f : files) {
             if (!"natives".equals(f.kind)) continue;
