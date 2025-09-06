@@ -4,12 +4,10 @@ import com.google.gson.*;
 import org.architech.launcher.auth.Account;
 import org.architech.launcher.auth.Auth;
 import org.architech.launcher.utils.LogManager;
-
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.io.*;
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.zip.*;
 
 import static org.architech.launcher.MCLauncher.CONFIG_PATH;
@@ -17,7 +15,7 @@ import static org.architech.launcher.MCLauncher.JAVA_PATH;
 import static org.architech.launcher.gui.AllSettingsUI.GSON;
 
 public class MinecraftLauncher {
-    public static void launchMinecraft(Path gameDir, String version) throws IOException {
+    public static Process launchMinecraft(Path gameDir, String version) throws IOException {
         if (JAVA_PATH == null) {
             LogManager.getLogger().severe("Java 21 не найдена.");
             throw new IllegalStateException("Java 21 не найдена. Установите JDK 21.");
@@ -122,7 +120,8 @@ public class MinecraftLauncher {
         ProcessBuilder pb = new ProcessBuilder(args);
         pb.directory(gameDir.toFile());
         pb.inheritIO();
-        pb.start();
+        Process p = pb.start();
+        return p;
     }
 
     private static List<JsonObject> getVersionChain(Path gameDir, String version) throws IOException {

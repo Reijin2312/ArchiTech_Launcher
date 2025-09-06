@@ -21,6 +21,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -42,6 +45,13 @@ public class MCLauncher extends Application {
     public static final String BACKEND_URL = System.getenv().getOrDefault("ARCHITECH_BACKEND_URL", "http://26.66.122.141:8080");
     public static boolean closeOnLaunch = false;
     private LauncherUI ui;
+
+    private static final ExecutorService launcherExecutor = Executors.newSingleThreadExecutor(daemonFactory("launcher-worker"));
+    private static final ExecutorService backgroundExecutor = Executors.newCachedThreadPool(daemonFactory("bg"));
+    public static final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor(daemonFactory("sched"));
+    private static final AtomicReference<Future<?>> launchFuture = new AtomicReference<>();
+    private static final AtomicReference<DownloadManager> activeDownloadManager = new AtomicReference<>();
+    private volatile Process currentGameProcess = null;
 
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
@@ -82,30 +92,49 @@ public class MCLauncher extends Application {
         DiscordIntegration.start();
     }
 
+    @Override
     public void stop() throws Exception {
         super.stop();
+        cancelLaunch();
+        backgroundExecutor.shutdownNow();
+        scheduledExecutor.shutdownNow();
         DiscordIntegration.stop();
     }
 
     private void onLaunchClicked(String playerName) {
-        new Thread(() -> {
+        Future<?> running = launchFuture.get();
+        if (running != null && !running.isDone()) {
+            cancelLaunch();
+            return;
+        }
+
+        Future<?> f = launcherExecutor.submit(() -> {
+            DownloadManager downloadManager = null;
             try {
+                Platform.runLater(() -> {
+                    ui.setLaunchButtonText("Отменить");
+                    ui.setLaunchButtonStyle("-fx-opacity: 0.6;");
+                    ui.setLaunchButtonDisabled(false);
+                    ui.startTimer();
+                });
+
                 ui.updateProgress("Подготовка к запуску...", 0);
 
                 VersionManager versionManager = new VersionManager(VERSIONS_DIR, ASSETS_DIR, LIBRARIES_DIR);
                 JsonObject versionJson = versionManager.loadVersionJson(MINECRAFT_VERSION);
                 List<FileEntry> files = versionManager.buildRequiredFiles(versionJson, MINECRAFT_VERSION);
 
-                files.sort(Comparator.comparingInt(f -> {
-                    if ("assetIndex".equals(f.kind)) return 0;
-                    if ("client".equals(f.kind)) return 1;
-                    if ("lib".equals(f.kind)) return 2;
-                    if ("natives".equals(f.kind)) return 3;
-                    if ("asset".equals(f.kind)) return 4;
+                files.sort(Comparator.comparingInt(fEnt -> {
+                    if ("assetIndex".equals(fEnt.kind)) return 0;
+                    if ("client".equals(fEnt.kind)) return 1;
+                    if ("lib".equals(fEnt.kind)) return 2;
+                    if ("natives".equals(fEnt.kind)) return 3;
+                    if ("asset".equals(fEnt.kind)) return 4;
                     return 5;
                 }));
 
-                DownloadManager downloadManager = new DownloadManager(ui);
+                downloadManager = new DownloadManager(ui);
+                activeDownloadManager.set(downloadManager);
 
                 long total = downloadManager.computeTotalBytesToDownload(files);
                 downloadManager.setTotalBytesPlanned(total);
@@ -113,11 +142,13 @@ public class MCLauncher extends Application {
                 int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
                 int rounds = 3;
                 ui.updateProgress("Начало параллельной загрузки (" + threads + " потоков)...", 0);
+
                 List<FileEntry> failed = downloadManager.downloadFilesInParallel(files, threads, rounds);
 
+                if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+
                 if (!failed.isEmpty()) {
-                    String names = failed.stream().map(f -> f.name).collect(Collectors.joining(", "));
-                    LogManager.getLogger().severe("Не удалось скачать некоторые файлы: " + names);
+                    String names = failed.stream().map(x -> x.name).collect(Collectors.joining(", "));
                     throw new IOException("Не удалось скачать некоторые файлы: " + names);
                 }
 
@@ -137,20 +168,60 @@ public class MCLauncher extends Application {
                 if (!Files.exists(serversDat)) ServersDatGenerator.createServersDat(serversDat);
 
                 ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("Сервер Minecraft", "architech.mc-world.xyz").withHidden(false);
-
                 List<ServersDatWriter.ServerEntry> list = Collections.singletonList(mySrv);
 
                 Files.createDirectories(serversDat.getParent());
                 writeServersDat(serversDat, list);
 
-                MinecraftLauncher.launchMinecraft(GAME_DIR, "neoforge-" + getInstalledVersion(GAME_DIR));
+                Process p = MinecraftLauncher.launchMinecraft(GAME_DIR, "neoforge-" + getInstalledVersion(GAME_DIR));
+                currentGameProcess = p;
 
-                ui.updateProgress("Готово. Клиент запущен...", 1);
+                ui.updateProgress("Клиент запущен, ожидаю завершения процесса...", 1);
+
+                if (p != null) {
+                    try {
+                        while (true) {
+                            if (Thread.currentThread().isInterrupted()) {
+                                try { p.destroyForcibly(); } catch (Exception ignored) {}
+                                throw new InterruptedException();
+                            }
+                            try {
+                                int exit = p.exitValue();
+                                break;
+                            } catch (IllegalThreadStateException itse) {
+                                Thread.sleep(500);
+                            }
+                        }
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw ie;
+                    }
+                }
+
+                Platform.runLater(() -> ui.updateProgress("Готово. Клиент завершил работу.", 1));
+            } catch (InterruptedException ie) {
+                Platform.runLater(() -> ui.showError("Запуск/скачивание отменены."));
             } catch (Exception e) {
+                LogManager.getLogger().severe("Ошибка запуска: " + e.getMessage());
                 Platform.runLater(() -> ui.showError("Ошибка: " + e.getMessage()));
+            } finally {
+                activeDownloadManager.set(null);
+                currentGameProcess = null;
+                launchFuture.set(null);
+                if (downloadManager != null) downloadManager.cancelAllDownloads();
+
+                Platform.runLater(() -> {
+                    ui.stopTimer();
+                    ui.setLaunchButtonText("Запустить");
+                    ui.setLaunchButtonStyle(null); // сбросить стиль
+                    ui.setLaunchButtonDisabled(false);
+                });
             }
-        }, "Launcher-Worker").start();
+        });
+
+        launchFuture.set(f);
     }
+
 
     public static Path findJava21() {
         String[] searchDirs = {"C:/Program Files/Java", "C:/Program Files (x86)/Java", "/usr/lib/jvm", "/Library/Java/JavaVirtualMachines"};
@@ -185,5 +256,33 @@ public class MCLauncher extends Application {
             }
         }
         return null;
+    }
+
+    private void cancelLaunch() {
+        Future<?> f = launchFuture.getAndSet(null);
+        if (f != null && !f.isDone()) f.cancel(true);
+
+        DownloadManager dm = activeDownloadManager.getAndSet(null);
+        if (dm != null) dm.cancelAllDownloads();
+
+        if (currentGameProcess != null) {
+            try { currentGameProcess.destroyForcibly(); } catch (Exception ignored) {}
+        }
+
+        Platform.runLater(() -> {
+            ui.stopTimer();
+            ui.setLaunchButtonText("Запустить");
+            ui.setLaunchButtonStyle(null);
+            ui.setLaunchButtonDisabled(false);
+        });
+    }
+
+    private static ThreadFactory daemonFactory(String prefix) {
+        final AtomicInteger id = new AtomicInteger(1);
+        return r -> {
+            Thread t = new Thread(r, prefix + "-" + id.getAndIncrement());
+            t.setDaemon(true);
+            return t;
+        };
     }
 }

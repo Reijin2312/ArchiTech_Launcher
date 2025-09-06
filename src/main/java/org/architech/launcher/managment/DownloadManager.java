@@ -5,12 +5,9 @@ import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
 import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSocketFactory;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URI;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
@@ -18,10 +15,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -35,6 +29,8 @@ public class DownloadManager {
     private final AtomicLong totalBytesDone = new AtomicLong(0);
 
     private static final ConcurrentHashMap<Path, Object> fileLocks = new ConcurrentHashMap<>();
+
+    private ConcurrentMap<Path, Closeable> activeDownloads = new ConcurrentHashMap<>();
 
     public DownloadManager(LauncherUI ui) { this.ui = ui; }
 
@@ -191,16 +187,20 @@ public class DownloadManager {
                 throw new IOException("HTTP error " + code + " for " + f.url);
             }
 
-            try (InputStream in = new BufferedInputStream(conn.getInputStream());
-                 OutputStream out = new BufferedOutputStream(Files.newOutputStream(tmp, CREATE, TRUNCATE_EXISTING))) {
+            InputStream in = new BufferedInputStream(conn.getInputStream());
+            activeDownloads.put(f.path, in);
 
+            try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(tmp, CREATE, TRUNCATE_EXISTING))) {
                 byte[] buffer = new byte[16 * 1024];
                 int read;
                 while (true) {
+                    if (!activeDownloads.containsKey(f.path)) {
+                        throw new IOException("Загрузка прервана: " + f.name);
+                    }
                     try {
                         read = in.read(buffer);
-                    } catch (javax.net.ssl.SSLHandshakeException e) {
-                        LogManager.getLogger().severe("Сервер закрыл TLS соединение после завершения передачи: " + f.name);
+                    } catch (SSLHandshakeException ex) {
+                        LogManager.getLogger().severe("Сервер закрыл TLS соединение после завершения передачи: " + f.name + ": " + ex.getMessage());
                         break;
                     }
                     if (read == -1) break;
@@ -220,6 +220,8 @@ public class DownloadManager {
                     ui.updateProgress(text + (percent >= 0 ? " | Всего: " + percent + "%" : ""), globalProgress);
                 }
                 out.flush();
+            }  finally {
+                activeDownloads.remove(f.path);
             }
 
             if (f.size > 0) {
@@ -264,8 +266,16 @@ public class DownloadManager {
             } else {
                 return true;
             }
-        } catch (Exception e) {
+        } catch (Exception ex) {
+            LogManager.getLogger().warning("Найден невалидный файл: " + f.path + ": " + ex.getMessage());
             return false;
         }
+    }
+
+    public void cancelAllDownloads() {
+        for (Closeable c : activeDownloads.values()) {
+            try { c.close(); } catch (Exception ignored) {}
+        }
+        activeDownloads.clear();
     }
 }

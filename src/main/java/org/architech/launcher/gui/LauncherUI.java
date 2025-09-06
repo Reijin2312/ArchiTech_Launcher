@@ -16,10 +16,10 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import org.architech.launcher.MCLauncher;
 import org.architech.launcher.auth.*;
 import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
-
 import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,14 +31,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static org.architech.launcher.MCLauncher.GAME_DIR;
 
 public class LauncherUI {
+    private final Button launchBtn;
     private final TextField usernameField;
     private final ProgressBar progressBar;
     private final Label progressLabel;
@@ -51,7 +51,7 @@ public class LauncherUI {
     private Account currentAccount;
 
     private long startTimeMs;
-    private ScheduledExecutorService timerExecutor;
+    private ScheduledFuture<?> timerFuture;
 
     private void rebuildAccountMenu() {
         accountMenu.getItems().clear();
@@ -326,7 +326,7 @@ public class LauncherUI {
 
         setCurrentAccount(org.architech.launcher.auth.Auth.current());
 
-        Button launchBtn = new Button("ЗАПУСТИТЬ");
+        launchBtn = new Button("ЗАПУСТИТЬ");
         styleMainButton(launchBtn);
         launchBtn.setMaxWidth(Double.MAX_VALUE);
         launchBtn.setOnAction(e -> {
@@ -483,16 +483,22 @@ public class LauncherUI {
         });
     }
 
-    private void startTimer() {
+    public void startTimer() {
         startTimeMs = System.currentTimeMillis();
-        if (timerExecutor != null) timerExecutor.shutdownNow();
-        timerExecutor = Executors.newSingleThreadScheduledExecutor();
-        timerExecutor.scheduleAtFixedRate(() -> {
+
+        if (timerFuture != null && !timerFuture.isDone()) {
+            timerFuture.cancel(true);
+        }
+
+        timerFuture = MCLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
+            if (Thread.currentThread().isInterrupted()) return;
+
             long elapsed = System.currentTimeMillis() - startTimeMs;
             long sec = elapsed / 1000;
             long h = sec / 3600;
             long m = (sec % 3600) / 60;
             long s = sec % 60;
+
             String formatted = String.format("Времени прошло: %02d:%02d:%02d", h, m, s);
             Platform.runLater(() -> timerLabel.setText(formatted));
         }, 0, 1, TimeUnit.SECONDS);
@@ -561,5 +567,24 @@ public class LauncherUI {
         if (sp.getContent() != null) sp.getContent().setStyle("-fx-background-color: transparent;");
 
         return sp;
+    }
+
+    public void stopTimer() {
+        if (timerFuture != null && !timerFuture.isDone()) {
+            timerFuture.cancel(true);
+            timerFuture = null;
+        }
+    }
+
+    public void setLaunchButtonText(String txt) {
+        launchBtn.setText(txt);
+    }
+
+    public void setLaunchButtonDisabled(boolean disabled) {
+        launchBtn.setDisable(disabled);
+    }
+
+    public void setLaunchButtonStyle(String css) {
+        launchBtn.setStyle(css);
     }
 }
