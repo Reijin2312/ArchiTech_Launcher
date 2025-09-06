@@ -39,7 +39,7 @@ public class MCLauncher extends Application {
     public static Path JAVA_PATH;
     public static Path ACCOUNT_FILE;
     public static final String MINECRAFT_VERSION = "1.21.1";
-    public static final String BACKEND_URL = System.getenv().getOrDefault("ARCHITECH_BACKEND_URL", "http://26.66.122.141:51789");
+    public static final String BACKEND_URL = System.getenv().getOrDefault("ARCHITECH_BACKEND_URL", "http://26.66.122.141:8080");
     public static boolean closeOnLaunch = false;
     private LauncherUI ui;
 

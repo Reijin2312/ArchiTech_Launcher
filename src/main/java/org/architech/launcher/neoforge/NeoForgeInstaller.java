@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 public class NeoForgeInstaller {
 
     private static final Path MANIFEST_DIR = Paths.get(".neoforge");
-    private static final String MAVEN_METADATA_URL = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static void ensureFakeLauncherProfile(Path gameDir, String suggestedVersion) throws IOException {

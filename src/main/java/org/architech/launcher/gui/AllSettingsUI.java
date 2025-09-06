@@ -280,7 +280,9 @@ public class AllSettingsUI {
                     if (!line.trim().isEmpty() && !line.toLowerCase(Locale.ROOT).contains("name")) result.add(line.trim());
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ex) {
+            LogManager.getLogger().severe("Ошибка обнаружения GPU: " + ex.getMessage());
+        }
         return result;
     }
 

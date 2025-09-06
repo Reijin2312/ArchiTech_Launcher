@@ -156,8 +156,8 @@ public class VersionManager {
                     Files.deleteIfExists(file);
                 }
             }
-        } catch (Exception ignored) {
-            LogManager.getLogger().warning("Ошибка валидации файла " + file);
+        } catch (Exception ex) {
+            LogManager.getLogger().warning("Ошибка валидации файла " + file + ": " + ex.getMessage());
         }
     }
 
