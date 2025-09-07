@@ -50,7 +50,7 @@ public class LauncherUI {
     private final Scene mainScene;
     private final Button accountBtn;
     private final ContextMenu accountMenu;
-    private ImageView accountAvatar;
+    private ImageView headView;
     private Account currentAccount;
 
     private long startTimeMs;
@@ -270,28 +270,12 @@ public class LauncherUI {
 
     private void setCurrentAccount(Account a) {
         this.currentAccount = a;
-
-        usernameField.setEditable(false);
-        usernameField.setFocusTraversable(false);
-        usernameField.setMouseTransparent(true);
-
         if (a == null || a.type == AccountType.OFFLINE) {
-            //accountAvatar.setImage(null);
             if (a != null) usernameField.setText(a.username);
         } else {
             usernameField.setText(a.username != null ? a.username : "");
-
-            if (a.avatarUrl != null && !a.avatarUrl.isBlank()) {
-                try {
-                    Image img = HeadImage.forAccount(a, 20);
-                    if (accountAvatar != null) accountAvatar.setImage(img);
-                } catch (Exception ignored) {}
-            } else {
-                try {
-                    Image img = HeadImage.forAccount(a, 20);
-                    if (accountAvatar != null) accountAvatar.setImage(img);
-                } catch (Exception ignored) {}
-            }
+            Image img = HeadImage.forAccount(a, 20);
+            headView.setImage(img);
         }
     }
 
@@ -300,35 +284,44 @@ public class LauncherUI {
         root.setPadding(new Insets(20));
 
         usernameField = new TextField("Имя пользователя");
-        usernameField.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-border-color: #6b6b6b;");
+        usernameField.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-border-color: #6b6b6b; -fx-padding: 0 36 0 8;");
         usernameField.setPrefColumnCount(14);
+        usernameField.setPrefHeight(30);
+        usernameField.setEditable(false);
+        usernameField.setFocusTraversable(false);
+        usernameField.setMouseTransparent(true);
+
+        headView = new ImageView();
+        headView.setFitWidth(20);
+        headView.setFitHeight(20);
+        headView.setPreserveRatio(true);
+        headView.setSmooth(true);
+        headView.setMouseTransparent(true);
+
+        StackPane usernameStack = new StackPane(usernameField, headView);
+        StackPane.setAlignment(headView, Pos.CENTER_RIGHT);
+        StackPane.setMargin(headView, new Insets(0, 8, 0, 0));
+
+        accountMenu = new ContextMenu();
+
+        Label chevron = new Label("⌄");
+        chevron.setStyle("-fx-text-fill: black; -fx-font-size: 14px;");
 
         accountBtn = new Button();
-      //  accountAvatar = new ImageView();
-      //  accountAvatar.setFitWidth(20);
-      //  accountAvatar.setFitHeight(20);
-      //  accountBtn.setGraphic(accountAvatar);
-      //  accountBtn.setContentDisplay(ContentDisplay.LEFT);
-
-        usernameField.setPrefHeight(30);
         accountBtn.setPrefHeight(usernameField.getPrefHeight());
         accountBtn.setPrefWidth(accountBtn.getPrefHeight());
         accountBtn.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-font-size: 14px;");
-        Label chevron = new Label("⌄");
-        chevron.setStyle("-fx-text-fill: black; -fx-font-size: 14px;");
         accountBtn.setGraphic(chevron);
         accountBtn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-
-        accountMenu = new ContextMenu();
         accountBtn.setOnAction(e -> {
             rebuildAccountMenu();
             accountMenu.show(accountBtn, Side.BOTTOM, 0, 0);
         });
 
-        setCurrentAccount(org.architech.launcher.auth.Auth.current());
+        setCurrentAccount(Auth.current());
 
         launchBtn = new Button("ЗАПУСТИТЬ");
-        styleMainButton(launchBtn);
+        launchBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
         launchBtn.setMaxWidth(Double.MAX_VALUE);
         launchBtn.setOnAction(e -> {
             startTimer();
@@ -368,7 +361,7 @@ public class LauncherUI {
 
         buttons.getChildren().addAll(openFolder, checkUpdates, faqBtn, settingsBtn);
 
-        HBox userRow = new HBox(8, usernameField, accountBtn);
+        HBox userRow = new HBox(8, usernameStack, accountBtn);
         userRow.setAlignment(Pos.CENTER_LEFT);
 
         VBox controls = new VBox(15, userRow, launchBtn, buttons);
@@ -461,10 +454,6 @@ public class LauncherUI {
 
         stage.setScene(mainScene);
         stage.show();
-    }
-
-    private void styleMainButton(Button btn) {
-        btn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
     }
 
     private void styleSmallButton(Button btn) {

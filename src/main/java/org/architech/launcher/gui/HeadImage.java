@@ -16,22 +16,7 @@ public final class HeadImage {
     private HeadImage() {}
 
     public static Image forAccount(Account a, int size) {
-        if (a == null) return FALLBACK;
-        try {
-            if (a.username != null) {
-                return ElyHead.fromEly(a.username, size);
-            }
-            else if (a.avatarUrl != null && !a.avatarUrl.isBlank()) {
-                return loadUrlCached(adjustSizeInUrl(a.avatarUrl, size), size);
-            }
-            else if (a.uuid != null && !a.uuid.isBlank()) {
-                return fromUuid(a.uuid, size);
-            }
-            else if (a.username != null && !a.username.isBlank()) {
-                return fromName(a.username, size);
-            }
-        } catch (Exception ignored) {}
-        return FALLBACK;
+        return ElyHead.fromEly(a.username, size);
     }
 
     public static Image fromUuid(String uuid, int size) {

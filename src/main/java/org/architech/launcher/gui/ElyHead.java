@@ -2,8 +2,6 @@ package org.architech.launcher.gui;
 
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
-import javafx.scene.image.WritableImage;
-
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -15,18 +13,15 @@ public final class ElyHead {
 
     public static Image fromEly(String username, int size) {
         try {
-            // Скачиваем полный скин
-            String url = "https://skinsystem.ely.by/skins/" + username;
+            String url = "http://skinsystem.ely.by/skins/" + username +".png";
             InputStream is = new URL(url).openStream();
             BufferedImage skin = ImageIO.read(is);
             is.close();
 
             if (skin == null) return null;
 
-            // Вырезаем голову (8x8 пикселей)
             BufferedImage head = skin.getSubimage(8, 8, 8, 8);
 
-            // Проверяем слой шляпы (overlay)
             BufferedImage hat = skin.getSubimage(40, 8, 8, 8);
 
             // Итоговое изображение 8x8 с наложением
@@ -43,8 +38,7 @@ public final class ElyHead {
             g2.dispose();
 
             // Переводим в JavaFX Image
-            WritableImage fxImage = SwingFXUtils.toFXImage(scaled, null);
-            return fxImage;
+            return SwingFXUtils.toFXImage(scaled, null);
         } catch (Exception e) {
             return null;
         }

@@ -265,8 +265,10 @@ public class MCLauncher extends Application {
         }
 
         Platform.runLater(() -> {
-            UI.stopTimer();
-            UI.setLaunchingState(false);
+            if (UI != null) {
+                UI.stopTimer();
+                UI.setLaunchingState(false);
+            }
         });
     }
 
@@ -277,5 +279,13 @@ public class MCLauncher extends Application {
             t.setDaemon(true);
             return t;
         };
+    }
+
+    public static Future<?> submitBackground(Runnable r) {
+        return backgroundExecutor.submit(r);
+    }
+
+    public static <T> Future<T> submitBackground(Callable<T> c) {
+        return backgroundExecutor.submit(c);
     }
 }
