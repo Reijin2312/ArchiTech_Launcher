@@ -515,25 +515,22 @@ public class LauncherUI {
         pane.setStyle("-fx-background-color: #2b2b2b; -fx-font-size: 14px;");
         ((Label) pane.lookup(".content.label")).setStyle("-fx-text-fill: white;");
 
-        // Текстовая область для подробностей
         TextArea textArea = new TextArea(details);
         textArea.setEditable(false);
         textArea.setWrapText(true);
         textArea.setStyle("-fx-control-inner-background: #1e1e1e; -fx-text-fill: white;");
         textArea.setPrefRowCount(Math.min(10, details.split("\n").length + 1)); // подгон по строкам
         textArea.setMaxWidth(Double.MAX_VALUE);
-        textArea.setPrefWidth(500); // ограничение ширины
+        textArea.setPrefWidth(500);
 
-        // Заголовок для блока подробностей
         Label detailsLabel = new Label("Подробности:");
         detailsLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
 
-        // Гифка на всю ширину диалога
         ImageView gifView = new ImageView(new Image(
                 Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/cat.gif"))
         ));
         gifView.setPreserveRatio(true);
-        gifView.setFitWidth(500); // ширина окна, синхронно с textArea
+        gifView.setFitWidth(500);
 
         VBox expandableBox = new VBox(8, detailsLabel, textArea, gifView);
         expandableBox.setAlignment(Pos.CENTER);
@@ -639,15 +636,15 @@ public class LauncherUI {
         }
     }
 
-    public void setLaunchButtonText(String txt) {
-        launchBtn.setText(txt);
-    }
-
-    public void setLaunchButtonDisabled(boolean disabled) {
-        launchBtn.setDisable(disabled);
-    }
-
-    public void setLaunchButtonStyle(String css) {
-        launchBtn.setStyle(css);
+    public void setLaunchingState(boolean launching) {
+        Platform.runLater(() -> {
+            if (launching) {
+                launchBtn.setStyle("-fx-background-color: #939393; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+                launchBtn.setText("ОТМЕНА");
+            } else {
+                launchBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+                launchBtn.setText("ЗАПУСТИТЬ");
+            }
+        });
     }
 }

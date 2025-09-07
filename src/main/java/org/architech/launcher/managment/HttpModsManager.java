@@ -18,12 +18,13 @@ import java.util.stream.Collectors;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.architech.launcher.MCLauncher.BACKEND_URL;
+import static org.architech.launcher.MCLauncher.UI;
 
 public class HttpModsManager {
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     private static final Gson GSON = new Gson();
 
-    public static void syncMods(Path modsDir, LauncherUI ui) throws Exception {
+    public static void syncMods(Path modsDir) throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(BACKEND_URL + "/api/files/manifest"))
                 .GET()
@@ -79,7 +80,7 @@ public class HttpModsManager {
                 Files.deleteIfExists(enabled);
                 Files.deleteIfExists(disabled);
             } catch (Exception ex) {
-                if (ui != null) ui.updateProgress("Ошибка при удалении мода: " + rel + " — " + ex.getMessage(), -1);
+                if (UI != null) UI.updateProgress("Ошибка при удалении мода: " + rel + " — " + ex.getMessage(), -1);
                 LogManager.getLogger().severe("Ошибка при удалении мода: " + rel + " — " + ex.getMessage());
             }
         }
@@ -113,7 +114,7 @@ public class HttpModsManager {
                 continue;
             }
 
-            if (ui != null) ui.updateProgress("Скачивание файла: " + relPath, totalBytes > 0 ? (double) downloaded / totalBytes : -1);
+            if (UI != null) UI.updateProgress("Скачивание файла: " + relPath, totalBytes > 0 ? (double) downloaded / totalBytes : -1);
 
             try {
                 String pathForUrl = f.path.replace("\\", "/");
@@ -135,7 +136,7 @@ public class HttpModsManager {
 
                 if (!matchesFile(target, f)) {
                     allOk = false;
-                    if (ui != null) ui.updateProgress("Скачанный файл не прошёл проверку: " + relPath, -1);
+                    if (UI != null) UI.updateProgress("Скачанный файл не прошёл проверку: " + relPath, -1);
                     break;
                 }
 
@@ -143,7 +144,7 @@ public class HttpModsManager {
 
             } catch (Exception ex) {
                 allOk = false;
-                if (ui != null) ui.updateProgress("Ошибка при скачивании: " + relPath + " — " + ex.getMessage(), -1);
+                if (UI != null) UI.updateProgress("Ошибка при скачивании: " + relPath + " — " + ex.getMessage(), -1);
                 break;
             }
         }
@@ -158,10 +159,10 @@ public class HttpModsManager {
                     Files.move(tmp, localManifest, REPLACE_EXISTING);
                 }
             } catch (Exception ex) {
-                if (ui != null) ui.updateProgress("Не удалось обновить локальный манифест: " + ex.getMessage(), -1);
+                if (UI != null) UI.updateProgress("Не удалось обновить локальный манифест: " + ex.getMessage(), -1);
             }
         } else {
-            if (ui != null) ui.updateProgress("Синхронизация модов завершилась с ошибками. Локальный манифест не изменён.", -1);
+            if (UI != null) UI.updateProgress("Синхронизация модов завершилась с ошибками. Локальный манифест не изменён.", -1);
         }
     }
 

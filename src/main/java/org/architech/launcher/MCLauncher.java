@@ -13,7 +13,6 @@ import org.architech.launcher.managment.NativesManager;
 import org.architech.launcher.managment.VersionManager;
 import org.architech.launcher.neoforge.NeoForgeInstaller;
 import org.architech.launcher.utils.*;
-
 import java.io.*;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -24,7 +23,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static org.architech.launcher.gui.AllSettingsUI.GSON;
@@ -44,7 +42,9 @@ public class MCLauncher extends Application {
     public static final String MINECRAFT_VERSION = "1.21.1";
     public static final String BACKEND_URL = System.getenv().getOrDefault("ARCHITECH_BACKEND_URL", "http://26.66.122.141:8080");
     public static boolean closeOnLaunch = false;
-    private static LauncherUI ui;
+
+    public static LauncherUI UI;
+    public static DownloadManager DOWNLOAD_MANAGER = null;
 
     private static final ExecutorService launcherExecutor = Executors.newSingleThreadExecutor(daemonFactory("launcher-worker"));
     private static final ExecutorService backgroundExecutor = Executors.newCachedThreadPool(daemonFactory("bg"));
@@ -88,7 +88,7 @@ public class MCLauncher extends Application {
         LIBRARIES_DIR = GAME_DIR.resolve("libraries");
         ASSETS_DIR = GAME_DIR.resolve("assets");
 
-        ui = new LauncherUI(stage, this::onLaunchClicked);
+        UI = new LauncherUI(stage, this::onLaunchClicked);
         DiscordIntegration.start();
     }
 
@@ -109,16 +109,13 @@ public class MCLauncher extends Application {
         }
 
         Future<?> f = launcherExecutor.submit(() -> {
-            DownloadManager downloadManager = null;
             try {
                 Platform.runLater(() -> {
-                    ui.setLaunchButtonText("Отменить");
-                    ui.setLaunchButtonStyle("-fx-opacity: 0.6;");
-                    ui.setLaunchButtonDisabled(false);
-                    ui.startTimer();
+                    UI.setLaunchingState(true);
+                    UI.startTimer();
                 });
 
-                ui.updateProgress("Подготовка к запуску...", 0);
+                UI.updateProgress("Подготовка к запуску...", 0);
 
                 VersionManager versionManager = new VersionManager(VERSIONS_DIR, ASSETS_DIR, LIBRARIES_DIR);
                 JsonObject versionJson = versionManager.loadVersionJson(MINECRAFT_VERSION);
@@ -133,17 +130,17 @@ public class MCLauncher extends Application {
                     return 5;
                 }));
 
-                downloadManager = new DownloadManager(ui);
-                activeDownloadManager.set(downloadManager);
+                DOWNLOAD_MANAGER = new DownloadManager();
+                activeDownloadManager.set(DOWNLOAD_MANAGER);
 
-                long total = downloadManager.computeTotalBytesToDownload(files);
-                downloadManager.setTotalBytesPlanned(total);
+                long total = DOWNLOAD_MANAGER.computeTotalBytesToDownload(files);
+                DOWNLOAD_MANAGER.setTotalBytesPlanned(total);
 
                 int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
                 int rounds = 3;
-                ui.updateProgress("Запускаю параллельную загрузку (" + threads + " потоков)...", 0);
+                UI.updateProgress("Запускаю параллельную загрузку (" + threads + " потоков)...", 0);
 
-                List<FileEntry> failed = downloadManager.downloadFilesInParallel(files, threads, rounds);
+                List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds);
 
                 if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
 
@@ -156,13 +153,13 @@ public class MCLauncher extends Application {
                 NativesManager nativesManager = new NativesManager(GAME_DIR, MINECRAFT_VERSION);
                 nativesManager.prepareNatives(files);
 
-                NeoForgeInstaller.ensureInstalledAndReady(GAME_DIR, MINECRAFT_VERSION, ui);
+                NeoForgeInstaller.ensureInstalledAndReady(GAME_DIR, MINECRAFT_VERSION);
 
                 try {
-                    HttpModsManager.syncMods(GAME_DIR, ui);
+                    HttpModsManager.syncMods(GAME_DIR);
                 } catch (Exception ex) {
                     LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
-                    Platform.runLater(() -> ui.showError("Ошибка синхронизации модов", ex.getMessage()));
+                    Platform.runLater(() -> LauncherUI.showError("Ошибка синхронизации модов", ex.getMessage()));
                 }
 
                 Path serversDat = GAME_DIR.resolve("servers.dat");
@@ -177,7 +174,7 @@ public class MCLauncher extends Application {
                 Process p = MinecraftLauncher.launchMinecraft(GAME_DIR, "neoforge-" + getInstalledVersion(GAME_DIR));
                 currentGameProcess = p;
 
-                ui.updateProgress("Клиент запущен, ожидаю завершения процесса...", 1);
+                UI.updateProgress("Клиент запущен, ожидаю завершения процесса...", 1);
 
                 if (p != null) {
                     try {
@@ -199,23 +196,21 @@ public class MCLauncher extends Application {
                     }
                 }
 
-                Platform.runLater(() -> ui.updateProgress("Готово. Клиент завершил работу.", 1));
+                Platform.runLater(() -> UI.updateProgress("Готово. Клиент завершил работу.", 1));
             } catch (InterruptedException ie) {
-                Platform.runLater(() -> ui.updateProgress("Ожидание...", 1.0));
+                Platform.runLater(() -> UI.updateProgress("Ожидание...", 1.0));
             } catch (Exception e) {
                 LogManager.getLogger().severe("Ошибка запуска: " + e.getMessage());
-                Platform.runLater(() -> ui.showError("Ошибка запуска", e.getMessage()));
+                Platform.runLater(() -> LauncherUI.showError("Ошибка запуска", e.getMessage()));
             } finally {
                 activeDownloadManager.set(null);
                 currentGameProcess = null;
                 launchFuture.set(null);
-                if (downloadManager != null) downloadManager.cancelAllDownloads();
+                if (DOWNLOAD_MANAGER != null) DOWNLOAD_MANAGER.cancelAllDownloads();
 
                 Platform.runLater(() -> {
-                    ui.stopTimer();
-                    ui.setLaunchButtonText("Запустить");
-                    ui.setLaunchButtonStyle(null);
-                    ui.setLaunchButtonDisabled(false);
+                    UI.stopTimer();
+                    UI.setLaunchingState(false);
                 });
             }
         });
@@ -270,10 +265,8 @@ public class MCLauncher extends Application {
         }
 
         Platform.runLater(() -> {
-            ui.stopTimer();
-            ui.setLaunchButtonText("Запустить");
-            ui.setLaunchButtonStyle(null);
-            ui.setLaunchButtonDisabled(false);
+            UI.stopTimer();
+            UI.setLaunchingState(false);
         });
     }
 

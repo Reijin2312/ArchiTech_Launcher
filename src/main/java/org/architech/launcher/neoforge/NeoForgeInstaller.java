@@ -3,9 +3,7 @@ package org.architech.launcher.neoforge;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.architech.launcher.MCLauncher;
-import org.architech.launcher.managment.DownloadManager;
 import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
 import java.io.*;
@@ -20,6 +18,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.architech.launcher.MCLauncher.UI;
 
 public class NeoForgeInstaller {
 
@@ -95,7 +95,7 @@ public class NeoForgeInstaller {
     }
 
 
-    public static void ensureInstalledAndReady(Path gameDir, String mcVersion, LauncherUI ui) throws Exception {
+    public static void ensureInstalledAndReady(Path gameDir, String mcVersion) throws Exception {
         String latest = fetchPinnedServerVersionAndSave(gameDir);
 
         if (latest == null) {
@@ -106,12 +106,12 @@ public class NeoForgeInstaller {
         String installedVersion = getInstalledVersion(gameDir);
 
         if (installedVersion != null && !installedVersion.equals(latest)) {
-            if (ui != null) ui.updateProgress("Удаляем старую версию NeoForge " + installedVersion, 0.2);
+            if (UI != null) UI.updateProgress("Удаляем старую версию NeoForge " + installedVersion, 0.2);
             uninstallInstalled(gameDir);
         }
 
         if (isNeoForgeInstalledAndValid(gameDir)) {
-            if (ui != null) ui.updateProgress("NeoForge уже установлен и проверен", 1.0);
+            if (UI != null) UI.updateProgress("NeoForge уже установлен и проверен", 1.0);
             return;
         }
 
@@ -134,7 +134,8 @@ public class NeoForgeInstaller {
         String url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/" + latest + "/neoforge-" + latest + "-installer.jar";
         Path installer = gameDir.resolve("neoforge-installer.jar");
         FileEntry entry = new FileEntry("neoforge", "NeoForge installer", url, installer, 0, null);
-        new DownloadManager(ui).ensureFilePresentAndValid(entry);
+
+        MCLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(entry);
 
         ProcessBuilder pb = new ProcessBuilder(MCLauncher.JAVA_PATH.toString(), "-jar", installer.toString(), "--installClient", gameDir.toString());
         pb.directory(gameDir.toFile());
@@ -152,12 +153,11 @@ public class NeoForgeInstaller {
         InstalledManifest im = scanInstalledNeoForge(gameDir);
 
         if (im.files == null || im.files.isEmpty()) {
-            LogManager.getLogger().severe("Инсталлятор не создал ни одного файла neoforge — откатываю и выдаю ошибку");
-            throw new IOException("NeoForge installer didn't produce any files");
+            LogManager.getLogger().severe("Инсталлятор не создал ни одного файла neoforge, откат...");
+            throw new IOException("Инсталлятор не создал ни одного файла neoforge, откат...");
         }
 
-        boolean foundVersion = im.files.stream().anyMatch(e ->
-                e.path.contains("/libraries/net/neoforged/neoforge/" + latest) ||
+        boolean foundVersion = im.files.stream().anyMatch(e -> e.path.contains("/libraries/net/neoforged/neoforge/" + latest) ||
                         e.path.contains("/versions/neoforge-" + latest + "/")
         );
 
@@ -180,7 +180,7 @@ public class NeoForgeInstaller {
         LogManager.getLogger().info("NeoForge установлен, записан manifest (" + im.files.size() + " файлов) версия=" + im.version);
 
 
-        if (ui != null) ui.updateProgress("NeoForge установлен и проверен", 1.0);
+        if (UI != null) UI.updateProgress("NeoForge установлен и проверен", 1.0);
     }
 
     private static String fetchPinnedServerVersionAndSave(Path gameDir) {

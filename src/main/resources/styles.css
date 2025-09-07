@@ -96,7 +96,6 @@
     -fx-font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
-/* центральная карточка: как у новостей */
 .settings-pane .settings-card {
     -fx-background-color: rgba(30,30,30,0.55);
     -fx-background-radius: 8;

@@ -1,5 +1,6 @@
 package org.architech.launcher.managment;
 
+import org.architech.launcher.MCLauncher;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.LogManager;
@@ -24,15 +25,12 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
 public class DownloadManager {
-    private final LauncherUI ui;
     private final AtomicLong totalBytesPlanned = new AtomicLong(0);
     private final AtomicLong totalBytesDone = new AtomicLong(0);
 
     private static final ConcurrentHashMap<Path, Object> fileLocks = new ConcurrentHashMap<>();
 
     private final ConcurrentMap<Path, Closeable> activeDownloads = new ConcurrentHashMap<>();
-
-    public DownloadManager(LauncherUI ui) { this.ui = ui; }
 
     public void setTotalBytesPlanned(long total) { this.totalBytesPlanned.set(total); }
 
@@ -213,7 +211,7 @@ public class DownloadManager {
 
                     String text = f.name + " (" + (downloadedFile / 1024) +
                             (f.size > 0 ? (" / " + (f.size / 1024)) : "") + " КБ)";
-                    ui.updateProgress(text + (percent >= 0 ? " | Всего: " + percent + "%" : ""), globalProgress);
+                    MCLauncher.UI.updateProgress(text + (percent >= 0 ? " | Всего: " + percent + "%" : ""), globalProgress);
                 }
                 out.flush();
             }  finally {
