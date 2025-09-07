@@ -44,14 +44,14 @@ public class MCLauncher extends Application {
     public static final String MINECRAFT_VERSION = "1.21.1";
     public static final String BACKEND_URL = System.getenv().getOrDefault("ARCHITECH_BACKEND_URL", "http://26.66.122.141:8080");
     public static boolean closeOnLaunch = false;
-    private LauncherUI ui;
+    private static LauncherUI ui;
 
     private static final ExecutorService launcherExecutor = Executors.newSingleThreadExecutor(daemonFactory("launcher-worker"));
     private static final ExecutorService backgroundExecutor = Executors.newCachedThreadPool(daemonFactory("bg"));
     public static final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor(daemonFactory("sched"));
     private static final AtomicReference<Future<?>> launchFuture = new AtomicReference<>();
     private static final AtomicReference<DownloadManager> activeDownloadManager = new AtomicReference<>();
-    private volatile Process currentGameProcess = null;
+    private static volatile Process currentGameProcess = null;
 
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
@@ -141,7 +141,7 @@ public class MCLauncher extends Application {
 
                 int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
                 int rounds = 3;
-                ui.updateProgress("Начало параллельной загрузки (" + threads + " потоков)...", 0);
+                ui.updateProgress("Запускаю параллельную загрузку (" + threads + " потоков)...", 0);
 
                 List<FileEntry> failed = downloadManager.downloadFilesInParallel(files, threads, rounds);
 
@@ -149,6 +149,7 @@ public class MCLauncher extends Application {
 
                 if (!failed.isEmpty()) {
                     String names = failed.stream().map(x -> x.name).collect(Collectors.joining(", "));
+                    LogManager.getLogger().severe("Не удалось скачать некоторые файлы: " + names);
                     throw new IOException("Не удалось скачать некоторые файлы: " + names);
                 }
 
@@ -161,7 +162,7 @@ public class MCLauncher extends Application {
                     HttpModsManager.syncMods(GAME_DIR, ui);
                 } catch (Exception ex) {
                     LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
-                    Platform.runLater(() -> ui.showError("Ошибка синхронизации модов: " + ex.getMessage()));
+                    Platform.runLater(() -> ui.showError("Ошибка синхронизации модов", ex.getMessage()));
                 }
 
                 Path serversDat = GAME_DIR.resolve("servers.dat");
@@ -200,10 +201,10 @@ public class MCLauncher extends Application {
 
                 Platform.runLater(() -> ui.updateProgress("Готово. Клиент завершил работу.", 1));
             } catch (InterruptedException ie) {
-                Platform.runLater(() -> ui.showError("Запуск/скачивание отменены."));
+                Platform.runLater(() -> ui.updateProgress("Ожидание...", 1.0));
             } catch (Exception e) {
                 LogManager.getLogger().severe("Ошибка запуска: " + e.getMessage());
-                Platform.runLater(() -> ui.showError("Ошибка: " + e.getMessage()));
+                Platform.runLater(() -> ui.showError("Ошибка запуска", e.getMessage()));
             } finally {
                 activeDownloadManager.set(null);
                 currentGameProcess = null;
@@ -213,7 +214,7 @@ public class MCLauncher extends Application {
                 Platform.runLater(() -> {
                     ui.stopTimer();
                     ui.setLaunchButtonText("Запустить");
-                    ui.setLaunchButtonStyle(null); // сбросить стиль
+                    ui.setLaunchButtonStyle(null);
                     ui.setLaunchButtonDisabled(false);
                 });
             }
@@ -221,7 +222,6 @@ public class MCLauncher extends Application {
 
         launchFuture.set(f);
     }
-
 
     public static Path findJava21() {
         String[] searchDirs = {"C:/Program Files/Java", "C:/Program Files (x86)/Java", "/usr/lib/jvm", "/Library/Java/JavaVirtualMachines"};
@@ -258,7 +258,7 @@ public class MCLauncher extends Application {
         return null;
     }
 
-    private void cancelLaunch() {
+    public static void cancelLaunch() {
         Future<?> f = launchFuture.getAndSet(null);
         if (f != null && !f.isDone()) f.cancel(true);
 

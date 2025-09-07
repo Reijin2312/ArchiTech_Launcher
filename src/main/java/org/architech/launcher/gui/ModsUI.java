@@ -118,7 +118,7 @@ public class ModsUI {
                                 row.getStyleClass().add("disabled");
                             }
                         } catch (Exception ex) {
-                            showError("Не удалось переключить мод: " + ex.getMessage());
+                            LauncherUI.showError("Не удалось переключить мод", ex.getMessage());
                             toggle.setSelected(oldVal);
                         }
                     });
@@ -134,7 +134,7 @@ public class ModsUI {
                 }
             }
         } catch (Exception e) {
-            showError("Ошибка загрузки списка модов: " + e.getMessage());
+            LauncherUI.showError("Ошибка загрузки списка модов", e.getMessage());
         }
 
         ScrollPane scroll = new ScrollPane(modsList);
@@ -191,11 +191,6 @@ public class ModsUI {
 
     private void styleMainButton(Button btn) {
         btn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
-    }
-
-    private void showError(String msg) {
-        Alert a = new Alert(Alert.AlertType.ERROR, msg);
-        a.showAndWait();
     }
 
     private static final String FALLBACK_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAF0lEQVR42mP8z/CfAQgwYGBgYGLAAQBVmgJ3jzg9HwAAAABJRU5ErkJggg==";

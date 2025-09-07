@@ -30,15 +30,11 @@ public class DownloadManager {
 
     private static final ConcurrentHashMap<Path, Object> fileLocks = new ConcurrentHashMap<>();
 
-    private ConcurrentMap<Path, Closeable> activeDownloads = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Path, Closeable> activeDownloads = new ConcurrentHashMap<>();
 
     public DownloadManager(LauncherUI ui) { this.ui = ui; }
 
     public void setTotalBytesPlanned(long total) { this.totalBytesPlanned.set(total); }
-
-    public long getTotalBytesPlanned() { return totalBytesPlanned.get(); }
-
-    public long getTotalBytesDone() { return totalBytesDone.get(); }
 
     public long computeTotalBytesToDownload(List<FileEntry> files) throws Exception {
         long sum = 0;

@@ -5,12 +5,14 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -27,6 +29,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
@@ -56,23 +59,22 @@ public class LauncherUI {
     private void rebuildAccountMenu() {
         accountMenu.getItems().clear();
 
-        MenuItem miOffline = new MenuItem("Войти под простым ником…");
+        MenuItem miOffline = new MenuItem("Войти под оффлайн-ником…");
         miOffline.setOnAction(e -> showOfflineDialog());
 
-        MenuItem miMs = new MenuItem("Войти через Microsoft (официально)...");
+        MenuItem miMs = new MenuItem("Войти через Microsoft…");
         miMs.setOnAction(e -> loginMicrosoftBrowser());
 
         MenuItem miEly = new MenuItem("Войти через Ely.by…");
         miEly.setOnAction(e -> loginElyBrowser());
 
-        accountMenu.getItems().addAll(miOffline, miMs, miEly);
+        accountMenu.getItems().addAll(miOffline, miEly, miMs);
     }
 
     private void showOfflineDialog() {
         TextInputDialog d = new TextInputDialog((currentAccount != null && currentAccount.type == AccountType.OFFLINE)
                         ? currentAccount.username
-                        : (usernameField.getText() == null ? "Player" : usernameField.getText())
-        );
+                        : (usernameField.getText() == null ? "Player" : usernameField.getText()));
         d.setTitle("Оффлайн вход");
         d.setHeaderText("Введите ник для оффлайн-режима");
         d.setContentText("Ник:");
@@ -85,7 +87,7 @@ public class LauncherUI {
                 Auth.set(a);
             } catch (Exception ex) {
                 LogManager.getLogger().severe("Не удалось установить оффлайн ник " + ex.getMessage());
-                showError("Упс! Не удалось установить оффлайн ник :(");
+                showError("Упс! Не удалось установить оффлайн ник :(", ex.getMessage());
             }
         });
     }
@@ -96,7 +98,7 @@ public class LauncherUI {
             String url = AuthService.buildMicrosoftLoginUrl(msCtx);
             openInBrowser(url);
         } catch (Exception e) {
-            showError("Не удалось открыть авторизацию Microsoft: " + e.getMessage());
+            showError("Не удалось открыть авторизацию Microsoft", e.getMessage());
         }
     }
 
@@ -121,7 +123,7 @@ public class LauncherUI {
                         }
                     } catch (Exception ex) {
                         LogManager.getLogger().severe("Ошибка получения параметров аккаунта: " + ex.getMessage());
-                        Platform.runLater(() -> showError("Упс! :( Ошибка получения параметров аккаунта"));
+                        Platform.runLater(() -> showError("Упс! :( Ошибка получения параметров аккаунта", ex.getMessage()));
                     }
                     final Account accSilent = silent;
                     Platform.runLater(() -> setCurrentAccount(accSilent));
@@ -151,7 +153,7 @@ public class LauncherUI {
                         }
                     } catch (Exception ex) {
                         LogManager.getLogger().severe("Ошибка получения параметров аккаунта: " + ex.getMessage());
-                        Platform.runLater(() -> showError("Упс! :( Ошибка получения параметров аккаунта"));
+                        Platform.runLater(() -> showError("Упс! :( Ошибка получения параметров аккаунта", ex.getMessage()));
                     }
                 }
 
@@ -166,8 +168,7 @@ public class LauncherUI {
                         return;
                     }
                 } catch (Exception ignore) {}
-                final String msg = ex.getMessage();
-                Platform.runLater(() -> showError("Вход через ely.by не удался: " + msg));
+                    Platform.runLater(() -> showError("Вход через ely.by не удался", ex.getMessage()));
             } finally {
                 Platform.runLater(() -> accountBtn.setDisable(false));
             }
@@ -179,7 +180,7 @@ public class LauncherUI {
             Desktop.getDesktop().browse(new java.net.URI(url));
         } catch (Exception e) {
             LogManager.getLogger().severe("Не удалось открыть браузер: " + e.getMessage());
-            showError("Не удалось открыть браузер: " + e.getMessage());
+            showError("Не удалось открыть браузер", e.getMessage());
         }
     }
 
@@ -358,7 +359,7 @@ public class LauncherUI {
                 Desktop.getDesktop().browse(new URI("https://t.me/archi_tech_official"));
             } catch (Exception ex) {
                 LogManager.getLogger().severe("Не удалось открыть Telegram");
-                showError("Упс! Не удалось открыть Telegram :(");
+                showError("Упс! Не удалось открыть Telegram :(", ex.getMessage());
             }
         });
 
@@ -504,9 +505,71 @@ public class LauncherUI {
         }, 0, 1, TimeUnit.SECONDS);
     }
 
-    public void showError(String msg) {
-        Alert a = new Alert(Alert.AlertType.ERROR, msg);
-        a.showAndWait();
+    public static void showError(String msg, String details) {
+        Alert a = new Alert(Alert.AlertType.ERROR);
+        a.setTitle("Критическая ошибка");
+        a.setHeaderText("Кажется, что-то сломалось :(");
+        a.setContentText(msg);
+
+        DialogPane pane = a.getDialogPane();
+        pane.setStyle("-fx-background-color: #2b2b2b; -fx-font-size: 14px;");
+        ((Label) pane.lookup(".content.label")).setStyle("-fx-text-fill: white;");
+
+        // Текстовая область для подробностей
+        TextArea textArea = new TextArea(details);
+        textArea.setEditable(false);
+        textArea.setWrapText(true);
+        textArea.setStyle("-fx-control-inner-background: #1e1e1e; -fx-text-fill: white;");
+        textArea.setPrefRowCount(Math.min(10, details.split("\n").length + 1)); // подгон по строкам
+        textArea.setMaxWidth(Double.MAX_VALUE);
+        textArea.setPrefWidth(500); // ограничение ширины
+
+        // Заголовок для блока подробностей
+        Label detailsLabel = new Label("Подробности:");
+        detailsLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+
+        // Гифка на всю ширину диалога
+        ImageView gifView = new ImageView(new Image(
+                Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/cat.gif"))
+        ));
+        gifView.setPreserveRatio(true);
+        gifView.setFitWidth(500); // ширина окна, синхронно с textArea
+
+        VBox expandableBox = new VBox(8, detailsLabel, textArea, gifView);
+        expandableBox.setAlignment(Pos.CENTER);
+        expandableBox.setStyle("-fx-background-color: #2b2b2b;");
+        expandableBox.setPadding(new Insets(10));
+
+        pane.setPrefWidth(500);
+        pane.setMinWidth(500);
+        pane.setMaxWidth(500);
+
+        a.getDialogPane().setExpandableContent(expandableBox);
+
+        ButtonType reportBtn = new ButtonType("Сообщить", ButtonBar.ButtonData.OTHER);
+        a.getButtonTypes().setAll(reportBtn);
+
+        Node reportNode = a.getDialogPane().lookupButton(reportBtn);
+        if (reportNode instanceof Button) {
+            ((Button) reportNode).setStyle("-fx-font-size: 11px; -fx-padding: 4 8;");
+        }
+
+        Stage stage = (Stage) pane.getScene().getWindow();
+        stage.getIcons().add(new Image(
+                Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))
+        ));
+        stage.setResizable(false);
+
+        a.showAndWait().ifPresent(response -> {
+            if (response == reportBtn) {
+                try {
+                    String encoded = URLEncoder.encode(msg + "\n\n" + details, StandardCharsets.UTF_8);
+                    Desktop.getDesktop().browse(new URI("https://t.me/Raijin2312?text=" + encoded));
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
     }
 
     public void showInfo(String msg) {
@@ -519,7 +582,7 @@ public class LauncherUI {
             Desktop.getDesktop().open(GAME_DIR.toFile());
         } catch (Exception ex) {
             LogManager.getLogger().severe("Не удалось открыть папку игры " + ex.getMessage());
-            showError("Упс! Не удалось открыть папку игры :( ");
+            showError("Упс! Не удалось открыть папку игры :( ", ex.getMessage());
         }
     }
 

@@ -15,20 +15,22 @@ import java.time.Duration;
 public class UtilsNet {
     public static String readUrl(String urlStr) throws Exception {
         SSLContext ssl = SSLContext.getDefault();
-        HttpClient client = HttpClient.newBuilder()
+        HttpResponse<String> resp;
+        try (HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .version(HttpClient.Version.HTTP_1_1)
                 .sslContext(ssl)
-                .build();
+                .build()) {
 
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(urlStr))
-                .timeout(Duration.ofSeconds(30))
-                .header("User-Agent", "ArchiTech-Launcher/1.0")
-                .GET()
-                .build();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(urlStr))
+                    .timeout(Duration.ofSeconds(30))
+                    .header("User-Agent", "ArchiTech-Launcher/1.0")
+                    .GET()
+                    .build();
 
-        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            resp = client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        }
         if (resp.statusCode() >= 400) throw new IOException("HTTP error " + resp.statusCode() + " for " + urlStr);
         return resp.body();
     }
