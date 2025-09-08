@@ -9,7 +9,9 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URLConnection;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -161,8 +163,14 @@ public class DownloadManager {
 
     private void downloadAtomicOnce(FileEntry f) throws Exception {
         URI uri = new URI(f.url);
-        HttpsURLConnection conn = (HttpsURLConnection) uri.toURL().openConnection();
-        conn.setSSLSocketFactory((SSLSocketFactory) SSLSocketFactory.getDefault());
+        URLConnection raw = uri.toURL().openConnection();
+        if (!(raw instanceof HttpURLConnection)) {
+            throw new IOException("Unsupported protocol for URL: " + f.url);
+        }
+        HttpURLConnection conn = (HttpURLConnection) raw;
+        if (conn instanceof HttpsURLConnection) {
+            ((HttpsURLConnection) conn).setSSLSocketFactory((SSLSocketFactory) SSLSocketFactory.getDefault());
+        }
         conn.setConnectTimeout(10_000);
         conn.setReadTimeout(30_000);
         conn.setRequestProperty("User-Agent", "ArchiTech-Launcher/1.0");

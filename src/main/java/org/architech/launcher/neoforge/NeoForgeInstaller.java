@@ -131,7 +131,9 @@ public class NeoForgeInstaller {
             LogManager.getLogger().warning("Не удалось подчистить старые инсталляторы: " + e.getMessage());
         }
 
-        String url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/" + latest + "/neoforge-" + latest + "-installer.jar";
+        String serverInstallerPath = "neoforge/neoforge-" + latest + "-installer.jar";
+        String encoded = encodePathForUri(serverInstallerPath);
+        String url = org.architech.launcher.MCLauncher.BACKEND_URL + "/api/files/file/" + encoded;
         Path installer = gameDir.resolve("neoforge-installer.jar");
         FileEntry entry = new FileEntry("neoforge", "NeoForge installer", url, installer, 0, null);
 

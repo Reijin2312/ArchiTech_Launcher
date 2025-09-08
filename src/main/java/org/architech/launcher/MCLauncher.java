@@ -57,7 +57,8 @@ public class MCLauncher extends Application {
     public void start(Stage stage) throws IOException, URISyntaxException {
         Parameters params = getParameters();
         Map<String, String> named = params.getNamed();
-        BACKEND_URL = named.get("BACKEND_URL");
+        //BACKEND_URL = named.get("BACKEND_URL");
+        BACKEND_URL = "http://95.105.113.224:51789";
 
         LogManager.setupLogger();
         LAUNCHER_DIR = Paths.get(AllSettingsUI.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
