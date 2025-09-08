@@ -40,7 +40,7 @@ public class MCLauncher extends Application {
     public static Path JAVA_PATH;
     public static Path ACCOUNT_FILE;
     public static final String MINECRAFT_VERSION = "1.21.1";
-    public static final String BACKEND_URL = System.getenv().getOrDefault("ARCHITECH_BACKEND_URL", "http://26.66.122.141:8080");
+    public static String BACKEND_URL;
     public static boolean closeOnLaunch = false;
 
     public static LauncherUI UI;
@@ -55,6 +55,10 @@ public class MCLauncher extends Application {
 
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
+        Parameters params = getParameters();
+        Map<String, String> named = params.getNamed();
+        BACKEND_URL = named.get("BACKEND_URL");
+
         LogManager.setupLogger();
         LAUNCHER_DIR = Paths.get(AllSettingsUI.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
         CONFIG_PATH = LAUNCHER_DIR.resolve("launcher_config.json");

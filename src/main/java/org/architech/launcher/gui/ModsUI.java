@@ -13,7 +13,6 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.utils.LogManager;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
