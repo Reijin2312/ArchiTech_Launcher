@@ -49,7 +49,7 @@ public class AllSettingsUI {
 
     public AllSettingsUI(Stage stage) { this.stage = stage; }
 
-    public Parent createContent(boolean embedded) {
+    public Parent createContent() {
         BorderPane root = new BorderPane();
         root.getStyleClass().add("settings-pane");
 

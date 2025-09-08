@@ -25,8 +25,8 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         ModsUI modsUI = new ModsUI(stage, parentScene);
         AllSettingsUI allSettingsUI = new AllSettingsUI(stage);
 
-        Tab modsTab = new Tab("Моды", modsUI.createContent(true));
-        Tab settingsTab = new Tab("Настройки", allSettingsUI.createContent(true));
+        Tab modsTab = new Tab("Моды", modsUI.createContent());
+        Tab settingsTab = new Tab("Настройки", allSettingsUI.createContent());
 
         tabs.getTabs().addAll(modsTab, settingsTab);
         root.setCenter(tabs);

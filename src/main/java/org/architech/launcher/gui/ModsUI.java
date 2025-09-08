@@ -47,7 +47,7 @@ public class ModsUI {
         this.settingsMenuScene = settingsMenuScene;
     }
 
-    public Parent createContent(boolean embedded) {
+    public Parent createContent() {
         BorderPane modsRoot = new BorderPane();
         modsRoot.getStyleClass().add("mods-pane");
 
@@ -190,15 +190,6 @@ public class ModsUI {
                 scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
                 if (scroll.getContent() != null) scroll.getContent().setStyle("-fx-background-color: transparent;");
 
-                if (!embedded) {
-                    Button back = new Button("Назад");
-                    styleMainButton(back);
-                    back.setOnAction(e -> stage.setScene(settingsMenuScene));
-                    HBox bottom = new HBox(back);
-                    bottom.setAlignment(Pos.CENTER_LEFT);
-                    bottom.setPadding(new Insets(12, 16, 16, 16));
-                    modsRoot.setBottom(bottom);
-                }
             });
         });
 
