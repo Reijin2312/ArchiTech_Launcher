@@ -122,7 +122,7 @@ public class MCLauncher extends Application {
 
                 UI.updateProgress("Подготовка к запуску...", 0);
 
-                VersionManager versionManager = new VersionManager(VERSIONS_DIR, ASSETS_DIR, LIBRARIES_DIR);
+                VersionManager versionManager = new VersionManager();
                 JsonObject versionJson = versionManager.loadVersionJson(MINECRAFT_VERSION);
                 List<FileEntry> files = versionManager.buildRequiredFiles(versionJson, MINECRAFT_VERSION);
 
@@ -286,8 +286,8 @@ public class MCLauncher extends Application {
         };
     }
 
-    public static Future<?> submitBackground(Runnable r) {
-        return backgroundExecutor.submit(r);
+    public static void submitBackground(Runnable r) {
+        backgroundExecutor.submit(r);
     }
 
     public static <T> Future<T> submitBackground(Callable<T> c) {

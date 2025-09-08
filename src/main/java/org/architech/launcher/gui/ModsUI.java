@@ -205,18 +205,6 @@ public class ModsUI {
         return modsRoot;
     }
 
-    public void show() {
-        double w = (stage.getScene() != null ? stage.getScene().getWidth() : settingsMenuScene.getWidth());
-        double h = (stage.getScene() != null ? stage.getScene().getHeight() : settingsMenuScene.getHeight());
-
-        Parent root = createContent(false);
-        Scene modsScene = new Scene((Parent) root, w, h);
-        modsScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
-        stage.setScene(modsScene);
-        stage.setMinWidth(w);
-        stage.setMinHeight(h);
-    }
-
     private static Pane fixedCell(javafx.scene.Node node, double width, Pos align) {
         StackPane box = new StackPane(node);
         box.setAlignment(align);
@@ -322,13 +310,13 @@ public class ModsUI {
             Matcher m1 = Pattern.compile("\"icon\"\\s*:\\s*\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE).matcher(content);
             if (m1.find()) addIfExists(fs, m1.group(1), candidates, 190);
 
-            Matcher mArr = Pattern.compile("\"icon\"\\s*:\\s*\\[(.*?)\\]", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(content);
+            Matcher mArr = Pattern.compile("\"icon\"\\s*:\\s*\\[(.*?)]", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(content);
             if (mArr.find()) {
                 Matcher png = Pattern.compile("\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE).matcher(mArr.group(1));
                 if (png.find()) addIfExists(fs, png.group(1), candidates, 180);
             }
 
-            Matcher mObj = Pattern.compile("\"icon\"\\s*:\\s*\\{([^}]+)\\}", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(content);
+            Matcher mObj = Pattern.compile("\"icon\"\\s*:\\s*\\{([^}]+)}", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(content);
             if (mObj.find()) {
                 Matcher mf = Pattern.compile("\"file\"\\s*:\\s*\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE).matcher(mObj.group(1));
                 if (mf.find()) addIfExists(fs, mf.group(1), candidates, 185);
@@ -383,7 +371,7 @@ public class ModsUI {
             Path toml = fs.getPath("META-INF", "mods.toml");
             if (Files.exists(toml)) {
                 String content = Files.readString(toml, StandardCharsets.UTF_8);
-                Matcher mods = Pattern.compile("\\[\\[mods\\]\\](.*?)(?=\\n\\[\\[|$)", Pattern.DOTALL).matcher(content);
+                Matcher mods = Pattern.compile("\\[\\[mods]](.*?)(?=\\n\\[\\[|$)", Pattern.DOTALL).matcher(content);
                 if (mods.find()) {
                     String block = mods.group(1);
                     Matcher mid = Pattern.compile("(?m)\\b(modId|modid|id)\\s*=\\s*\"([^\"]+)\"").matcher(block);
@@ -429,7 +417,7 @@ public class ModsUI {
         if (!Files.exists(toml)) return null;
         try {
             String content = Files.readString(toml, StandardCharsets.UTF_8);
-            Matcher mods = Pattern.compile("\\[\\[mods\\]\\](.*?)(?=\\n\\[\\[|$)", Pattern.DOTALL).matcher(content);
+            Matcher mods = Pattern.compile("\\[\\[mods]](.*?)(?=\\n\\[\\[|$)", Pattern.DOTALL).matcher(content);
             if (mods.find()) {
                 String block = mods.group(1);
                 Matcher v = Pattern.compile("version\\s*=\\s*\"([^\"]+)\"").matcher(block);

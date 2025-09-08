@@ -106,7 +106,7 @@ public class NeoForgeInstaller {
         String installedVersion = getInstalledVersion(gameDir);
 
         if (installedVersion != null && !installedVersion.equals(latest)) {
-            if (UI != null) UI.updateProgress("Удаляем старую версию NeoForge " + installedVersion, 0.2);
+            if (UI != null) UI.updateProgress("Удаляем старую версию NeoForge..." + installedVersion, 0.2);
             uninstallInstalled(gameDir);
         }
 
@@ -123,6 +123,7 @@ public class NeoForgeInstaller {
                 for (Path p : ds) {
                     try {
                         Files.deleteIfExists(p);
+                        if (UI != null) UI.updateProgress("Удаляю старый инсталлятор", 0.3);
                         LogManager.getLogger().info("Удаляю старый инсталлятор: " + p);
                     } catch (Exception ignore) {}
                 }
@@ -138,6 +139,8 @@ public class NeoForgeInstaller {
         FileEntry entry = new FileEntry("neoforge", "NeoForge installer", url, installer, 0, null);
 
         MCLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(entry);
+
+        if (UI != null) UI.updateProgress("Установка neoforge...", 0.5);
 
         ProcessBuilder pb = new ProcessBuilder(MCLauncher.JAVA_PATH.toString(), "-jar", installer.toString(), "--installClient", gameDir.toString());
         pb.directory(gameDir.toFile());
@@ -186,6 +189,7 @@ public class NeoForgeInstaller {
     }
 
     private static String fetchPinnedServerVersionAndSave(Path gameDir) {
+        if (UI != null) UI.updateProgress("Проверяю версию neoforge на сервере...", 0);
         LogManager.getLogger().info("Проверяю версию neoforge на сервере...");
         try {
             String serverPath = "neoforge/version";

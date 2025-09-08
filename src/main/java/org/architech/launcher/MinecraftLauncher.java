@@ -120,8 +120,7 @@ public class MinecraftLauncher {
         ProcessBuilder pb = new ProcessBuilder(args);
         pb.directory(gameDir.toFile());
         pb.inheritIO();
-        Process p = pb.start();
-        return p;
+        return pb.start();
     }
 
     private static List<JsonObject> getVersionChain(Path gameDir, String version) throws IOException {

@@ -2,7 +2,6 @@ package org.architech.launcher.managment;
 
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
 import javax.net.ssl.HttpsURLConnection;
@@ -164,10 +163,9 @@ public class DownloadManager {
     private void downloadAtomicOnce(FileEntry f) throws Exception {
         URI uri = new URI(f.url);
         URLConnection raw = uri.toURL().openConnection();
-        if (!(raw instanceof HttpURLConnection)) {
+        if (!(raw instanceof HttpURLConnection conn)) {
             throw new IOException("Unsupported protocol for URL: " + f.url);
         }
-        HttpURLConnection conn = (HttpURLConnection) raw;
         if (conn instanceof HttpsURLConnection) {
             ((HttpsURLConnection) conn).setSSLSocketFactory((SSLSocketFactory) SSLSocketFactory.getDefault());
         }

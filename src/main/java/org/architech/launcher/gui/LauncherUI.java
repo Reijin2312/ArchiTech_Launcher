@@ -502,7 +502,7 @@ public class LauncherUI {
 
         DialogPane pane = a.getDialogPane();
         pane.setStyle("-fx-background-color: #2b2b2b; -fx-font-size: 14px;");
-        ((Label) pane.lookup(".content.label")).setStyle("-fx-text-fill: white;");
+        pane.lookup(".content.label").setStyle("-fx-text-fill: white;");
 
         TextArea textArea = new TextArea(details);
         textArea.setEditable(false);
@@ -537,7 +537,7 @@ public class LauncherUI {
 
         Node reportNode = a.getDialogPane().lookupButton(reportBtn);
         if (reportNode instanceof Button) {
-            ((Button) reportNode).setStyle("-fx-font-size: 11px; -fx-padding: 4 8;");
+            reportNode.setStyle("-fx-font-size: 11px; -fx-padding: 4 8;");
         }
 
         Stage stage = (Stage) pane.getScene().getWindow();

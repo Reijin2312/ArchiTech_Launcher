@@ -1,10 +1,8 @@
 package org.architech.launcher.managment;
 
 import com.google.gson.Gson;
-import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
