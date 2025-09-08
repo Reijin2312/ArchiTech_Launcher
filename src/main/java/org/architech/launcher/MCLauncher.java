@@ -181,24 +181,22 @@ public class MCLauncher extends Application {
 
                 UI.updateProgress("Клиент запущен, ожидаю завершения процесса...", 1);
 
-                if (p != null) {
-                    try {
-                        while (true) {
-                            if (Thread.currentThread().isInterrupted()) {
-                                try { p.destroyForcibly(); } catch (Exception ignored) {}
-                                throw new InterruptedException();
-                            }
-                            try {
-                                int exit = p.exitValue();
-                                break;
-                            } catch (IllegalThreadStateException itse) {
-                                Thread.sleep(500);
-                            }
+                try {
+                    while (true) {
+                        if (Thread.currentThread().isInterrupted()) {
+                            try { p.destroyForcibly(); } catch (Exception ignored) {}
+                            throw new InterruptedException();
                         }
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        throw ie;
+                        try {
+                            int exit = p.exitValue();
+                            break;
+                        } catch (IllegalThreadStateException itse) {
+                            Thread.sleep(500);
+                        }
                     }
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw ie;
                 }
 
                 Platform.runLater(() -> UI.updateProgress("Готово. Клиент завершил работу.", 1));
