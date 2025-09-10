@@ -19,7 +19,7 @@ application {
 
 javafx {
     version = "21"
-    modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.swing' ]
+    modules = [ 'javafx.controls', 'javafx.fxml']
 }
 
 group = 'org.example'
@@ -36,8 +36,6 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation "org.openjfx:javafx-controls:21"
     implementation "org.openjfx:javafx-fxml:21"
-    implementation "org.openjfx:javafx-graphics:21"
-    implementation "org.openjfx:javafx-swing:21"
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'com.github.Vatuu:discord-rpc:1.6.2'
     implementation 'org.json:json:20240303'

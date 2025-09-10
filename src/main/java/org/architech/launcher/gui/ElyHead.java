@@ -1,13 +1,13 @@
 package org.architech.launcher.gui;
 
-import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URL;
 
 public final class ElyHead {
     private ElyHead() {}
@@ -36,7 +36,10 @@ public final class ElyHead {
             g2.drawImage(result, 0, 0, size, size, null);
             g2.dispose();
 
-            return SwingFXUtils.toFXImage(scaled, null);
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
+            ImageIO.write(scaled, "png", os);
+            ByteArrayInputStream is2 = new ByteArrayInputStream(os.toByteArray());
+            return new Image(is2);
         } catch (Exception e) {
             return null;
         }
