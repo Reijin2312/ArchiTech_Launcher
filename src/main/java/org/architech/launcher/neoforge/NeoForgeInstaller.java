@@ -243,9 +243,8 @@ public class NeoForgeInstaller {
     private static boolean isAllowedInPath(char c) {
         if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
                 c == '-' || c == '_' || c == '.' || c == '~') return true;
-        if (c == '!' || c == '$' || c == '&' || c == '\'' || c == '(' || c == ')' ||
-                c == '*' || c == '+' || c == ',' || c == ';' || c == '=' || c == ':' || c == '@') return true;
-        return false;
+        return c == '!' || c == '$' || c == '&' || c == '\'' || c == '(' || c == ')' ||
+                c == '*' || c == '+' || c == ',' || c == ';' || c == '=' || c == ':' || c == '@';
     }
 
     public static String getInstalledVersion(Path gameDir) {
@@ -269,7 +268,6 @@ public class NeoForgeInstaller {
             return null;
         }
     }
-
 
     private static void uninstallInstalled(Path gameDir) {
         Path manifest = gameDir.resolve(MANIFEST_DIR).resolve("installed.json");
@@ -317,8 +315,6 @@ public class NeoForgeInstaller {
 
         try { Files.deleteIfExists(manifest); } catch (Exception e) { LogManager.getLogger().warning("Не удалось удалить installed.json: " + e.getMessage()); }
     }
-
-
 
     private static String readProcessAllOutputWithEncodingFallback(InputStream in) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

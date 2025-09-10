@@ -10,9 +10,8 @@ import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import org.architech.launcher.utils.LogManager;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
+
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
@@ -272,21 +271,50 @@ public class AllSettingsUI {
 
     private static List<String> detectGPUs() {
         List<String> result = new ArrayList<>();
+        String os = System.getProperty("os.name").toLowerCase();
+
         try {
-            Process p = new ProcessBuilder("wmic","path","win32_VideoController","get","Name").start();
-            try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()))) {
+            Process p;
+            if (os.contains("win")) {
+                p = new ProcessBuilder("wmic", "path", "win32_VideoController", "get", "Name").start();
+            } else if (os.contains("mac")) {
+                p = new ProcessBuilder("system_profiler", "SPDisplaysDataType").start();
+            } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
+                p = new ProcessBuilder("lspci").start();
+            } else {
+                throw new UnsupportedOperationException("Неизвестная ОС: " + os);
+            }
+
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
                 String line;
                 while ((line = br.readLine()) != null) {
-                    if (!line.trim().isEmpty() && !line.toLowerCase(Locale.ROOT).contains("name")) result.add(line.trim());
+                    line = line.trim();
+                    if (line.isEmpty()) continue;
+
+                    if (os.contains("win")) {
+                        if (!line.toLowerCase(Locale.ROOT).contains("name")) result.add(line);
+                    } else if (os.contains("mac")) {
+                        if (line.startsWith("Chipset Model:") || line.startsWith("Graphics:")) {
+                            result.add(line.split(":")[1].trim());
+                        }
+                    } else { // Linux
+                        if (line.toLowerCase().contains("vga") || line.toLowerCase().contains("3d")) {
+                            // вырезаем описание после первого ':'
+                            String[] parts = line.split(":", 2);
+                            if (parts.length == 2) result.add(parts[1].trim());
+                        }
+                    }
                 }
             }
         } catch (Exception ex) {
             LogManager.getLogger().severe("Ошибка обнаружения GPU: " + ex.getMessage());
         }
+
         return result;
     }
 
-public static void createDefaultConfigIfMissing() {
+
+    public static void createDefaultConfigIfMissing() {
         try {
             if (Files.exists(CONFIG_PATH)) return;
 

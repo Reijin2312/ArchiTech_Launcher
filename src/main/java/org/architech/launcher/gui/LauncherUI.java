@@ -25,6 +25,7 @@ import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
 import javafx.scene.paint.Color;
 import java.awt.*;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -182,7 +183,24 @@ public class LauncherUI {
 
     private void openInBrowser(String url) {
         try {
-            Desktop.getDesktop().browse(new java.net.URI(url));
+            URI uri = new URI(url);
+
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(uri);
+            } else {
+                String os = System.getProperty("os.name").toLowerCase();
+                Runtime rt = Runtime.getRuntime();
+
+                if (os.contains("win")) {
+                    rt.exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
+                } else if (os.contains("mac")) {
+                    rt.exec(new String[]{"open", uri.toString()});
+                } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
+                    rt.exec(new String[]{"xdg-open", uri.toString()});
+                } else {
+                    throw new UnsupportedOperationException("Неизвестная ОС: " + os);
+                }
+            }
         } catch (Exception e) {
             LogManager.getLogger().severe("Не удалось открыть браузер: " + e.getMessage());
             showError("Не удалось открыть браузер", e.getMessage());
@@ -355,12 +373,30 @@ public class LauncherUI {
         faqBtn.setGraphic(telegramView);
         faqBtn.setOnAction(e -> {
             try {
-                Desktop.getDesktop().browse(new URI("https://t.me/archi_tech_official"));
+                URI uri = new URI("https://t.me/archi_tech_official");
+
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                    Desktop.getDesktop().browse(uri);
+                } else {
+                    String os = System.getProperty("os.name").toLowerCase();
+                    Runtime rt = Runtime.getRuntime();
+
+                    if (os.contains("win")) {
+                        rt.exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
+                    } else if (os.contains("mac")) {
+                        rt.exec(new String[]{"open", uri.toString()});
+                    } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
+                        rt.exec(new String[]{"xdg-open", uri.toString()});
+                    } else {
+                        throw new UnsupportedOperationException("Неизвестная ОС: " + os);
+                    }
+                }
             } catch (Exception ex) {
-                LogManager.getLogger().severe("Не удалось открыть Telegram");
+                LogManager.getLogger().severe("Не удалось открыть Telegram: " + ex.getMessage());
                 showError("Упс! Не удалось открыть Telegram :(", ex.getMessage());
             }
         });
+
 
         Button settingsBtn = new Button("⚙");
         styleSmallButton(settingsBtn);
@@ -384,13 +420,13 @@ public class LauncherUI {
             HBox.setHgrow(b, Priority.ALWAYS);
         }
 
-        // --- news title + status + list in a single rounded panel
+        // заголовок
         Label newsTitle = new Label("Новости проекта");
         newsTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;");
         HBox titleBox = new HBox(newsTitle);
         titleBox.setAlignment(Pos.CENTER);
 
-// build news list as before
+// список новостей
         List<NewsItem> newsItems = List.of(
                 new NewsItem("Заголовок 1", "https://example.com/img1.png"),
                 new NewsItem("Заголовок 2", "https://example.com/img2.png"),
@@ -400,78 +436,80 @@ public class LauncherUI {
                 new NewsItem("Заголовок 6", "https://example.com/img2.png"),
                 new NewsItem("Заголовок 7", "https://example.com/img2.png"),
                 new NewsItem("Заголовок 8", "https://example.com/img2.png")
-
         );
         ScrollPane newsScroll = buildNewsList(newsItems);
         newsScroll.setFitToWidth(true);
         newsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
-// container that will get the rounded semi-transparent background
+// контейнер новостей
         VBox newsContainer = new VBox(8);
         newsContainer.setPadding(new Insets(10));
         newsContainer.setAlignment(Pos.TOP_CENTER);
         newsContainer.setFillWidth(true);
 
-// add title
+// заголовок
         newsContainer.getChildren().add(titleBox);
 
-// short centered separator (не на всю ширину)
+// верхняя полоска
         Region sepTop = new Region();
         sepTop.setPrefHeight(2);
-        sepTop.setMaxWidth(220); // длина полоски — подправить по вкусу
+        sepTop.setPrefWidth(220);
         sepTop.setStyle("-fx-background-color: rgba(255,255,255,1); -fx-background-radius: 2;");
         HBox sepTopBox = new HBox(sepTop);
         sepTopBox.setAlignment(Pos.CENTER);
         newsContainer.getChildren().add(sepTopBox);
 
-// INFO BAR: онлайн + пинг (с иконкой/индикатором)
+// инфо-бар (онлайн + пинг)
         HBox infoBar = new HBox(12);
         infoBar.setAlignment(Pos.CENTER);
         infoBar.setPadding(new Insets(6, 12, 6, 12));
+        infoBar.setStyle("-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 4;");
 
+// левый блок (онлайн)
         HBox leftInfo = new HBox(6);
-        leftInfo.setAlignment(Pos.CENTER_LEFT);
+        leftInfo.setAlignment(Pos.CENTER);
         Label personIcon = new Label("\uD83D\uDC64"); // 👤
         personIcon.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
         onlineLabelField.setStyle("-fx-text-fill: white; -fx-font-size: 12px;");
         leftInfo.getChildren().addAll(personIcon, onlineLabelField);
 
-// правый блок: пинг с цветной точкой
+// правый блок (пинг)
         HBox rightInfo = new HBox(6);
-        rightInfo.setAlignment(Pos.CENTER_RIGHT);
+        rightInfo.setAlignment(Pos.CENTER);
         pingLabelField.setStyle("-fx-text-fill: white; -fx-font-size: 12px;");
         rightInfo.getChildren().addAll(pingDotField, pingLabelField);
 
-// filler между левым и правым блоками, чтобы линии не тянулись на всю ширину
-        Region filler = new Region();
-        HBox.setHgrow(filler, Priority.ALWAYS);
-
-        infoBar.getChildren().addAll(leftInfo, filler, rightInfo);
+// объединяем
+        infoBar.getChildren().addAll(leftInfo, new Label("|"), rightInfo);
         newsContainer.getChildren().add(infoBar);
 
-// нижняя короткая полоска
+// нижняя полоска
         Region sepBottom = new Region();
         sepBottom.setPrefHeight(2);
-        sepBottom.setMaxWidth(180);
+        sepBottom.setPrefWidth(180);
         sepBottom.setStyle("-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 2;");
         HBox sepBottomBox = new HBox(sepBottom);
         sepBottomBox.setAlignment(Pos.CENTER);
         newsContainer.getChildren().add(sepBottomBox);
 
-// собственно блок новостей
+// блок новостей
         newsScroll.setMaxHeight(Region.USE_COMPUTED_SIZE);
         newsContainer.getChildren().add(newsScroll);
 
-// обёртка с полупрозрачным фоном и скруглением
+// обертка с фоном
         StackPane newsWrapper = new StackPane(newsContainer);
         newsWrapper.setPadding(new Insets(6));
         newsWrapper.setStyle("-fx-background-color: rgba(30,30,30,0.55); -fx-background-radius: 8;");
 
+// центрируем
         VBox centerBox = new VBox(10, newsWrapper);
         centerBox.setAlignment(Pos.TOP_CENTER);
         VBox.setVgrow(newsWrapper, Priority.ALWAYS);
+
         root.setCenter(centerBox);
         BorderPane.setMargin(centerBox, new Insets(0, 0, 0, 20));
+
+
 
         MCLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
             try {
@@ -624,13 +662,43 @@ public class LauncherUI {
             if (response == reportBtn) {
                 try {
                     String encoded = URLEncoder.encode(msg + "\n\n" + details, StandardCharsets.UTF_8);
-                    Desktop.getDesktop().browse(new URI("https://t.me/Raijin2312?text=" + encoded));
+                    openWebpage("https://t.me/Raijin2312?text=" + encoded);
+
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
             }
         });
     }
+
+    public static void openWebpage(String url) {
+        try {
+            URI uri = new URI(url);
+
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(uri);
+            } else {
+                String os = System.getProperty("os.name").toLowerCase();
+                Runtime rt = Runtime.getRuntime();
+
+                if (os.contains("win")) {
+                    // Windows
+                    rt.exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
+                } else if (os.contains("mac")) {
+                    // macOS
+                    rt.exec(new String[]{"open", uri.toString()});
+                } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
+                    // Linux/Unix
+                    rt.exec(new String[]{"xdg-open", uri.toString()});
+                } else {
+                    throw new UnsupportedOperationException("Неизвестная ОС: " + os);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     public void showInfo(String msg) {
         Alert a = new Alert(Alert.AlertType.INFORMATION, msg);
@@ -639,10 +707,27 @@ public class LauncherUI {
 
     private void openGameDir() {
         try {
-            Desktop.getDesktop().open(GAME_DIR.toFile());
+            File dir = GAME_DIR.toFile();
+
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                Desktop.getDesktop().open(dir);
+            } else {
+                String os = System.getProperty("os.name").toLowerCase();
+                Runtime rt = Runtime.getRuntime();
+
+                if (os.contains("win")) {
+                    rt.exec(new String[]{"explorer", dir.getAbsolutePath()});
+                } else if (os.contains("mac")) {
+                    rt.exec(new String[]{"open", dir.getAbsolutePath()});
+                } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
+                    rt.exec(new String[]{"xdg-open", dir.getAbsolutePath()});
+                } else {
+                    throw new UnsupportedOperationException("Неизвестная ОС: " + os);
+                }
+            }
         } catch (Exception ex) {
-            LogManager.getLogger().severe("Не удалось открыть папку игры " + ex.getMessage());
-            showError("Упс! Не удалось открыть папку игры :( ", ex.getMessage());
+            LogManager.getLogger().severe("Не удалось открыть папку игры: " + ex.getMessage());
+            showError("Упс! Не удалось открыть папку игры :(", ex.getMessage());
         }
     }
 
