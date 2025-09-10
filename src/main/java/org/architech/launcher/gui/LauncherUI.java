@@ -17,11 +17,13 @@ import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.auth.*;
 import org.architech.launcher.utils.LogManager;
 import org.architech.launcher.utils.Utils;
+import javafx.scene.paint.Color;
 import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,6 +54,9 @@ public class LauncherUI {
     private final ContextMenu accountMenu;
     private ImageView headView;
     private Account currentAccount;
+    private final Label onlineLabelField = new Label("Онлайн: —");
+    private final Label pingLabelField = new Label("Пинг: — ms");
+    private final Circle pingDotField = new Circle(6);
 
     private long startTimeMs;
     private ScheduledFuture<?> timerFuture;
@@ -337,6 +342,7 @@ public class LauncherUI {
 
         Button checkUpdates = new Button("⟳");
         styleSmallButton(checkUpdates);
+
         checkUpdates.setOnAction(e -> showInfo("Проверка обновлений пока не реализована"));
 
         Image telegramIcon = new Image(Objects.requireNonNull(getClass().getResource("/images/tg.png")).toExternalForm());
@@ -378,12 +384,13 @@ public class LauncherUI {
             HBox.setHgrow(b, Priority.ALWAYS);
         }
 
+        // --- news title + status + list in a single rounded panel
         Label newsTitle = new Label("Новости проекта");
         newsTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;");
         HBox titleBox = new HBox(newsTitle);
         titleBox.setAlignment(Pos.CENTER);
-        titleBox.setPadding(new Insets(0, 0, 6, 0));
 
+// build news list as before
         List<NewsItem> newsItems = List.of(
                 new NewsItem("Заголовок 1", "https://example.com/img1.png"),
                 new NewsItem("Заголовок 2", "https://example.com/img2.png"),
@@ -391,49 +398,116 @@ public class LauncherUI {
                 new NewsItem("Заголовок 4", "https://example.com/img2.png"),
                 new NewsItem("Заголовок 5", "https://example.com/img2.png"),
                 new NewsItem("Заголовок 6", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 7", "https://example.com/img2.png")
+                new NewsItem("Заголовок 7", "https://example.com/img2.png"),
+                new NewsItem("Заголовок 8", "https://example.com/img2.png")
+
         );
-
         ScrollPane newsScroll = buildNewsList(newsItems);
+        newsScroll.setFitToWidth(true);
+        newsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
-        StackPane newsWrapper = new StackPane(newsScroll);
+// container that will get the rounded semi-transparent background
+        VBox newsContainer = new VBox(8);
+        newsContainer.setPadding(new Insets(10));
+        newsContainer.setAlignment(Pos.TOP_CENTER);
+        newsContainer.setFillWidth(true);
+
+// add title
+        newsContainer.getChildren().add(titleBox);
+
+// short centered separator (не на всю ширину)
+        Region sepTop = new Region();
+        sepTop.setPrefHeight(2);
+        sepTop.setMaxWidth(220); // длина полоски — подправить по вкусу
+        sepTop.setStyle("-fx-background-color: rgba(255,255,255,1); -fx-background-radius: 2;");
+        HBox sepTopBox = new HBox(sepTop);
+        sepTopBox.setAlignment(Pos.CENTER);
+        newsContainer.getChildren().add(sepTopBox);
+
+// INFO BAR: онлайн + пинг (с иконкой/индикатором)
+        HBox infoBar = new HBox(12);
+        infoBar.setAlignment(Pos.CENTER);
+        infoBar.setPadding(new Insets(6, 12, 6, 12));
+
+        HBox leftInfo = new HBox(6);
+        leftInfo.setAlignment(Pos.CENTER_LEFT);
+        Label personIcon = new Label("\uD83D\uDC64"); // 👤
+        personIcon.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
+        onlineLabelField.setStyle("-fx-text-fill: white; -fx-font-size: 12px;");
+        leftInfo.getChildren().addAll(personIcon, onlineLabelField);
+
+// правый блок: пинг с цветной точкой
+        HBox rightInfo = new HBox(6);
+        rightInfo.setAlignment(Pos.CENTER_RIGHT);
+        pingLabelField.setStyle("-fx-text-fill: white; -fx-font-size: 12px;");
+        rightInfo.getChildren().addAll(pingDotField, pingLabelField);
+
+// filler между левым и правым блоками, чтобы линии не тянулись на всю ширину
+        Region filler = new Region();
+        HBox.setHgrow(filler, Priority.ALWAYS);
+
+        infoBar.getChildren().addAll(leftInfo, filler, rightInfo);
+        newsContainer.getChildren().add(infoBar);
+
+// нижняя короткая полоска
+        Region sepBottom = new Region();
+        sepBottom.setPrefHeight(2);
+        sepBottom.setMaxWidth(180);
+        sepBottom.setStyle("-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 2;");
+        HBox sepBottomBox = new HBox(sepBottom);
+        sepBottomBox.setAlignment(Pos.CENTER);
+        newsContainer.getChildren().add(sepBottomBox);
+
+// собственно блок новостей
+        newsScroll.setMaxHeight(Region.USE_COMPUTED_SIZE);
+        newsContainer.getChildren().add(newsScroll);
+
+// обёртка с полупрозрачным фоном и скруглением
+        StackPane newsWrapper = new StackPane(newsContainer);
         newsWrapper.setPadding(new Insets(6));
         newsWrapper.setStyle("-fx-background-color: rgba(30,30,30,0.55); -fx-background-radius: 8;");
 
-        VBox centerBox = new VBox(10, titleBox, newsWrapper);
+        VBox centerBox = new VBox(10, newsWrapper);
         centerBox.setAlignment(Pos.TOP_CENTER);
         VBox.setVgrow(newsWrapper, Priority.ALWAYS);
-
         root.setCenter(centerBox);
         BorderPane.setMargin(centerBox, new Insets(0, 0, 0, 20));
+
+        MCLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
+            try {
+                MinecraftPing.ServerStatus s = MinecraftPing.fetchStatus("architech.mc-world.xyz", 25565, 3000);
+                Platform.runLater(() -> {
+                    onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
+                    pingLabelField.setText("Пинг: " + s.pingMs() + " ms");
+                    if (s.pingMs() <= 100) pingDotField.setFill(Color.GREEN);
+                    else if (s.pingMs() <= 250) pingDotField.setFill(Color.GOLD);
+                    else pingDotField.setFill(Color.ORANGERED);
+                });
+            } catch (Throwable t) {
+                Platform.runLater(() -> {
+                    onlineLabelField.setText("Онлайн: —");
+                    pingLabelField.setText("Пинг: —");
+                    pingDotField.setFill(Color.GRAY);
+                });
+            }
+        }, 0, 10, TimeUnit.SECONDS);
+
+        timerLabel = new Label("Времени прошло: 00:00:00");
+        timerLabel.setStyle("-fx-text-fill: white;");
+
+        percentLabel = new Label("0%");
+        percentLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
 
         progressBar = new ProgressBar(0);
         progressBar.setPrefWidth(Double.MAX_VALUE);
         progressBar.setStyle("-fx-accent: #4caf50;");
 
-        progressLabel = new Label("Ожидание...");
-        progressLabel.setStyle("-fx-text-fill: white;");
-
-        percentLabel = new Label("0%");
-        percentLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
-
-        timerLabel = new Label("Времени прошло: 00:00:00");
-        timerLabel.setStyle("-fx-text-fill: white;");
-
-        newsScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
-        newsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        newsScroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-
-        if (newsScroll.getContent() instanceof Region r) {
-            r.setBackground(Background.EMPTY);
-        }
-
-        root.setCenter(centerBox);
-        BorderPane.setMargin(centerBox, new Insets(0, 0, 0, 20));
-
         StackPane barWrapper = new StackPane(progressBar);
         barWrapper.setAlignment(Pos.CENTER);
         barWrapper.getChildren().add(percentLabel);
+
+        progressLabel = new Label("Ожидание...");
+        progressLabel.setStyle("-fx-text-fill: white;");
 
         BorderPane bottomLine = new BorderPane();
         bottomLine.setLeft(progressLabel);
