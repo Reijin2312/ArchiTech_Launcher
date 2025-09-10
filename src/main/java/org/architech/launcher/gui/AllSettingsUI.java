@@ -162,11 +162,9 @@ public class AllSettingsUI {
         gpuCombo.valueProperty().addListener((obs, o, n) -> saveConfig());
         fpsSpinner.valueProperty().addListener((obs, o, n) -> saveConfig());
         netTimeoutSpinner.valueProperty().addListener((obs, o, n) -> saveConfig());
-
         closeOnLaunch.selectedProperty().addListener((obs, o, n) -> saveConfig());
         fullscreenCheck.selectedProperty().addListener((obs, o, n) -> saveConfig());
         autoUpdate.selectedProperty().addListener((obs, o, n) -> saveConfig());
-
         gameDirField.textProperty().addListener((obs, o, n) -> saveConfig());
         javaField.textProperty().addListener((obs, o, n) -> saveConfig());
         widthField.textProperty().addListener((obs, o, n) -> saveConfig());
@@ -297,9 +295,8 @@ public class AllSettingsUI {
                         if (line.startsWith("Chipset Model:") || line.startsWith("Graphics:")) {
                             result.add(line.split(":")[1].trim());
                         }
-                    } else { // Linux
+                    } else {
                         if (line.toLowerCase().contains("vga") || line.toLowerCase().contains("3d")) {
-                            // вырезаем описание после первого ':'
                             String[] parts = line.split(":", 2);
                             if (parts.length == 2) result.add(parts[1].trim());
                         }

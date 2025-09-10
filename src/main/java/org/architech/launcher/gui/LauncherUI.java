@@ -660,13 +660,8 @@ public class LauncherUI {
 
         a.showAndWait().ifPresent(response -> {
             if (response == reportBtn) {
-                try {
-                    String encoded = URLEncoder.encode(msg + "\n\n" + details, StandardCharsets.UTF_8);
-                    openWebpage("https://t.me/Raijin2312?text=" + encoded);
-
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+                String encoded = URLEncoder.encode(msg + "\n\n" + details, StandardCharsets.UTF_8);
+                openWebpage("https://t.me/Raijin2312?text=" + encoded);
             }
         });
     }
@@ -695,10 +690,9 @@ public class LauncherUI {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LogManager.getLogger().severe("Ошибка открытия веб-страницы: " + e.getMessage());
         }
     }
-
 
     public void showInfo(String msg) {
         Alert a = new Alert(Alert.AlertType.INFORMATION, msg);

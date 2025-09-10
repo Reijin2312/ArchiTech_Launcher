@@ -24,9 +24,7 @@ public class HttpModsManager {
 
     public static void syncMods(Path modsDir) throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(BACKEND_URL + "/api/files/manifest"))
-                .GET()
-                .build();
+                .uri(URI.create(BACKEND_URL + "/api/files/manifest")).GET().build();
         HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (res.statusCode() != 200) {
             LogManager.getLogger().severe("manifest HTTP " + res.statusCode() + ": " + res.body());
