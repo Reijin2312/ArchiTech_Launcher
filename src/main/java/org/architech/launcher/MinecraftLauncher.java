@@ -23,7 +23,7 @@ public class MinecraftLauncher {
         }
 
         List<String> args = new ArrayList<>();
-        args.add(JAVA_PATH.toString());
+        args.add(JAVA_PATH.resolve("bin").resolve("java.exe").toString());
 
         String osName = System.getProperty("os.name").toLowerCase();
         String osArch = System.getProperty("os.arch").toLowerCase();

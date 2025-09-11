@@ -279,18 +279,16 @@ public class AllSettingsUI {
 
             def.put("gameDir", GAME_DIR.toAbsolutePath().toString());
 
-            Path launcherJavaDir = LAUNCHER_DIR.resolve("runtime").resolve("bin").resolve("java.exe");
+            Path sysJavaDir = Path.of(System.getProperty("java.home"));
 
-            if (Files.isExecutable(launcherJavaDir)) {
-                def.put("javaPath", launcherJavaDir.toString());
+            if (Files.isExecutable(sysJavaDir.resolve("bin").resolve("java.exe"))) {
+                def.put("javaPath", sysJavaDir.toString());
             } else {
                 LogManager.getLogger().severe("Не найден javaw.exe");
                 Path base = Objects.requireNonNull(findJava21());
                 Path candidate = base.resolve("bin").resolve("java.exe");
-                if (Files.isExecutable(base)) {
+                if (Files.isExecutable(candidate)) {
                     def.put("javaPath", base.toString());
-                } else if (Files.isExecutable(candidate)) {
-                    def.put("javaPath", candidate.toString());
                 } else {
                     LogManager.getLogger().severe("Не найден java.exe в " + base);
                     throw new IllegalStateException("Не найден java.exe в " + base);
@@ -337,9 +335,7 @@ public class AllSettingsUI {
                 Path javaBin = Paths.get(sd.getAbsolutePath(), "bin", Utils.isWindows() ? "java.exe" : "java");
                 if (!Files.exists(javaBin)) continue;
                 try {
-                    Process p = new ProcessBuilder(javaBin.toString(), "-version")
-                            .redirectErrorStream(true)
-                            .start();
+                    Process p = new ProcessBuilder(javaBin.toString(), "-version").redirectErrorStream(true).start();
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
                         String line;
                         while ((line = br.readLine()) != null) {
