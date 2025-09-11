@@ -420,6 +420,25 @@ public class LauncherUI {
             HBox.setHgrow(b, Priority.ALWAYS);
         }
 
+        MCLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
+            try {
+                MinecraftPing.ServerStatus s = MinecraftPing.fetchStatus("architech.mc-world.xyz", 25565, 3000);
+                Platform.runLater(() -> {
+                    onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
+                    pingLabelField.setText("Пинг: " + s.pingMs() + " ms");
+                    if (s.pingMs() <= 100) pingDotField.setFill(Color.GREEN);
+                    else if (s.pingMs() <= 250) pingDotField.setFill(Color.GOLD);
+                    else pingDotField.setFill(Color.ORANGERED);
+                });
+            } catch (Throwable t) {
+                Platform.runLater(() -> {
+                    onlineLabelField.setText("Онлайн: —");
+                    pingLabelField.setText("Пинг: —");
+                    pingDotField.setFill(Color.GRAY);
+                });
+            }
+        }, 0, 10, TimeUnit.SECONDS);
+
         // заголовок
         Label newsTitle = new Label("Новости проекта");
         newsTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;");
@@ -440,7 +459,6 @@ public class LauncherUI {
         ScrollPane newsScroll = buildNewsList(newsItems);
         newsScroll.setFitToWidth(true);
         newsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-
 
 // контейнер новостей
         VBox newsContainer = new VBox(8);
@@ -509,26 +527,6 @@ public class LauncherUI {
 
         root.setCenter(centerBox);
         BorderPane.setMargin(centerBox, new Insets(0, 0, 0, 20));
-
-
-        MCLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
-            try {
-                MinecraftPing.ServerStatus s = MinecraftPing.fetchStatus("architech.mc-world.xyz", 25565, 3000);
-                Platform.runLater(() -> {
-                    onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
-                    pingLabelField.setText("Пинг: " + s.pingMs() + " ms");
-                    if (s.pingMs() <= 100) pingDotField.setFill(Color.GREEN);
-                    else if (s.pingMs() <= 250) pingDotField.setFill(Color.GOLD);
-                    else pingDotField.setFill(Color.ORANGERED);
-                });
-            } catch (Throwable t) {
-                Platform.runLater(() -> {
-                    onlineLabelField.setText("Онлайн: —");
-                    pingLabelField.setText("Пинг: —");
-                    pingDotField.setFill(Color.GRAY);
-                });
-            }
-        }, 0, 10, TimeUnit.SECONDS);
 
         timerLabel = new Label("Времени прошло: 00:00:00");
         timerLabel.setStyle("-fx-text-fill: white;");
