@@ -15,6 +15,7 @@ import static org.architech.launcher.MCLauncher.JAVA_PATH;
 import static org.architech.launcher.gui.AllSettingsUI.GSON;
 
 public class MinecraftLauncher {
+
     public static Process launchMinecraft(Path gameDir, String version) throws IOException {
         if (JAVA_PATH == null) {
             LogManager.getLogger().severe("Java 21 не найдена.");
@@ -43,6 +44,7 @@ public class MinecraftLauncher {
                 break;
             }
         }
+
         if (assetIndex == null) {
             assetIndex = "17";
         }
@@ -70,14 +72,18 @@ public class MinecraftLauncher {
         placeholders.put("clientid", "");
         placeholders.put("auth_xuid", "");
 
-        Map<?,?> cfg;
-        try (Reader r = Files.newBufferedReader(CONFIG_PATH, StandardCharsets.UTF_8)) {
-            cfg = GSON.fromJson(r, Map.class);
-        }
-        if (cfg == null) cfg = Collections.emptyMap();
+        if (Files.exists(CONFIG_PATH)) {
+            Map<?, ?> cfg;
+            try (Reader r = Files.newBufferedReader(CONFIG_PATH, StandardCharsets.UTF_8)) {
+                cfg = GSON.fromJson(r, Map.class);
+            }
+            if (cfg == null) cfg = Collections.emptyMap();
 
-        int maxMemory = ((Number) (cfg.containsKey("maxMemory") ? cfg.get("maxMemory") : 2048)).intValue();
-        args.add("-Xmx" + maxMemory + "M");
+            int maxMemory = ((Number) (cfg.containsKey("maxMemory") ? cfg.get("maxMemory") : 2048)).intValue();
+            args.add("-Xmx" + maxMemory + "M");
+
+            String lang = (cfg.containsKey("language") ? cfg.get("language") : "Русский").toString();
+        }
 
         List<String> jvmArgs = new ArrayList<>();
         for (JsonObject obj : versionChain) {

@@ -2,6 +2,7 @@ package org.architech.launcher.gui;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.sun.management.OperatingSystemMXBean;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -10,14 +11,15 @@ import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import org.architech.launcher.utils.LogManager;
+import org.architech.launcher.utils.Utils;
 
 import java.io.*;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 
-import static org.architech.launcher.MCLauncher.CONFIG_PATH;
-import static org.architech.launcher.MCLauncher.GAME_DIR;
+import static org.architech.launcher.MCLauncher.*;
 
 public class AllSettingsUI {
     private final Stage stage;
@@ -267,6 +269,98 @@ public class AllSettingsUI {
 
     private int roundRam(int raw) { return (int)Math.round(raw/256.0)*256; }
 
+    public static void createDefaultConfigIfMissing() {
+        try {
+            if (Files.exists(CONFIG_PATH)) return;
+
+            LogManager.getLogger().info("Не найден файл настроек, создаю...");
+
+            Map<String, Object> def = new LinkedHashMap<>();
+
+            def.put("gameDir", GAME_DIR.toAbsolutePath().toString());
+
+            Path launcherJavaDir = LAUNCHER_DIR.resolve("runtime").resolve("bin").resolve("java.exe");
+
+            if (Files.isExecutable(launcherJavaDir)) {
+                def.put("javaPath", launcherJavaDir.toString());
+            } else {
+                LogManager.getLogger().severe("Не найден javaw.exe");
+                Path base = Objects.requireNonNull(findJava21());
+                Path candidate = base.resolve("bin").resolve("java.exe");
+                if (Files.isExecutable(base)) {
+                    def.put("javaPath", base.toString());
+                } else if (Files.isExecutable(candidate)) {
+                    def.put("javaPath", candidate.toString());
+                } else {
+                    LogManager.getLogger().severe("Не найден java.exe в " + base);
+                    throw new IllegalStateException("Не найден java.exe в " + base);
+                }
+            }
+
+            List<String> gpus = detectGPUs();
+            def.put("gpu", (gpus.isEmpty() ? "Автоматический выбор" : gpus.getFirst()));
+
+            int recommended = getRecommended();
+            def.put("maxMemory", recommended);
+
+            def.put("closeOnLaunch", false);
+
+            try {
+                java.awt.Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+                int width = Math.max(854, Math.min(screen.width - 200, 1920));
+                int height = Math.max(480, Math.min(screen.height - 200, 1080));
+                def.put("winWidth", String.valueOf(width));
+                def.put("winHeight", String.valueOf(height));
+            } catch (Throwable t) {
+                def.put("winWidth", "854");
+                def.put("winHeight", "480");
+            }
+
+            Files.createDirectories(CONFIG_PATH.getParent());
+            try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {
+                GSON.toJson(def, w);
+            }
+        } catch (IOException e) {
+            LogManager.getLogger().severe("Не удалось создать файл настроек: " + e.getMessage());
+            throw new RuntimeException("Не удалось создать дефолтный конфиг: " + e.getMessage(), e);
+        }
+    }
+
+    public static Path findJava21() {
+        String[] searchDirs = {"C:/Program Files/Java", "C:/Program Files (x86)/Java", "/usr/lib/jvm", "/Library/Java/JavaVirtualMachines"};
+        for (String base : searchDirs) {
+            File dir = new File(base);
+            if (!dir.exists()) continue;
+            File[] subdirs = dir.listFiles(File::isDirectory);
+            if (subdirs == null) continue;
+            for (File sd : subdirs) {
+                Path javaBin = Paths.get(sd.getAbsolutePath(), "bin", Utils.isWindows() ? "java.exe" : "java");
+                if (!Files.exists(javaBin)) continue;
+                try {
+                    Process p = new ProcessBuilder(javaBin.toString(), "-version")
+                            .redirectErrorStream(true)
+                            .start();
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            if (line.contains("version")) {
+                                int i1 = line.indexOf('"');
+                                int i2 = line.indexOf('"', i1 + 1);
+                                if (i1 >= 0 && i2 > i1) {
+                                    String ver = line.substring(i1 + 1, i2);
+                                    if (ver.startsWith("21")) return javaBin;
+                                }
+                            }
+                        }
+                    }
+                } catch (IOException ex) {
+                    LogManager.getLogger().severe("Ошибка нахождения Java 21 " + ex.getMessage());
+                }
+            }
+        }
+        return null;
+    }
+
     private static List<String> detectGPUs() {
         List<String> result = new ArrayList<>();
         String os = System.getProperty("os.name").toLowerCase();
@@ -310,53 +404,10 @@ public class AllSettingsUI {
         return result;
     }
 
-
-    public static void createDefaultConfigIfMissing() {
-        try {
-            if (Files.exists(CONFIG_PATH)) return;
-
-            LogManager.getLogger().info("Не найден файл настроек, создаю...");
-
-            Map<String, Object> def = new LinkedHashMap<>();
-
-            def.put("gameDir", GAME_DIR.toAbsolutePath().toString());
-            def.put("javaPath", System.getProperty("java.home"));
-
-            List<String> gpus = detectGPUs();
-            def.put("gpu", (gpus.isEmpty() ? "Автоматический выбор" : gpus.getFirst()));
-
-            int recommended = getRecommended();
-            def.put("maxMemory", recommended);
-
-            def.put("closeOnLaunch", false);
-
-            try {
-                java.awt.Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
-                int width = Math.max(854, Math.min(screen.width - 200, 1920));
-                int height = Math.max(480, Math.min(screen.height - 200, 1080));
-                def.put("winWidth", String.valueOf(width));
-                def.put("winHeight", String.valueOf(height));
-            } catch (Throwable t) {
-                def.put("winWidth", "854");
-                def.put("winHeight", "480");
-            }
-
-            Files.createDirectories(CONFIG_PATH.getParent());
-            try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {
-                GSON.toJson(def, w);
-            }
-        } catch (IOException e) {
-            LogManager.getLogger().severe("Не удалось создать файл настроек: " + e.getMessage());
-            throw new RuntimeException("Не удалось создать дефолтный конфиг: " + e.getMessage(), e);
-        }
-    }
-
     private static int getRecommended() {
         int recommended = 2048;
         try {
-            com.sun.management.OperatingSystemMXBean os =
-                    (com.sun.management.OperatingSystemMXBean)
-                            java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+            OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
             long totalMb = os.getTotalMemorySize() / (1024L * 1024L);
             if (totalMb > 0) {
                 recommended = (int) Math.max(1024, Math.min(totalMb / 4, 32768));

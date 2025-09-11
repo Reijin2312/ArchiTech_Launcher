@@ -441,6 +441,7 @@ public class LauncherUI {
         newsScroll.setFitToWidth(true);
         newsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
+
 // контейнер новостей
         VBox newsContainer = new VBox(8);
         newsContainer.setPadding(new Insets(10));
@@ -508,7 +509,6 @@ public class LauncherUI {
 
         root.setCenter(centerBox);
         BorderPane.setMargin(centerBox, new Insets(0, 0, 0, 20));
-
 
 
         MCLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
@@ -736,25 +736,26 @@ public class LauncherUI {
             card.getStyleClass().add("news-card");
             card.setPrefWidth(640);
             card.setMaxWidth(640);
-            card.setPrefWidth(32);
-            card.setMaxHeight(32);
 
             ImageView img = new ImageView();
-            try {
-                Image im = new Image(n.imageUrl, 32, 32, true, true);
-                img.setImage(im);
-            } catch (Exception ex) {
-                LogManager.getLogger().severe("Ошибка создания иконки новостей " + ex.getMessage());
-            }
             img.setFitWidth(64);
             img.setFitHeight(64);
             img.setPreserveRatio(true);
+
+            MCLauncher.scheduledExecutor.execute(() -> {
+                try {
+                    Image im = new Image(n.imageUrl, 64, 64, true, true);
+                    Platform.runLater(() -> img.setImage(im));
+                } catch (Exception ex) {
+                    LogManager.getLogger().severe("Ошибка создания иконки новостей " + ex.getMessage());
+                }
+            });
             card.setTop(img);
 
             Label title = new Label(n.title);
             title.getStyleClass().add("news-title");
             title.setWrapText(true);
-            BorderPane.setMargin(title, new Insets(8,8,8,8));
+            BorderPane.setMargin(title, new Insets(8, 8, 8, 8));
             card.setBottom(title);
 
             list.getChildren().add(card);
@@ -770,6 +771,7 @@ public class LauncherUI {
 
         return sp;
     }
+
 
     public void stopTimer() {
         if (timerFuture != null && !timerFuture.isDone()) {

@@ -55,26 +55,14 @@ public class MCLauncher extends Application {
 
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
-        BACKEND_URL = "http://95.105.113.224:51789";
-
         LogManager.setupLogger();
+
+        BACKEND_URL = "http://95.105.113.224:51789";
         LAUNCHER_DIR = Paths.get(AllSettingsUI.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
         CONFIG_PATH = LAUNCHER_DIR.resolve("launcher_config.json");
-        AllSettingsUI.createDefaultConfigIfMissing();
-
         ACCOUNT_FILE = LAUNCHER_DIR.resolve(".account.json");
 
-        Path base = Objects.requireNonNull(findJava21());
-        Path candidate = base.resolve("bin").resolve("java.exe");
-
-        if (Files.isExecutable(base)) {
-            JAVA_PATH = base;
-        } else if (Files.isExecutable(candidate)) {
-            JAVA_PATH = candidate;
-        } else {
-            LogManager.getLogger().severe("Не найден java.exe в " + base);
-            throw new IllegalStateException("Не найден java.exe в " + base);
-        }
+        AllSettingsUI.createDefaultConfigIfMissing();
 
         if (Files.exists(CONFIG_PATH)) {
             Map<?, ?> cfg;
@@ -82,6 +70,7 @@ public class MCLauncher extends Application {
                 cfg = GSON.fromJson(r, Map.class);
                 if (cfg == null) return;
                 if (cfg.containsKey("gameDir")) GAME_DIR = Path.of(cfg.get("gameDir").toString());
+                if (cfg.containsKey("javaPath")) JAVA_PATH = Path.of(cfg.get("javaPath").toString());
                 if (cfg.containsKey("closeOnLaunch")) closeOnLaunch = (boolean) cfg.get("closeOnLaunch");
             }
         }
@@ -91,6 +80,7 @@ public class MCLauncher extends Application {
         ASSETS_DIR = GAME_DIR.resolve("assets");
 
         UI = new LauncherUI(stage, this::onLaunchClicked);
+
         DiscordIntegration.start();
     }
 
@@ -176,7 +166,7 @@ public class MCLauncher extends Application {
                 Process p = MinecraftLauncher.launchMinecraft(GAME_DIR, "neoforge-" + getInstalledVersion(GAME_DIR));
                 currentGameProcess = p;
 
-                UI.updateProgress("Клиент запущен, ожидаю завершения процесса...", 1);
+                UI.updateProgress("Клиент запущен...", 1);
 
                 try {
                     while (true) {
@@ -216,41 +206,6 @@ public class MCLauncher extends Application {
         });
 
         launchFuture.set(f);
-    }
-
-    public static Path findJava21() {
-        String[] searchDirs = {"C:/Program Files/Java", "C:/Program Files (x86)/Java", "/usr/lib/jvm", "/Library/Java/JavaVirtualMachines"};
-        for (String base : searchDirs) {
-            File dir = new File(base);
-            if (!dir.exists()) continue;
-            File[] subdirs = dir.listFiles(File::isDirectory);
-            if (subdirs == null) continue;
-            for (File sd : subdirs) {
-                Path javaBin = Paths.get(sd.getAbsolutePath(), "bin", Utils.isWindows() ? "java.exe" : "java");
-                if (!Files.exists(javaBin)) continue;
-                try {
-                    Process p = new ProcessBuilder(javaBin.toString(), "-version")
-                            .redirectErrorStream(true)
-                            .start();
-                    try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                        String line;
-                        while ((line = br.readLine()) != null) {
-                            if (line.contains("version")) {
-                                int i1 = line.indexOf('"');
-                                int i2 = line.indexOf('"', i1 + 1);
-                                if (i1 >= 0 && i2 > i1) {
-                                    String ver = line.substring(i1 + 1, i2);
-                                    if (ver.startsWith("21")) return javaBin;
-                                }
-                            }
-                        }
-                    }
-                } catch (IOException ex) {
-                    LogManager.getLogger().severe("Ошибка нахождения Java 21 " + ex.getMessage());
-                }
-            }
-        }
-        return null;
     }
 
     public static void cancelLaunch() {
