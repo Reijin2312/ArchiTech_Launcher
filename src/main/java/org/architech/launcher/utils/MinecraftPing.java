@@ -1,4 +1,4 @@
-package org.architech.launcher.gui;
+package org.architech.launcher.utils;
 
 import org.json.JSONObject;
 import java.io.*;

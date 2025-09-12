@@ -1,4 +1,4 @@
-package org.architech.launcher.neoforge;
+package org.architech.launcher.managment;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 import static org.architech.launcher.MCLauncher.UI;
 
-public class NeoForgeInstaller {
+public class NeoForgeManager {
 
     private static final Path MANIFEST_DIR = Paths.get(".neoforge");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();

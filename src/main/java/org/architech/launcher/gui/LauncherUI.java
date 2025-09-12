@@ -22,6 +22,7 @@ import javafx.stage.Stage;
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.auth.*;
 import org.architech.launcher.utils.LogManager;
+import org.architech.launcher.utils.MinecraftPing;
 import org.architech.launcher.utils.Utils;
 import javafx.scene.paint.Color;
 import java.awt.*;

@@ -8,10 +8,10 @@ import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.AllSettingsUI;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.managment.DownloadManager;
-import org.architech.launcher.managment.HttpModsManager;
+import org.architech.launcher.managment.ModsManager;
 import org.architech.launcher.managment.NativesManager;
 import org.architech.launcher.managment.VersionManager;
-import org.architech.launcher.neoforge.NeoForgeInstaller;
+import org.architech.launcher.managment.NeoForgeManager;
 import org.architech.launcher.utils.*;
 import java.io.*;
 import java.net.URISyntaxException;
@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.architech.launcher.gui.AllSettingsUI.GSON;
-import static org.architech.launcher.neoforge.NeoForgeInstaller.getInstalledVersion;
+import static org.architech.launcher.managment.NeoForgeManager.getInstalledVersion;
 import static org.architech.launcher.utils.ServersDatWriter.writeServersDat;
 
 public class MCLauncher extends Application {
@@ -145,10 +145,10 @@ public class MCLauncher extends Application {
                 NativesManager nativesManager = new NativesManager(GAME_DIR, MINECRAFT_VERSION);
                 nativesManager.prepareNatives(files);
 
-                NeoForgeInstaller.ensureInstalledAndReady(GAME_DIR, MINECRAFT_VERSION);
+                NeoForgeManager.ensureInstalledAndReady(GAME_DIR, MINECRAFT_VERSION);
 
                 try {
-                    HttpModsManager.syncMods(GAME_DIR);
+                    ModsManager.syncMods(GAME_DIR);
                 } catch (Exception ex) {
                     LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
                     Platform.runLater(() -> LauncherUI.showError("Ошибка синхронизации модов", ex.getMessage()));

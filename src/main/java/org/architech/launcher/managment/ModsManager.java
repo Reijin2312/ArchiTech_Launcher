@@ -18,7 +18,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.architech.launcher.MCLauncher.BACKEND_URL;
 import static org.architech.launcher.MCLauncher.UI;
 
-public class HttpModsManager {
+public class ModsManager {
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     private static final Gson GSON = new Gson();
 
