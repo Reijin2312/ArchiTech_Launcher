@@ -1,0 +1,16 @@
+сент. 11, 2025 3:26:19 PM org.architech.launcher.discord.DiscordIntegration start
+INFO: Запуск интеграции с discord...
+сент. 11, 2025 3:26:31 PM org.architech.launcher.neoforge.NeoForgeInstaller fetchPinnedServerVersionAndSave
+INFO: Проверяю версию neoforge на сервере...
+сент. 11, 2025 3:26:32 PM org.architech.launcher.neoforge.NeoForgeInstaller fetchPinnedServerVersionAndSave
+INFO: Версия neoforge на сервере: 21.1.208
+сент. 11, 2025 3:26:32 PM org.architech.launcher.neoforge.NeoForgeInstaller getInstalledVersion
+INFO: Установленная версия neoforge C:\Users\Redmi\.architech 21.1.208
+сент. 11, 2025 3:26:32 PM org.architech.launcher.neoforge.NeoForgeInstaller isNeoForgeInstalledAndValid
+INFO: Проверяю валидность установки neoforge...
+сент. 11, 2025 3:26:32 PM org.architech.launcher.neoforge.NeoForgeInstaller isNeoForgeInstalledAndValid
+INFO: Neoforge установлен правильно
+сент. 11, 2025 3:26:35 PM org.architech.launcher.neoforge.NeoForgeInstaller getInstalledVersion
+INFO: Установленная версия neoforge C:\Users\Redmi\.architech 21.1.208
+сент. 11, 2025 3:26:58 PM org.architech.launcher.discord.DiscordIntegration stop
+INFO: Остановка интеграции с discord...
