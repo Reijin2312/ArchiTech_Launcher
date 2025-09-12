@@ -1,7 +1,7 @@
 package org.architech.launcher.managment;
 
 import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.utils.LogManager;
+import org.architech.launcher.utils.logging.LogManager;
 
 import java.nio.file.*;
 import java.util.List;

@@ -1,4 +1,4 @@
-package org.architech.launcher.auth;
+package org.architech.launcher.authentication.json;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

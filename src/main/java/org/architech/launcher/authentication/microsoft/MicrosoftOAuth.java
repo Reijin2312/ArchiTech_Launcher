@@ -1,6 +1,6 @@
-package org.architech.launcher.auth;
+package org.architech.launcher.authentication.microsoft;
 
-import org.architech.launcher.auth.App.MsaApp;
+import org.architech.launcher.authentication.json.HttpJson;
 import org.json.JSONObject;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

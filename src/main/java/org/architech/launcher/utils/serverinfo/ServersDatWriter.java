@@ -1,4 +1,4 @@
-package org.architech.launcher.utils;
+package org.architech.launcher.utils.serverinfo;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

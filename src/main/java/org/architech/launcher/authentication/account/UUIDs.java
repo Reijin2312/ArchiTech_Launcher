@@ -1,9 +1,9 @@
-package org.architech.launcher.auth;
+package org.architech.launcher.authentication.account;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-public final class Uuids {
+public final class UUIDs {
     public static String dashify(String raw) {
         String s = raw==null?"":raw.replace("-","");
         if(s.length()!=32) return raw; // already dashed or unexpected

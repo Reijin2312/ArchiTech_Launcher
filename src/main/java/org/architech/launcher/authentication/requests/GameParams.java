@@ -1,5 +1,5 @@
 
-package org.architech.launcher.auth;
+package org.architech.launcher.authentication.requests;
 
 public class GameParams {
     public String accessToken;

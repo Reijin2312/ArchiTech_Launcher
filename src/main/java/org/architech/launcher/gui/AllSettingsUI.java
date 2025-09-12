@@ -10,7 +10,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
-import org.architech.launcher.utils.LogManager;
+import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
 
 import java.io.*;

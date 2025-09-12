@@ -1,7 +1,7 @@
 package org.architech.launcher.gui;
 
 import javafx.scene.image.Image;
-import org.architech.launcher.auth.Account;
+import org.architech.launcher.authentication.account.Account;
 
 import java.io.InputStream;
 import java.net.URLEncoder;

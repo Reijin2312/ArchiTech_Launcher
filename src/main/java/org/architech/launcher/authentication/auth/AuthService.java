@@ -1,8 +1,18 @@
-// org.architech.launcher.auth.AuthService
-package org.architech.launcher.auth;
+// org.architech.launcher.auth.auth.AuthService
+package org.architech.launcher.authentication.auth;
 
 import com.google.gson.Gson;
-import org.architech.launcher.auth.App.ElyApp;
+import org.architech.launcher.authentication.account.Account;
+import org.architech.launcher.authentication.account.AccountType;
+import org.architech.launcher.authentication.ely_by.ElyApp;
+import org.architech.launcher.authentication.ely_by.ElyProfile;
+import org.architech.launcher.authentication.microsoft.MicrosoftOAuth;
+import org.architech.launcher.authentication.microsoft.MinecraftMicrosoftFlow;
+import org.architech.launcher.authentication.microsoft.Pkce;
+import org.architech.launcher.authentication.requests.ExchangeRequest;
+import org.architech.launcher.authentication.requests.ExchangeResponse;
+import org.architech.launcher.authentication.requests.GameParams;
+import org.architech.launcher.authentication.requests.RefreshRequest;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;

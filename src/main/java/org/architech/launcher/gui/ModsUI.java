@@ -12,7 +12,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.architech.launcher.MCLauncher;
-import org.architech.launcher.utils.LogManager;
+import org.architech.launcher.utils.logging.LogManager;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;

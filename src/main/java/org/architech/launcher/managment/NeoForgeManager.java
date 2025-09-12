@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.utils.LogManager;
+import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
 import java.io.*;
 import java.net.URI;

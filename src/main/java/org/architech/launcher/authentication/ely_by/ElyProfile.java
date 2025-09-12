@@ -1,4 +1,4 @@
-    package org.architech.launcher.auth;
+    package org.architech.launcher.authentication.ely_by;
 
     public class ElyProfile {
         public String id;

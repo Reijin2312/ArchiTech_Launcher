@@ -13,6 +13,10 @@ import org.architech.launcher.managment.NativesManager;
 import org.architech.launcher.managment.VersionManager;
 import org.architech.launcher.managment.NeoForgeManager;
 import org.architech.launcher.utils.*;
+import org.architech.launcher.utils.logging.LogManager;
+import org.architech.launcher.utils.serverinfo.ServersDatGenerator;
+import org.architech.launcher.utils.serverinfo.ServersDatWriter;
+
 import java.io.*;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -27,7 +31,7 @@ import java.util.stream.Collectors;
 
 import static org.architech.launcher.gui.AllSettingsUI.GSON;
 import static org.architech.launcher.managment.NeoForgeManager.getInstalledVersion;
-import static org.architech.launcher.utils.ServersDatWriter.writeServersDat;
+import static org.architech.launcher.utils.serverinfo.ServersDatWriter.writeServersDat;
 
 public class MCLauncher extends Application {
 

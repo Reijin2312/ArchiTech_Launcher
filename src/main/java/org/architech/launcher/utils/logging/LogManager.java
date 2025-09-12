@@ -1,4 +1,4 @@
-package org.architech.launcher.utils;
+package org.architech.launcher.utils.logging;
 
 import java.io.IOException;
 import java.util.logging.FileHandler;

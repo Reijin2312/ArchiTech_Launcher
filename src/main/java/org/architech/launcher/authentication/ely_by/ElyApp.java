@@ -1,4 +1,4 @@
-package org.architech.launcher.auth.App;
+package org.architech.launcher.authentication.ely_by;
 
 public final class ElyApp {
     public static final String CLIENT_ID = "architech1";

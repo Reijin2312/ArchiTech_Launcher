@@ -1,6 +1,5 @@
-package org.architech.launcher.auth;
+package org.architech.launcher.authentication.ely_by;
 
-import org.architech.launcher.auth.App.ElyApp;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 

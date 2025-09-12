@@ -1,4 +1,4 @@
-package org.architech.launcher.auth;
+package org.architech.launcher.authentication.account;
 
 public class Account {
     public AccountType type;

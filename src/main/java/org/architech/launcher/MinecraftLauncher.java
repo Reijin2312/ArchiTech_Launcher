@@ -1,9 +1,9 @@
 package org.architech.launcher;
 
 import com.google.gson.*;
-import org.architech.launcher.auth.Account;
-import org.architech.launcher.auth.Auth;
-import org.architech.launcher.utils.LogManager;
+import org.architech.launcher.authentication.account.Account;
+import org.architech.launcher.authentication.auth.Auth;
+import org.architech.launcher.utils.logging.LogManager;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.io.*;

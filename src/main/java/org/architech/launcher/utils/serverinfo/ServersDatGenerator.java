@@ -1,4 +1,4 @@
-package org.architech.launcher.utils;
+package org.architech.launcher.utils.serverinfo;
 
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;

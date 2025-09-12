@@ -1,5 +1,6 @@
-package org.architech.launcher.auth;
+package org.architech.launcher.authentication.microsoft;
 
+import org.architech.launcher.authentication.json.HttpJson;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.time.Instant;

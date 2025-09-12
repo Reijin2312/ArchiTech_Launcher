@@ -2,7 +2,7 @@ package org.architech.launcher.managment;
 
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.utils.LogManager;
+import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLHandshakeException;
