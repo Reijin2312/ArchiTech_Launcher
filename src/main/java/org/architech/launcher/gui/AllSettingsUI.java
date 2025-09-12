@@ -279,19 +279,23 @@ public class AllSettingsUI {
 
             def.put("gameDir", GAME_DIR.toAbsolutePath().toString());
 
-            Path sysJavaDir = Path.of(System.getProperty("java.home"));
+            String type = Utils.isWindows() ? "java.exe" : "java";
 
-            if (Files.isExecutable(sysJavaDir.resolve("bin").resolve("java.exe"))) {
-                def.put("javaPath", sysJavaDir.toString());
+            Path launcherJavaDir = LAUNCHER_DIR.resolve("runtime").resolve("bin").resolve(type);
+
+            if (Files.isExecutable(launcherJavaDir)) {
+                def.put("javaPath", launcherJavaDir.toString());
             } else {
-                LogManager.getLogger().severe("Не найден javaw.exe");
+                LogManager.getLogger().severe("Не найдена java");
                 Path base = Objects.requireNonNull(findJava21());
-                Path candidate = base.resolve("bin").resolve("java.exe");
-                if (Files.isExecutable(candidate)) {
+                Path candidate = base.resolve("bin").resolve(type);
+                if (Files.isExecutable(base)) {
                     def.put("javaPath", base.toString());
+                } else if (Files.isExecutable(candidate)) {
+                    def.put("javaPath", candidate.toString());
                 } else {
-                    LogManager.getLogger().severe("Не найден java.exe в " + base);
-                    throw new IllegalStateException("Не найден java.exe в " + base);
+                    LogManager.getLogger().severe("Не найдена java в " + base);
+                    throw new IllegalStateException("Не найдена java в " + base);
                 }
             }
 
@@ -335,7 +339,9 @@ public class AllSettingsUI {
                 Path javaBin = Paths.get(sd.getAbsolutePath(), "bin", Utils.isWindows() ? "java.exe" : "java");
                 if (!Files.exists(javaBin)) continue;
                 try {
-                    Process p = new ProcessBuilder(javaBin.toString(), "-version").redirectErrorStream(true).start();
+                    Process p = new ProcessBuilder(javaBin.toString(), "-version")
+                            .redirectErrorStream(true)
+                            .start();
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
                         String line;
                         while ((line = br.readLine()) != null) {
