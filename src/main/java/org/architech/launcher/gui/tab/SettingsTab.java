@@ -281,10 +281,10 @@ public class SettingsTab {
 
             String type = Utils.isWindows() ? "java.exe" : "java";
 
-            Path launcherJavaDir = LAUNCHER_DIR.resolve("runtime").resolve("bin").resolve(type);
+            Path systemJavaDir = Path.of(System.getProperty("java.home"));
 
-            if (Files.isExecutable(launcherJavaDir)) {
-                def.put("javaPath", launcherJavaDir.toString());
+            if (Files.isExecutable(systemJavaDir.resolve("bin").resolve(type))) {
+                def.put("javaPath", systemJavaDir.toString());
             } else {
                 LogManager.getLogger().severe("Не найдена java");
                 Path base = Objects.requireNonNull(findJava21());
