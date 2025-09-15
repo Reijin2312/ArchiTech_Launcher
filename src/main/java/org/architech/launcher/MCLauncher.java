@@ -35,6 +35,8 @@ import static org.architech.launcher.utils.serverinfo.ServersDatWriter.writeServ
 
 public class MCLauncher extends Application {
 
+    public static final String MINECRAFT_VERSION = "1.21.1";
+
     public static Path GAME_DIR = Paths.get(System.getProperty("user.home"), ".architech");
     public static Path CONFIG_PATH;
     public static Path LAUNCHER_DIR;
@@ -43,7 +45,6 @@ public class MCLauncher extends Application {
     public static Path ASSETS_DIR;
     public static Path JAVA_PATH;
     public static Path ACCOUNT_FILE;
-    public static final String MINECRAFT_VERSION = "1.21.1";
     public static String BACKEND_URL;
     public static boolean closeOnLaunch = false;
 

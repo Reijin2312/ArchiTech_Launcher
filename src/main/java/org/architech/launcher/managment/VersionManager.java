@@ -99,8 +99,6 @@ public class VersionManager {
 
         JsonObject assetIndex = versionJson.getAsJsonObject("assetIndex");
 
-        System.out.println(assetIndex);
-
         String assetsId = assetIndex.get("id").getAsString();
         String assetsUrl = assetIndex.get("url").getAsString();
 
