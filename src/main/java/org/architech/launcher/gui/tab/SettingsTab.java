@@ -289,10 +289,8 @@ public class SettingsTab {
                 LogManager.getLogger().severe("Не найдена java");
                 Path base = Objects.requireNonNull(findJava21());
                 Path candidate = base.resolve("bin").resolve(type);
-                if (Files.isExecutable(base)) {
+                if (Files.isExecutable(candidate)) {
                     def.put("javaPath", base.toString());
-                } else if (Files.isExecutable(candidate)) {
-                    def.put("javaPath", candidate.toString());
                 } else {
                     LogManager.getLogger().severe("Не найдена java в " + base);
                     throw new IllegalStateException("Не найдена java в " + base);
@@ -350,7 +348,7 @@ public class SettingsTab {
                                 int i2 = line.indexOf('"', i1 + 1);
                                 if (i1 >= 0 && i2 > i1) {
                                     String ver = line.substring(i1 + 1, i2);
-                                    if (ver.startsWith("21")) return javaBin;
+                                    if (ver.startsWith("21")) return Path.of(sd.getAbsolutePath());
                                 }
                             }
                         }
