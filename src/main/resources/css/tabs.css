@@ -1,0 +1,45 @@
+.settings-pane .tab-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 12 12 0 12;
+}
+
+.settings-pane .tab-pane .tab-header-background {
+    -fx-background-color: transparent;
+    -fx-padding: 0 8 12 8;
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 0 0 1 0;
+}
+
+.settings-pane .tab-pane .tab {
+    -fx-background-color: rgba(40,40,40,0.85);
+    -fx-padding: 6 12;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255,255,255,0.08);
+    -fx-border-width: 1;
+}
+
+.settings-pane .tab-pane .tab:hover {
+    -fx-background-color: rgba(60,60,60,0.9);
+}
+
+.settings-pane .tab-pane .tab .tab-label {
+    -fx-text-fill: rgba(255,255,255,0.85);
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+}
+
+.settings-pane .tab-pane .tab:selected {
+    -fx-background-color: linear-gradient(to bottom,
+        rgba(76,175,80,0.3),
+        rgba(76,175,80,0.15));
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 6, 0, 0, 2);
+    -fx-border-color: transparent;
+}
+
+.settings-pane .tab-pane .tab:selected .tab-label { -fx-text-fill: white; }
+
+.settings-pane .tab-pane .tab-content-area {
+    -fx-background-color: transparent;
+    -fx-padding: 12 0 0 0;
+}

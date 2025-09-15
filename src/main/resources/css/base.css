@@ -1,0 +1,12 @@
+.root {
+    -fx-background-image: url("/images/bg.png");
+    -fx-background-size: cover;
+    -fx-background-position: center;
+    -fx-background-repeat: no-repeat;
+}
+
+.scroll-pane, .scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.hidden { -fx-opacity: 0; -fx-max-height: 0; -fx-min-height: 0; }

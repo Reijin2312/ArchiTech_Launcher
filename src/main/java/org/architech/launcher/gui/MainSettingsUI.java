@@ -25,6 +25,7 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         BorderPane root = new BorderPane();
 
         TabPane tabs = new TabPane();
+        tabs.getStyleClass().add("tab-pane");
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         ModsTab modsUI = new ModsTab(stage, parentScene);
@@ -39,7 +40,11 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
 
         tabs.getTabs().addAll(modsTab, resourceTab, shadersTab, settingsTab);
 
-        root.setCenter(tabs);
+        BorderPane wrapper = new BorderPane();
+        wrapper.getStyleClass().add("settings-pane");
+        wrapper.setCenter(tabs);
+
+        root.setCenter(wrapper);
 
         Button backBtn = new Button("Назад");
         styleMainButton(backBtn);
@@ -50,7 +55,16 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         root.setBottom(bottom);
 
         Scene scene = new Scene(root, w, h);
-        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
+        //scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
+        scene.getStylesheets().addAll(
+                Objects.requireNonNull(getClass().getResource("/css/base.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/layout.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/components.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/controls.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/tabs.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/scroll.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()
+        );
         stage.setScene(scene);
     }
 

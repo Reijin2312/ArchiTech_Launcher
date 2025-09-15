@@ -1,0 +1,20 @@
+.settings-pane {
+    -fx-font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+.settings-pane .settings-card {
+    -fx-background-color: rgba(30,30,30,0.55);
+    -fx-background-radius: 8;
+    -fx-padding: 12 16 16 16;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 2);
+}
+
+.mods-pane, .pack-pane {
+    -fx-background-color: rgba(30,30,30,0.8);
+    -fx-background-radius: 12;
+    -fx-padding: 8;
+}
+
+.mods-pane .mod-row, .pack-pane .mod-row {
+    -fx-padding: 10 14 10 14;
+}

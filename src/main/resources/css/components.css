@@ -1,0 +1,40 @@
+.mod-row {
+    -fx-background-color: rgba(54, 57, 63,0.8);
+    -fx-background-radius: 10;
+    -fx-padding: 8 12 8 12;
+    -fx-border-color: rgba(54, 57, 63, 0.75);
+    -fx-border-width: 0 0 1 0;
+    -fx-border-radius: 10;
+}
+
+.mod-row:hover {
+    -fx-background-color: rgba(54, 57, 63, 0.7);
+}
+
+.mod-row.disabled {
+    -fx-background-color: rgba(30, 30, 30, 0.8);
+}
+
+.mod-row.disabled:hover {
+    -fx-background-color: rgba(30, 30, 30, 0.65);
+}
+
+.mod-row.user-mod {
+    -fx-background-color: rgba(54, 57, 20, 0.9);
+    -fx-border-color: #ffcc00;
+}
+
+.mod-row.user-mod:hover {
+    -fx-background-color: rgba(54, 57, 20, 0.75);
+}
+
+.news-card {
+    -fx-background-color: #2b2b2b;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 8, 0, 0, 2);
+}
+.news-title { -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px; }
+
+.mods-pane .mod-row, .pack-pane .mod-row {
+    -fx-padding: 8 12 8 12;
+}

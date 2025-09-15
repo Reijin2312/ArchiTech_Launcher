@@ -1,0 +1,5 @@
+/* theme-dark.css — небольшие override (загружается последним) */
+/*:root { /* заметка: JavaFX не поддерживает CSS-переменные, но оставлю место для комментариев */ }
+
+/* .settings-pane .settings-card { -fx-background-color: rgba(20,20,20,0.55); }
+.mods-pane, .pack-pane { -fx-background-color: rgba(20,20,20,0.82); }

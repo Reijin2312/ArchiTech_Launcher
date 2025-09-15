@@ -564,7 +564,17 @@ public class LauncherUI {
         stage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResource("/images/icon.jpg")).toExternalForm()));
 
         mainScene = new Scene(root, 900, 560);
-        mainScene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
+
+        mainScene.getStylesheets().addAll(
+                Objects.requireNonNull(getClass().getResource("/css/base.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/layout.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/components.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/controls.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/tabs.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/scroll.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()
+        );
+
         root.setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
 
         settingsBtn.setOnAction(e -> new MainSettingsUI(stage, mainScene).show());

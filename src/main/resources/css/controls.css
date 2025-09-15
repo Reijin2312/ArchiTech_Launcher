@@ -1,0 +1,101 @@
+.settings-pane .label,
+.settings-pane .label .text,
+.settings-pane .text,
+.settings-pane .button,
+.settings-pane .check-box,
+.settings-pane .combo-box {
+    -fx-text-fill: white;
+}
+
+.settings-pane .text-field,
+.settings-pane .combo-box,
+.settings-pane .text-area,
+.settings-pane .spinner,
+.settings-pane .slider {
+    -fx-control-inner-background: rgba(255,255,255,0.04);
+    -fx-background-color: rgba(255,255,255,0.03);
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-text-fill: white;
+    -fx-padding: 6 8 6 8;
+}
+
+.settings-pane .text-field,
+.settings-pane .combo-box,
+.settings-pane .text-area,
+.settings-pane .spinner {
+    -fx-pref-height: 28px;
+    -fx-max-height: 28px;
+    -fx-padding: 0 6 0 6;
+    -fx-text-fill: white;
+    -fx-alignment: CENTER_LEFT;
+    -fx-control-inner-background: #3a3a3a;
+    -fx-background-color: #3a3a3a;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+}
+
+/* кнопки */
+.settings-pane .button {
+    -fx-background-color: linear-gradient(#5cbf57, #4caf50);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+}
+
+.settings-pane .button.lookup,
+.settings-pane .button.secondary {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-text-fill: white;
+    -fx-font-weight: normal;
+}
+
+.check-box.mods-checkbox > .box {
+    -fx-background-color: #2b2b2b;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-border-color: #5a5a5a;
+}
+
+.check-box.mods-checkbox:selected > .box {
+    -fx-background-color: #3a3a3a;
+    -fx-border-color: #7a7a7a;
+}
+.check-box.mods-checkbox > .mark { -fx-mark-color: #d0d0d0; }
+
+.settings-pane .spinner .increment-arrow-button,
+.settings-pane .spinner .decrement-arrow-button {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-background-radius: 4;
+    -fx-padding: 0 6 0 6;
+}
+
+.settings-pane .spinner .increment-arrow-button:hover,
+.settings-pane .spinner .decrement-arrow-button:hover {
+    -fx-background-color: rgba(255,255,255,0.12);
+}
+
+.settings-pane .check-box > .box {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #5a5a5a;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+}
+
+.settings-pane .check-box:selected > .box {
+    -fx-background-color: #3a3a3a;
+    -fx-border-color: #7a7a7a;
+}
+.settings-pane .check-box > .mark {
+    -fx-mark-color: #d0d0d0;
+}
+
+.settings-pane .combo-box .list-cell {
+    -fx-text-fill: white;
+    -fx-background-color: #3a3a3a;
+}
+
+.settings-pane .combo-box .text-field {
+    -fx-text-fill: white;
+    -fx-control-inner-background: #3a3a3a;
+}

@@ -1,0 +1,23 @@
+.scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+.scroll-bar:vertical .track {
+    -fx-background-color: #555555;
+}
+.scroll-bar:vertical .thumb {
+    -fx-background-color: #aaaaaa;
+    -fx-background-radius: 4;
+}
+
+.progress-bar > .track {
+    -fx-background-color: #555555;
+    -fx-background-radius: 4;
+}
+.progress-bar > .bar {
+    -fx-background-color: #4caf50;
+    -fx-background-radius: 4;
+}
+
+.progress-indicator {
+    -fx-progress-color: #4caf50;
+}
