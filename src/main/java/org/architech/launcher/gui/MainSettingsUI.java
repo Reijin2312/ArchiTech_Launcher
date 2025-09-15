@@ -9,6 +9,11 @@ import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import org.architech.launcher.gui.tab.ModsTab;
+import org.architech.launcher.gui.tab.SettingsTab;
+import org.architech.launcher.gui.tab.ResourcePacksTab;
+import org.architech.launcher.gui.tab.ShaderPacksTab;
+
 import java.util.Objects;
 
 public record MainSettingsUI(Stage stage, Scene parentScene) {
@@ -22,13 +27,18 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         TabPane tabs = new TabPane();
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        ModsUI modsUI = new ModsUI(stage, parentScene);
-        AllSettingsUI allSettingsUI = new AllSettingsUI(stage);
+        ModsTab modsUI = new ModsTab(stage, parentScene);
+        ResourcePacksTab rpUI = new ResourcePacksTab(stage, parentScene);
+        ShaderPacksTab shUI = new ShaderPacksTab(stage, parentScene);
+        SettingsTab allSettingsUI = new SettingsTab(stage);
 
         Tab modsTab = new Tab("Моды", modsUI.createContent());
+        Tab resourceTab = new Tab("Ресурспаки", rpUI.createContent());
+        Tab shadersTab = new Tab("Шейдеры", shUI.createContent());
         Tab settingsTab = new Tab("Настройки", allSettingsUI.createContent());
 
-        tabs.getTabs().addAll(modsTab, settingsTab);
+        tabs.getTabs().addAll(modsTab, resourceTab, shadersTab, settingsTab);
+
         root.setCenter(tabs);
 
         Button backBtn = new Button("Назад");

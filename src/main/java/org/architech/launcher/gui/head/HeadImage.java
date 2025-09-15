@@ -1,4 +1,4 @@
-package org.architech.launcher.gui;
+package org.architech.launcher.gui.head;
 
 import javafx.scene.image.Image;
 import org.architech.launcher.authentication.account.Account;

@@ -26,6 +26,7 @@ import org.architech.launcher.authentication.auth.Auth;
 import org.architech.launcher.authentication.auth.AuthService;
 import org.architech.launcher.authentication.ely_by.ElyOAuth;
 import org.architech.launcher.authentication.requests.GameParams;
+import org.architech.launcher.gui.head.HeadImage;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.serverinfo.MinecraftPing;
 import org.architech.launcher.utils.Utils;

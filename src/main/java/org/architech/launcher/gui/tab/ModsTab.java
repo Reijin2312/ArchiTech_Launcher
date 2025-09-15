@@ -1,4 +1,4 @@
-package org.architech.launcher.gui;
+package org.architech.launcher.gui.tab;
 
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -12,6 +12,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.architech.launcher.MCLauncher;
+import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -31,7 +32,7 @@ import java.util.stream.Stream;
 
 import static org.architech.launcher.MCLauncher.GAME_DIR;
 
-public class ModsUI {
+public class ModsTab {
     private final Stage stage;
     private final Scene settingsMenuScene;
 
@@ -42,7 +43,7 @@ public class ModsUI {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    public ModsUI(Stage stage, Scene settingsMenuScene) {
+    public ModsTab(Stage stage, Scene settingsMenuScene) {
         this.stage = stage;
         this.settingsMenuScene = settingsMenuScene;
     }

@@ -12,7 +12,7 @@ import java.util.zip.*;
 
 import static org.architech.launcher.MCLauncher.CONFIG_PATH;
 import static org.architech.launcher.MCLauncher.JAVA_PATH;
-import static org.architech.launcher.gui.AllSettingsUI.GSON;
+import static org.architech.launcher.gui.tab.SettingsTab.GSON;
 
 public class MinecraftLauncher {
 

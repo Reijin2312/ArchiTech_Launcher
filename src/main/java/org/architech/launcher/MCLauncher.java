@@ -5,7 +5,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 import org.architech.launcher.discord.DiscordIntegration;
-import org.architech.launcher.gui.AllSettingsUI;
+import org.architech.launcher.gui.tab.SettingsTab;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.managment.DownloadManager;
 import org.architech.launcher.managment.ModsManager;
@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.architech.launcher.gui.AllSettingsUI.GSON;
+import static org.architech.launcher.gui.tab.SettingsTab.GSON;
 import static org.architech.launcher.managment.NeoForgeManager.getInstalledVersion;
 import static org.architech.launcher.utils.serverinfo.ServersDatWriter.writeServersDat;
 
@@ -62,11 +62,11 @@ public class MCLauncher extends Application {
         LogManager.setupLogger();
 
         BACKEND_URL = "http://95.105.113.224:51789";
-        LAUNCHER_DIR = Paths.get(AllSettingsUI.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
+        LAUNCHER_DIR = Paths.get(SettingsTab.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
         CONFIG_PATH = LAUNCHER_DIR.resolve("launcher_config.json");
         ACCOUNT_FILE = LAUNCHER_DIR.resolve(".account.json");
 
-        AllSettingsUI.createDefaultConfigIfMissing();
+        SettingsTab.createDefaultConfigIfMissing();
 
         if (Files.exists(CONFIG_PATH)) {
             Map<?, ?> cfg;

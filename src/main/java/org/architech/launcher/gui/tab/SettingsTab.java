@@ -1,4 +1,4 @@
-package org.architech.launcher.gui;
+package org.architech.launcher.gui.tab;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -21,7 +21,7 @@ import java.util.*;
 
 import static org.architech.launcher.MCLauncher.*;
 
-public class AllSettingsUI {
+public class SettingsTab {
     private final Stage stage;
 
     private TextField gameDirField;
@@ -48,7 +48,7 @@ public class AllSettingsUI {
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    public AllSettingsUI(Stage stage) { this.stage = stage; }
+    public SettingsTab(Stage stage) { this.stage = stage; }
 
     public Parent createContent() {
         BorderPane root = new BorderPane();
