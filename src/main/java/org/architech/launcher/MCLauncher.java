@@ -1,6 +1,6 @@
 package org.architech.launcher;
 
-import com.google.gson.JsonObject;
+import com.fasterxml.jackson.databind.JsonNode;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
@@ -28,8 +28,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
-import static org.architech.launcher.gui.tab.SettingsTab.GSON;
 import static org.architech.launcher.managment.NeoForgeManager.getInstalledVersion;
 import static org.architech.launcher.utils.serverinfo.ServersDatWriter.writeServersDat;
 
@@ -72,7 +70,7 @@ public class MCLauncher extends Application {
         if (Files.exists(CONFIG_PATH)) {
             Map<?, ?> cfg;
             try (Reader r = Files.newBufferedReader(CONFIG_PATH, StandardCharsets.UTF_8)) {
-                cfg = GSON.fromJson(r, Map.class);
+                cfg = Jsons.MAPPER.readValue(r, Map.class);
                 if (cfg == null) return;
                 if (cfg.containsKey("gameDir")) GAME_DIR = Path.of(cfg.get("gameDir").toString());
                 if (cfg.containsKey("javaPath")) JAVA_PATH = Path.of(cfg.get("javaPath").toString());
@@ -115,7 +113,7 @@ public class MCLauncher extends Application {
                 UI.updateProgress("Подготовка к запуску...", 0);
 
                 VersionManager versionManager = new VersionManager();
-                JsonObject versionJson = versionManager.loadVersionJson(MINECRAFT_VERSION);
+                JsonNode versionJson = versionManager.loadVersionJson(MINECRAFT_VERSION);
                 List<FileEntry> files = versionManager.buildRequiredFiles(versionJson, MINECRAFT_VERSION);
 
                 files.sort(Comparator.comparingInt(fEnt -> {

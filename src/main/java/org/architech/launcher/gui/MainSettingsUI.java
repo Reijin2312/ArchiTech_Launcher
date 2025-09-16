@@ -55,7 +55,6 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         root.setBottom(bottom);
 
         Scene scene = new Scene(root, w, h);
-        //scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles.css")).toExternalForm());
         scene.getStylesheets().addAll(
                 Objects.requireNonNull(getClass().getResource("/css/base.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/layout.css")).toExternalForm(),

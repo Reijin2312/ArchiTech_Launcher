@@ -1,6 +1,7 @@
 package org.architech.launcher.utils.serverinfo;
 
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.architech.launcher.utils.Jsons;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -17,20 +18,18 @@ public final class MinecraftPing {
             InputStream in = socket.getInputStream();
             OutputStream out = socket.getOutputStream();
 
-            // --- handshake (state = 1 -> status)
             ByteArrayOutputStream handshake = new ByteArrayOutputStream();
-            writeVarInt(handshake, 0x00);                 // packet id: handshake
-            writeVarInt(handshake, 47);                   // protocol version (47 работает для опроса)
+            writeVarInt(handshake, 0x00);
+            writeVarInt(handshake, 47);
             writeString(handshake, host);
             handshake.write((port >> 8) & 0xFF);
             handshake.write(port & 0xFF);
-            writeVarInt(handshake, 1);                    // next state = status
+            writeVarInt(handshake, 1);
 
             writeVarInt(out, handshake.size());
             handshake.writeTo(out);
             out.flush();
 
-            // --- status request (packet id 0x00)
             ByteArrayOutputStream req = new ByteArrayOutputStream();
             writeVarInt(req, 0x00);
             writeVarInt(out, req.size());
@@ -50,13 +49,29 @@ public final class MinecraftPing {
                 throw new IOException("Unexpected packetId " + packetId);
             }
 
-            JSONObject root = new JSONObject(json);
-            JSONObject players = root.optJSONObject("players");
-            int online = players != null ? players.optInt("online", 0) : 0;
-            int max = players != null ? players.optInt("max", 0) : 0;
-            String motd = root.optString("description", root.optString("motd", ""));
 
-            // --- ping (send ping packet id 0x01 with payload long)
+            JsonNode root = Jsons.MAPPER.readTree(json);
+            JsonNode players = root.path("players");
+            int online = players.path("online").asInt(0);
+            int max = players.path("max").asInt(0);
+
+            String motd = "";
+            JsonNode desc = root.path("description");
+            if (desc.isTextual()) {
+                motd = desc.asText();
+            } else if (desc.isObject()) {
+                motd = desc.path("text").asText("");
+            } else if (desc.isArray() && !desc.isEmpty()) {
+                JsonNode first = desc.get(0);
+                if (first.isObject()) {
+                    motd = first.path("text").asText("");
+                } else if (first.isTextual()) {
+                    motd = first.asText();
+                }
+            } else {
+                motd = root.path("motd").asText("");
+            }
+
             ByteArrayOutputStream pingBuf = new ByteArrayOutputStream();
             writeVarInt(pingBuf, 0x01);
             long ts = System.currentTimeMillis();

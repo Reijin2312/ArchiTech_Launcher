@@ -1,6 +1,6 @@
 package org.architech.launcher.managment;
 
-import com.google.gson.Gson;
+import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
 import java.io.IOException;
@@ -20,7 +20,6 @@ import static org.architech.launcher.MCLauncher.UI;
 
 public class ModsManager {
     private static final HttpClient HTTP = HttpClient.newHttpClient();
-    private static final Gson GSON = new Gson();
 
     public static void syncMods(Path modsDir) throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
@@ -32,7 +31,7 @@ public class ModsManager {
         }
 
         String manifestJson = res.body();
-        Manifest newManifest = GSON.fromJson(res.body(), Manifest.class);
+        Manifest newManifest = Jsons.MAPPER.readValue(res.body(), Manifest.class);
 
         if (newManifest == null) {
             LogManager.getLogger().severe("manifest parse error: empty/invalid JSON");
@@ -57,7 +56,7 @@ public class ModsManager {
         if (Files.exists(localManifest)) {
             try {
                 String oldJson = Files.readString(localManifest, StandardCharsets.UTF_8);
-                oldManifest = GSON.fromJson(oldJson, Manifest.class);
+                oldManifest = Jsons.MAPPER.readValue(oldJson, Manifest.class);
             } catch (Exception ignored) {}
         }
 

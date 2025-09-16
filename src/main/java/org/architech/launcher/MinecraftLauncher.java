@@ -1,18 +1,19 @@
 package org.architech.launcher;
 
-import com.google.gson.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.auth.Auth;
+import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.io.*;
 import java.util.*;
 import java.util.zip.*;
-
 import static org.architech.launcher.MCLauncher.CONFIG_PATH;
 import static org.architech.launcher.MCLauncher.JAVA_PATH;
-import static org.architech.launcher.gui.tab.SettingsTab.GSON;
 
 public class MinecraftLauncher {
 
@@ -31,16 +32,16 @@ public class MinecraftLauncher {
         Path nativesDir = gameDir.resolve("natives").resolve(version);
         Files.createDirectories(nativesDir);
 
-        List<JsonObject> versionChain = getVersionChain(gameDir, version);
+        List<JsonNode> versionChain = getVersionChain(gameDir, version);
 
         extractNatives(gameDir, versionChain, nativesDir, osName, osArch);
 
         List<String> classpathEntries = getAllClasspathEntries(gameDir, versionChain);
 
         String assetIndex = null;
-        for (JsonObject obj : versionChain) {
-            if (obj.has("assetIndex")) {
-                assetIndex = obj.get("assetIndex").getAsJsonObject().get("id").getAsString();
+        for (JsonNode node : versionChain) {
+            if (node.has("assetIndex") && node.get("assetIndex").has("id")) {
+                assetIndex = node.get("assetIndex").get("id").asText();
                 break;
             }
         }
@@ -75,7 +76,7 @@ public class MinecraftLauncher {
         if (Files.exists(CONFIG_PATH)) {
             Map<?, ?> cfg;
             try (Reader r = Files.newBufferedReader(CONFIG_PATH, StandardCharsets.UTF_8)) {
-                cfg = GSON.fromJson(r, Map.class);
+                cfg = Jsons.MAPPER.readValue(r, Map.class);
             }
             if (cfg == null) cfg = Collections.emptyMap();
 
@@ -86,31 +87,25 @@ public class MinecraftLauncher {
         }
 
         List<String> jvmArgs = new ArrayList<>();
-        for (JsonObject obj : versionChain) {
-            if (obj.has("arguments")) {
-                JsonObject argsObj = obj.getAsJsonObject("arguments");
-                if (argsObj.has("jvm")) {
-                    JsonArray jvm = argsObj.getAsJsonArray("jvm");
-                    for (JsonElement el : jvm) {
-                        addProcessedArg(el, jvmArgs, placeholders, osName, osArch);
-                    }
+        for (JsonNode versionObj : versionChain) {
+            if (versionObj.has("arguments") && versionObj.get("arguments").has("jvm")) {
+                ArrayNode jvm = (ArrayNode) versionObj.get("arguments").get("jvm");
+                for (JsonNode el : jvm) {
+                    addProcessedArg(el, jvmArgs, placeholders, osName, osArch);
                 }
             }
         }
         args.addAll(jvmArgs);
 
-        String mainClass = versionChain.getFirst().get("mainClass").getAsString();
+        String mainClass = versionChain.getFirst().get("mainClass").asText();
         args.add(mainClass);
 
         List<String> gameArgs = new ArrayList<>();
-        for (JsonObject obj : versionChain) {
-            if (obj.has("arguments")) {
-                JsonObject argsObj = obj.getAsJsonObject("arguments");
-                if (argsObj.has("game")) {
-                    JsonArray game = argsObj.getAsJsonArray("game");
-                    for (JsonElement el : game) {
-                        addProcessedArg(el, gameArgs, placeholders, osName, osArch);
-                    }
+        for (JsonNode versionObj : versionChain) {
+            if (versionObj.has("arguments") && versionObj.get("arguments").has("game")) {
+                ArrayNode game = (ArrayNode) versionObj.get("arguments").get("game");
+                for (JsonNode el : game) {
+                    addProcessedArg(el, gameArgs, placeholders, osName, osArch);
                 }
             }
         }
@@ -129,36 +124,38 @@ public class MinecraftLauncher {
         return pb.start();
     }
 
-    private static List<JsonObject> getVersionChain(Path gameDir, String version) throws IOException {
-        List<JsonObject> chain = new ArrayList<>();
+    private static List<JsonNode> getVersionChain(Path gameDir, String version) throws IOException {
+        List<JsonNode> chain = new ArrayList<>();
         String current = version;
         Set<String> seen = new HashSet<>();
         while (current != null && !seen.contains(current)) {
             seen.add(current);
             Path versionJson = gameDir.resolve("versions").resolve(current).resolve(current + ".json");
             if (!Files.exists(versionJson)) break;
-            JsonObject obj = JsonParser.parseString(Files.readString(versionJson)).getAsJsonObject();
+            JsonNode obj = Jsons.MAPPER.readTree(Files.readString(versionJson));
             chain.add(obj);
-            current = obj.has("inheritsFrom") ? obj.get("inheritsFrom").getAsString() : null;
+            current = obj.has("inheritsFrom") ? obj.get("inheritsFrom").asText() : null;
         }
         return chain;
     }
 
-    private static List<String> getAllClasspathEntries(Path gameDir, List<JsonObject> versionChain) {
+    private static List<String> getAllClasspathEntries(Path gameDir, List<JsonNode> versionChain) {
         List<String> classpathEntries = new ArrayList<>();
         Set<String> addedPaths = new HashSet<>();
         boolean isModded = versionChain.size() > 1;
-        for (JsonObject versionObj : versionChain) {
-            if (versionObj.has("libraries")) {
-                JsonArray libs = versionObj.getAsJsonArray("libraries");
-                for (JsonElement el : libs) {
-                    JsonObject lib = el.getAsJsonObject();
+        for (JsonNode versionObj : versionChain) {
+            if (versionObj.has("libraries") && versionObj.get("libraries").isArray()) {
+                ArrayNode libs = (ArrayNode) versionObj.get("libraries");
+                for (JsonNode lib : libs) {
                     if (!lib.has("downloads")) continue;
-                    JsonObject downloads = lib.getAsJsonObject("downloads");
+
+                    JsonNode downloads = lib.get("downloads");
                     if (!downloads.has("artifact")) continue;
-                    JsonObject artifact = downloads.getAsJsonObject("artifact");
+
+                    JsonNode artifact = downloads.get("artifact");
                     if (!artifact.has("path")) continue;
-                    String path = artifact.get("path").getAsString();
+
+                    String path = artifact.get("path").asText();
                     Path jarPath = gameDir.resolve("libraries").resolve(path);
                     String absPath = jarPath.toString();
                     if (Files.exists(jarPath) && !addedPaths.contains(absPath)) {
@@ -167,20 +164,22 @@ public class MinecraftLauncher {
                     }
                 }
             }
-            String ver = versionObj.get("id").getAsString();
-            Path clientJar = gameDir.resolve("versions").resolve(ver).resolve(ver + ".jar");
-            String jarAbs = clientJar.toString();
-            if (Files.exists(clientJar) && !addedPaths.contains(jarAbs)) {
-                if (!isModded || versionObj.has("inheritsFrom")) {
-                    classpathEntries.add(jarAbs);
-                    addedPaths.add(jarAbs);
+            if (versionObj.has("id")) {
+                String ver = versionObj.get("id").asText();
+                Path clientJar = gameDir.resolve("versions").resolve(ver).resolve(ver + ".jar");
+                String jarAbs = clientJar.toString();
+                if (Files.exists(clientJar) && !addedPaths.contains(jarAbs)) {
+                    if (!isModded || versionObj.has("inheritsFrom")) {
+                        classpathEntries.add(jarAbs);
+                        addedPaths.add(jarAbs);
+                    }
                 }
             }
         }
         return classpathEntries;
     }
 
-    private static void extractNatives(Path gameDir, List<JsonObject> versionChain, Path nativesDir, String osName, String osArch) throws IOException {
+    private static void extractNatives(Path gameDir, List<JsonNode> versionChain, Path nativesDir, String osName, String osArch) throws IOException {
         String classifier = null;
         if (osName.contains("win")) {
             classifier = "natives-windows" + (osArch.contains("64") ? "" : "-32");
@@ -194,35 +193,31 @@ public class MinecraftLauncher {
             return;
         }
 
-        for (JsonObject versionObj : versionChain) {
-            if (versionObj.has("libraries")) {
-                JsonArray libs = versionObj.getAsJsonArray("libraries");
-                for (JsonElement el : libs) {
-                    JsonObject lib = el.getAsJsonObject();
+        for (JsonNode versionObj : versionChain) {
+            if (versionObj.has("libraries") && versionObj.get("libraries").isArray()) {
+                ArrayNode libs = (ArrayNode) versionObj.get("libraries");
+                for (JsonNode  lib  : libs) {
                     if (lib.has("natives")) {
-                        JsonObject natives = lib.get("natives").getAsJsonObject();
+                        JsonNode natives = lib.get("natives");
                         if (natives.has(classifier)) {
-                            String nativeClassifier = natives.get(classifier).getAsString();
-                            if (lib.has("downloads")) {
-                                JsonObject downloads = lib.get("downloads").getAsJsonObject();
-                                if (downloads.has("classifiers")) {
-                                    JsonObject classifiers = downloads.get("classifiers").getAsJsonObject();
-                                    if (classifiers.has(nativeClassifier)) {
-                                        JsonObject artifact = classifiers.get(nativeClassifier).getAsJsonObject();
-                                        if (artifact.has("path")) {
-                                            String path = artifact.get("path").getAsString();
-                                            Path nativeJar = gameDir.resolve("libraries").resolve(path);
-                                            if (Files.exists(nativeJar)) {
-                                                try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(nativeJar))) {
-                                                    ZipEntry entry;
-                                                    while ((entry = zis.getNextEntry()) != null) {
-                                                        if (entry.isDirectory() || entry.getName().startsWith("META-INF/")) {
-                                                            continue;
-                                                        }
-                                                        Path outPath = nativesDir.resolve(entry.getName());
-                                                        Files.createDirectories(outPath.getParent());
-                                                        Files.copy(zis, outPath, StandardCopyOption.REPLACE_EXISTING);
+                            String nativeClassifier = natives.get(classifier).asText();
+                            if (lib.has("downloads") && lib.get("downloads").has("classifiers")) {
+                                JsonNode classifiers = lib.get("downloads").get("classifiers");
+                                if (classifiers.has(nativeClassifier)) {
+                                    JsonNode artifact = classifiers.get(nativeClassifier);
+                                    if (artifact.has("path")) {
+                                        String path = artifact.get("path").asText();
+                                        Path nativeJar = gameDir.resolve("libraries").resolve(path);
+                                        if (Files.exists(nativeJar)) {
+                                            try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(nativeJar))) {
+                                                ZipEntry entry;
+                                                while ((entry = zis.getNextEntry()) != null) {
+                                                    if (entry.isDirectory() || entry.getName().startsWith("META-INF/")) {
+                                                        continue;
                                                     }
+                                                    Path outPath = nativesDir.resolve(entry.getName());
+                                                    Files.createDirectories(outPath.getParent());
+                                                    Files.copy(zis, outPath, StandardCopyOption.REPLACE_EXISTING);
                                                 }
                                             }
                                         }
@@ -236,36 +231,41 @@ public class MinecraftLauncher {
         }
     }
 
-    private static void addProcessedArg(JsonElement el, List<String> target, Map<String, String> placeholders, String osName, String osArch) {
-        if (el.isJsonPrimitive()) {
-            String val = el.getAsString();
-            val = replacePlaceholders(val, placeholders);
+    private static void addProcessedArg(JsonNode el, List<String> target, Map<String, String> placeholders, String osName, String osArch) {
+        if (el == null) return;
+
+        if (el.isTextual()) {
+            String val = replacePlaceholders(el.asText(), placeholders);
             target.add(val);
-        } else if (el.isJsonObject()) {
-            JsonObject ruleObj = el.getAsJsonObject();
+            return;
+        }
+
+        if (el.isObject()) {
+            ObjectNode ruleObj = (ObjectNode) el;
+
             if (ruleObj.has("rules")) {
                 boolean allow = false;
-                JsonArray rules = ruleObj.getAsJsonArray("rules");
-                for (JsonElement r : rules) {
-                    JsonObject rr = r.getAsJsonObject();
-                    String action = rr.get("action").getAsString();
+                ArrayNode rules = (ArrayNode) ruleObj.get("rules");
+                for (JsonNode  r : rules) {
+                    if (!r.isObject()) continue;
+                    String action = r.has("action") ? r.get("action").asText() : "allow";
                     boolean ruleMatch = true;
-                    if (rr.has("os")) {
-                        JsonObject os = rr.getAsJsonObject("os");
+                    if (r.has("os")) {
+                        JsonNode os = r.get("os");
                         if (os.has("name")) {
-                            String osReq = os.get("name").getAsString();
+                            String osReq = os.get("name").asText();
                             if (!osName.contains(osReq)) {
                                 ruleMatch = false;
                             }
                         }
                         if (os.has("arch")) {
-                            String archReq = os.get("arch").getAsString();
+                            String archReq = os.get("arch").asText();
                             if (!osArch.equals(archReq)) {
                                 ruleMatch = false;
                             }
                         }
                     }
-                    if (rr.has("features")) {
+                    if (r.has("features")) {
                         ruleMatch = false;
                     }
                     if (ruleMatch) {
@@ -277,33 +277,33 @@ public class MinecraftLauncher {
                     }
                 }
                 if (allow) {
-                    JsonElement value = ruleObj.get("value");
-                    if (value.isJsonPrimitive()) {
-                        String val = value.getAsString();
-                        val = replacePlaceholders(val, placeholders);
-                        target.add(val);
-                    } else if (value.isJsonArray()) {
-                        JsonArray arr = value.getAsJsonArray();
-                        for (JsonElement v : arr) {
-                            String val = v.getAsString();
-                            val = replacePlaceholders(val, placeholders);
+                    JsonNode value = ruleObj.has("value") ? ruleObj.get("value") : ruleObj.has("values") ? ruleObj.get("values") : null;
+                    if (value != null) {
+                        if (value.isTextual()) {
+                            String val = replacePlaceholders(value.asText(), placeholders);
                             target.add(val);
+                        } else if (value.isArray()) {
+                            for (JsonNode v : value) {
+                                if (v.isTextual()) {
+                                    String val = replacePlaceholders(v.asText(), placeholders);
+                                    target.add(val);
+                                }
+                            }
                         }
                     }
                 }
             } else {
-                JsonElement value = ruleObj.get("value");
+                JsonNode value = ruleObj.has("value") ? ruleObj.get("value") : ruleObj.has("values") ? ruleObj.get("values") : null;
                 if (value != null) {
-                    if (value.isJsonPrimitive()) {
-                        String val = value.getAsString();
-                        val = replacePlaceholders(val, placeholders);
+                    if (value.isTextual()) {
+                        String val = replacePlaceholders(value.asText(), placeholders);
                         target.add(val);
-                    } else if (value.isJsonArray()) {
-                        JsonArray arr = value.getAsJsonArray();
-                        for (JsonElement v : arr) {
-                            String val = v.getAsString();
-                            val = replacePlaceholders(val, placeholders);
-                            target.add(val);
+                    } else if (value.isArray()) {
+                        for (JsonNode v : value) {
+                            if (v.isTextual()) {
+                                String val = replacePlaceholders(v.asText(), placeholders);
+                                target.add(val);
+                            }
                         }
                     }
                 }

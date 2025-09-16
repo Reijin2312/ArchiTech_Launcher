@@ -1,47 +1,62 @@
     package org.architech.launcher.authentication.account;
 
-    import com.google.gson.Gson;
-    import com.google.gson.GsonBuilder;
     import org.architech.launcher.MCLauncher;
+    import org.architech.launcher.utils.Jsons;
     import org.architech.launcher.utils.logging.LogManager;
-
     import java.io.IOException;
     import java.nio.charset.StandardCharsets;
     import java.nio.file.*;
+    import java.nio.file.attribute.PosixFilePermission;
+    import java.nio.file.attribute.PosixFilePermissions;
+    import java.util.Set;
+    import java.util.logging.Level;
 
     public final class CurrentAccountStore {
-        private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
         private static final Path FILE = MCLauncher.ACCOUNT_FILE;
 
-        public static Account load(){
+        public static Account load() {
             try {
-                if(Files.exists(FILE)){
+                if (Files.exists(FILE)) {
                     String raw = Files.readString(FILE, StandardCharsets.UTF_8);
-                    return GSON.fromJson(raw, Account.class);
+                    return Jsons.MAPPER.readValue(raw, Account.class);
                 }
-            } catch(Exception ex)
-            {
+            } catch (Exception ex) {
                 LogManager.getLogger().severe("Ошибка загрузки файла аккаунта: " + ex.getMessage());
             }
 
             Account a = new Account();
-            a.type = AccountType.OFFLINE; a.userType = "legacy";
-            a.username = "Player"; a.uuid = UUIDs.offlineUuid(a.username);
-            a.accessToken = "0"; a.expiresAtSec = System.currentTimeMillis()/1000 + 31536000L;
+            a.type = AccountType.OFFLINE;
+            a.userType = "legacy";
+            a.username = "Player";
+            a.uuid = UUIDs.offlineUuid(a.username);
+            a.accessToken = "0";
+            a.expiresAtSec = System.currentTimeMillis() / 1000 + 31536000L;
             return a;
         }
 
         public static void save(Account a){
             try {
-                if(a==null){
-                    Files.deleteIfExists(FILE); return;
+                if(a == null){
+                    Files.deleteIfExists(FILE);
+                    return;
                 }
                 Files.createDirectories(FILE.getParent());
-                String json = GSON.toJson(a);
-                Files.writeString(FILE, json, StandardCharsets.UTF_8,
+                Path tmp = FILE.resolveSibling(FILE.getFileName().toString() + ".tmp");
+                String json = Jsons.MAPPER.writeValueAsString(a);
+                Files.writeString(tmp, json, StandardCharsets.UTF_8,
                         StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            } catch(IOException ex) {
-                LogManager.getLogger().severe("Ошибка сохранения файла аккаунта: " + ex.getMessage());
+                try {
+                    Files.move(tmp, FILE, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                } catch (AtomicMoveNotSupportedException ex) {
+                    Files.move(tmp, FILE, StandardCopyOption.REPLACE_EXISTING);
+                }
+                try {
+                    Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
+                    Files.setPosixFilePermissions(FILE, perms);
+                } catch (UnsupportedOperationException ignored) {}
+            } catch (IOException ex) {
+                LogManager.getLogger().log(Level.SEVERE, "Ошибка сохранения файла аккаунта", ex);
             }
         }
+
     }

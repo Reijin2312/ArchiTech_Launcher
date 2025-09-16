@@ -1,9 +1,8 @@
 package org.architech.launcher.managment;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.utils.FileEntry;
+import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
 import java.io.*;
@@ -24,7 +23,6 @@ import static org.architech.launcher.MCLauncher.UI;
 public class NeoForgeManager {
 
     private static final Path MANIFEST_DIR = Paths.get(".neoforge");
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static void ensureFakeLauncherProfile(Path gameDir, String suggestedVersion) throws IOException {
         Path profile = gameDir.resolve("launcher_profiles.json");
@@ -44,7 +42,7 @@ public class NeoForgeManager {
         root.put("clientToken", UUID.randomUUID().toString());
         root.put("authenticationDatabase", new LinkedHashMap<>());
 
-        String json = GSON.toJson(root);
+        String json = Jsons.PRETTY.writeValueAsString(root);
         Files.writeString(profile, json, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
@@ -61,7 +59,7 @@ public class NeoForgeManager {
                 LogManager.getLogger().severe("installed.json пуст или некорректен");
                 return false;
             }
-            InstalledManifest im = GSON.fromJson(json, InstalledManifest.class);
+            InstalledManifest im = Jsons.MAPPER.readValue(json, InstalledManifest.class);
             if (im == null) {
                 LogManager.getLogger().severe("installed.json распарсился в null");
                 return false;
@@ -176,7 +174,7 @@ public class NeoForgeManager {
 
         Path out = manifestDir.resolve("installed.json");
         Path tmp = manifestDir.resolve("installed.json.tmp");
-        Files.writeString(tmp, GSON.toJson(im), StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        Files.writeString(tmp, Jsons.PRETTY.writeValueAsString(im), StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         try {
             Files.move(tmp, out, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception ex) {
@@ -256,7 +254,7 @@ public class NeoForgeManager {
                 LogManager.getLogger().warning("installed.json пуст или содержит 'null'");
                 return null;
             }
-            InstalledManifest im = GSON.fromJson(json, InstalledManifest.class);
+            InstalledManifest im = Jsons.MAPPER.readValue(json, InstalledManifest.class);
             if (im == null || im.version == null || im.version.isBlank()) {
                 LogManager.getLogger().warning("installed.json не содержит поле version или повреждён");
                 return null;
@@ -274,7 +272,7 @@ public class NeoForgeManager {
         String installedVersion = null;
         try {
             if (Files.exists(manifest)) {
-                InstalledManifest im = GSON.fromJson(Files.readString(manifest, StandardCharsets.UTF_8), InstalledManifest.class);
+                InstalledManifest im = Jsons.MAPPER.readValue(Files.readString(manifest, StandardCharsets.UTF_8), InstalledManifest.class);
                 installedVersion = (im != null) ? im.version : null;
             }
         } catch (Exception e) {

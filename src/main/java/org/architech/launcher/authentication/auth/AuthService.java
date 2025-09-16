@@ -1,7 +1,5 @@
-// org.architech.launcher.auth.auth.AuthService
 package org.architech.launcher.authentication.auth;
 
-import com.google.gson.Gson;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountType;
 import org.architech.launcher.authentication.ely_by.ElyApp;
@@ -13,7 +11,7 @@ import org.architech.launcher.authentication.requests.ExchangeRequest;
 import org.architech.launcher.authentication.requests.ExchangeResponse;
 import org.architech.launcher.authentication.requests.GameParams;
 import org.architech.launcher.authentication.requests.RefreshRequest;
-
+import org.architech.launcher.utils.Jsons;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -27,7 +25,6 @@ import static org.architech.launcher.MCLauncher.BACKEND_URL;
 public class AuthService {
 
     private static final HttpClient HTTP = HttpClient.newHttpClient();
-    private static final Gson GSON = new Gson();
 
     public static Account tryElySilentLogin() throws Exception {
         Account a = Auth.current();
@@ -35,7 +32,7 @@ public class AuthService {
 
         RefreshRequest reqBody = new RefreshRequest();
         reqBody.launcherToken = a.launcherToken;
-        String json = GSON.toJson(reqBody);
+        String json = Jsons.PRETTY.writeValueAsString(reqBody);
 
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(BACKEND_URL + "/api/ely/refresh"))
@@ -46,7 +43,7 @@ public class AuthService {
         HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
         if (res.statusCode() != 200) return null;
 
-        ExchangeResponse resp = GSON.fromJson(res.body(), ExchangeResponse.class);
+        ExchangeResponse resp = Jsons.MAPPER.readValue(res.body(), ExchangeResponse.class);
         a.launcherToken = resp.launcherToken;
         a.expiresAtSec = Instant.parse(resp.launcherTokenExpiresAt).getEpochSecond();
         updateAccountFromProfile(a, resp.profile);
@@ -58,7 +55,7 @@ public class AuthService {
         ExchangeRequest reqBody = new ExchangeRequest();
         reqBody.code = authCode;
         reqBody.redirectUri = ElyApp.REDIRECT_URI;
-        String json = GSON.toJson(reqBody);
+        String json = Jsons.PRETTY.writeValueAsString(reqBody);
 
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(BACKEND_URL + "/api/ely/exchange"))
@@ -69,7 +66,7 @@ public class AuthService {
         HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
         if (res.statusCode() != 200) throw new Exception("Exchange failed: " + res.body());
 
-        ExchangeResponse resp = GSON.fromJson(res.body(), ExchangeResponse.class);
+        ExchangeResponse resp = Jsons.MAPPER.readValue(res.body(), ExchangeResponse.class);
         Account a = new Account();
         a.type = AccountType.ELY;
         a.launcherToken = resp.launcherToken;
@@ -92,7 +89,7 @@ public class AuthService {
             throw new Exception("Ошибка получения игровых параметров: " + res.statusCode());
         }
 
-        GameParams params = GSON.fromJson(res.body(), GameParams.class);
+        GameParams params = Jsons.MAPPER.readValue(res.body(), GameParams.class);
 
         Account a = Auth.current();
         if (a != null && a.type == AccountType.ELY) {

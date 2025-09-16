@@ -1,7 +1,5 @@
 package org.architech.launcher.gui.tab;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.sun.management.OperatingSystemMXBean;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -10,9 +8,9 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
-
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
@@ -45,8 +43,6 @@ public class SettingsTab {
     private Spinner<Integer> netTimeoutSpinner;
     private Slider soundVolumeSlider;
     private Slider scaleSlider;
-
-    public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public SettingsTab(Stage stage) { this.stage = stage; }
 
@@ -233,7 +229,7 @@ public class SettingsTab {
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {
-                GSON.toJson(cfg, w);
+                Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValue(w, cfg);
             }
         } catch (IOException e) {
             new Alert(Alert.AlertType.ERROR, "Ошибка сохранения файла настроек: " + e.getMessage()).showAndWait();
@@ -243,7 +239,7 @@ public class SettingsTab {
     private void loadConfig() {
         if (!Files.exists(CONFIG_PATH)) return;
         try (Reader r = Files.newBufferedReader(CONFIG_PATH, StandardCharsets.UTF_8)) {
-            Map<?,?> cfg = GSON.fromJson(r, Map.class);
+            Map<?,?> cfg = Jsons.MAPPER.readValue(r, Map.class);
             if (cfg == null) return;
             if (cfg.containsKey("gameDir")) gameDirField.setText(String.valueOf(cfg.get("gameDir")));
             if (cfg.containsKey("javaPath")) javaField.setText(String.valueOf(cfg.get("javaPath")));
@@ -318,7 +314,7 @@ public class SettingsTab {
 
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {
-                GSON.toJson(def, w);
+                Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValue(w, def);
             }
         } catch (IOException e) {
             LogManager.getLogger().severe("Не удалось создать файл настроек: " + e.getMessage());

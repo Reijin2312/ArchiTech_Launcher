@@ -1,7 +1,7 @@
 package org.architech.launcher.authentication.microsoft;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.architech.launcher.authentication.json.HttpJson;
-import org.json.JSONObject;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -43,10 +43,10 @@ public class MicrosoftOAuth {
         form.put("scope", String.join(" ", MsaApp.SCOPES));
         form.put("code_verifier", codeVerifier);
 
-        JSONObject j = HttpJson.postForm(MsaApp.TOKEN_URL, form);
-        return new Token(j.getString("access_token"),
-                j.optString("refresh_token", null),
-                j.getLong("expires_in"));
+        JsonNode j = HttpJson.postForm(MsaApp.TOKEN_URL, form);
+        return new Token(j.path("access_token").asText(null),
+                j.path("refresh_token").asText(null),
+                j.path("expires_in").asLong(0));
     }
 
     public static Token refresh(String refreshToken) throws Exception {
@@ -56,10 +56,10 @@ public class MicrosoftOAuth {
         form.put("refresh_token", refreshToken);
         form.put("scope", String.join(" ", MsaApp.SCOPES));
 
-        JSONObject j = HttpJson.postForm(MsaApp.TOKEN_URL, form);
-        return new Token(j.getString("access_token"),
-                j.optString("refresh_token", refreshToken),
-                j.getLong("expires_in"));
+        JsonNode j = HttpJson.postForm(MsaApp.TOKEN_URL, form);
+        return new Token(j.path("access_token").asText(null),
+                j.path("refresh_token").asText(null),
+                j.path("expires_in").asLong(0));
     }
 
     private static String enc(String s) {
