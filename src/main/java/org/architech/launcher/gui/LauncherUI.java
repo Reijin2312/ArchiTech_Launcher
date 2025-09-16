@@ -60,7 +60,7 @@ public class LauncherUI {
     private final Scene mainScene;
     private final Button accountBtn;
     private final ContextMenu accountMenu;
-    private ImageView headView;
+    private final ImageView headView;
     private Account currentAccount;
     private final Label onlineLabelField = new Label("Онлайн: —");
     private final Label pingLabelField = new Label("Пинг: — ms");
@@ -518,16 +518,13 @@ public class LauncherUI {
         sepBottomBox.setAlignment(Pos.CENTER);
         newsContainer.getChildren().add(sepBottomBox);
 
-// блок новостей
         newsScroll.setMaxHeight(Region.USE_COMPUTED_SIZE);
         newsContainer.getChildren().add(newsScroll);
 
-// обертка с фоном
         StackPane newsWrapper = new StackPane(newsContainer);
         newsWrapper.setPadding(new Insets(6));
         newsWrapper.setStyle("-fx-background-color: rgba(30,30,30,0.55); -fx-background-radius: 8;");
 
-// центрируем
         VBox centerBox = new VBox(10, newsWrapper);
         centerBox.setAlignment(Pos.TOP_CENTER);
         VBox.setVgrow(newsWrapper, Priority.ALWAYS);

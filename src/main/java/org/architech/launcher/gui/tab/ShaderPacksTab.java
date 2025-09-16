@@ -4,7 +4,6 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.OverrunStyle;
@@ -13,11 +12,9 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import javafx.stage.Stage;
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -34,19 +31,11 @@ import java.util.regex.Pattern;
 import static org.architech.launcher.MCLauncher.GAME_DIR;
 
 public class ShaderPacksTab {
-    private final Stage stage;
-    private final Scene settingsMenuScene;
-
     private static final double COL_NAME   = 320;
     private static final double COL_VER    = 140;
     private static final double COL_DATE   = 180;
     private static final double COL_TOGGLE = 80;
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
-    public ShaderPacksTab(Stage stage, Scene settingsMenuScene) {
-        this.stage = stage;
-        this.settingsMenuScene = settingsMenuScene;
-    }
 
     public Parent createContent() {
         BorderPane root = new BorderPane();
@@ -90,7 +79,7 @@ public class ShaderPacksTab {
                         if (!accepted) continue;
                         String version = parseShaderPackVersion(p);
                         String lastUpdated = formatFileTime(Files.getLastModifiedTime(p));
-                        metas.add(new PackMeta(p, fn, disabled, visible, version == null ? "" : version, lastUpdated));
+                        metas.add(new PackMeta(p, fn, disabled, visible, version, lastUpdated));
                     } catch (Exception exInner) {
                         LogManager.getLogger().warning("shaderpacks: read meta failed for " + p + ": " + exInner.getMessage());
                     }

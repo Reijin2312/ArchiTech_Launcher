@@ -4,13 +4,11 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import javafx.stage.Stage;
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
@@ -33,20 +31,12 @@ import java.util.stream.Stream;
 import static org.architech.launcher.MCLauncher.GAME_DIR;
 
 public class ModsTab {
-    private final Stage stage;
-    private final Scene settingsMenuScene;
-
     private static final double COL_NAME   = 320;
     private static final double COL_VER    = 140;
     private static final double COL_DATE   = 180;
     private static final double COL_TOGGLE = 80;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
-    public ModsTab(Stage stage, Scene settingsMenuScene) {
-        this.stage = stage;
-        this.settingsMenuScene = settingsMenuScene;
-    }
 
     public Parent createContent() {
         BorderPane modsRoot = new BorderPane();
@@ -170,7 +160,6 @@ public class ModsTab {
 
                     modsList.getChildren().add(row);
 
-                    // фоновая загрузка иконки: читаем байты в фоне, создаём Image в UI-потоке
                     MCLauncher.submitBackground(() -> {
                         byte[] bytes = robustLoadIconBytes(m.path());
                         if (bytes != null && bytes.length > 0) {
@@ -215,10 +204,6 @@ public class ModsTab {
     private String formatFileTime(FileTime ft) {
         Instant ins = Instant.ofEpochMilli(ft.toMillis());
         return DATE_FMT.format(ins.atZone(ZoneId.systemDefault()));
-    }
-
-    private void styleMainButton(Button btn) {
-        btn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
     }
 
     private static final String FALLBACK_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAF0lEQVR42mP8z/CfAQgwYGBgYGLAAQBVmgJ3jzg9HwAAAABJRU5ErkJggg==";

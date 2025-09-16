@@ -28,7 +28,7 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         tabs.getStyleClass().add("tab-pane");
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        ModsTab modsUI = new ModsTab(stage, parentScene);
+        ModsTab modsUI = new ModsTab();
         ResourcePacksTab rpUI = new ResourcePacksTab(stage, parentScene);
         ShaderPacksTab shUI = new ShaderPacksTab(stage, parentScene);
         SettingsTab allSettingsUI = new SettingsTab(stage);
