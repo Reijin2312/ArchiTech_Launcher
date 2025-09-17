@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 
-import static org.architech.launcher.MCLauncher.*;
+import static org.architech.launcher.ArchiTechLauncher.*;
 
 public class SettingsTab {
     private final Stage stage;

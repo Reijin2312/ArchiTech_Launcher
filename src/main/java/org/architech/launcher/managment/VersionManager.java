@@ -2,7 +2,7 @@ package org.architech.launcher.managment;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import org.architech.launcher.MCLauncher;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
@@ -15,7 +15,7 @@ import static java.nio.file.StandardOpenOption.*;
 public class VersionManager {
 
     public JsonNode loadVersionJson(String versionId) throws Exception {
-        Files.createDirectories(MCLauncher.VERSIONS_DIR.resolve(versionId));
+        Files.createDirectories(ArchiTechLauncher.VERSIONS_DIR.resolve(versionId));
         String manifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
         String manifestStr = UtilsNet.readUrl(manifestUrl);
 
@@ -32,7 +32,7 @@ public class VersionManager {
         if (versionUrl == null) throw new RuntimeException("Версия " + versionId + " не найдена в манифесте");
 
         String versionJsonStr = UtilsNet.readUrl(versionUrl);
-        Path jsonPath = MCLauncher.VERSIONS_DIR.resolve(versionId).resolve(versionId + ".json");
+        Path jsonPath = ArchiTechLauncher.VERSIONS_DIR.resolve(versionId).resolve(versionId + ".json");
         Files.writeString(jsonPath, versionJsonStr, CREATE, TRUNCATE_EXISTING);
 
         return Jsons.MAPPER.readTree(versionJsonStr);
@@ -46,7 +46,7 @@ public class VersionManager {
             String url = client.path("url").asText(null);
             long size = client.path("size").asLong(-1);
             String sha1 = client.path("sha1").asText(null);
-            Path target = MCLauncher.VERSIONS_DIR.resolve(version).resolve(version + ".jar");
+            Path target = ArchiTechLauncher.VERSIONS_DIR.resolve(version).resolve(version + ".jar");
             validateFile(target, size, sha1);
             list.add(new FileEntry("client", "Minecraft " + version + " client", url, target, size, sha1));
         }
@@ -68,7 +68,7 @@ public class VersionManager {
                     long s = getLong(art);
                     String h = get(art, "sha1", null);
                     if (u != null && pathStr != null) {
-                        Path t = MCLauncher.LIBRARIES_DIR.resolve(pathStr);
+                        Path t = ArchiTechLauncher.LIBRARIES_DIR.resolve(pathStr);
                         validateFile(t, s, h);
                         list.add(new FileEntry("lib", "Library: " + pathStr, u, t, s, h));
                     }
@@ -84,7 +84,7 @@ public class VersionManager {
                         long s = getLong(nat);
                         String h = get(nat, "sha1", null);
                         if (u != null && pathStr != null) {
-                            Path t = MCLauncher.LIBRARIES_DIR.resolve(pathStr);
+                            Path t = ArchiTechLauncher.LIBRARIES_DIR.resolve(pathStr);
                             validateFile(t, s, h);
                             list.add(new FileEntry("natives", "Natives: " + pathStr, u, t, s, h));
                         }
@@ -101,7 +101,7 @@ public class VersionManager {
             long aiSize = getLong(assetIndex);
             String aiSha1 = get(assetIndex, "sha1", null);
 
-            Path indexPath = MCLauncher.ASSETS_DIR.resolve("indexes").resolve(assetsId + ".json");
+            Path indexPath = ArchiTechLauncher.ASSETS_DIR.resolve("indexes").resolve(assetsId + ".json");
             Files.createDirectories(indexPath.getParent());
             list.add(new FileEntry("assetIndex", "AssetIndex: " + assetsId, assetsUrl, indexPath, aiSize, aiSha1));
 
@@ -120,7 +120,7 @@ public class VersionManager {
                     if (hash == null) continue;
                     String sub = hash.length() >= 2 ? hash.substring(0, 2) : "";
                     String assetUrl = "https://resources.download.minecraft.net/" + sub + "/" + hash;
-                    Path assetPath = MCLauncher.ASSETS_DIR.resolve("objects").resolve(sub).resolve(hash);
+                    Path assetPath = ArchiTechLauncher.ASSETS_DIR.resolve("objects").resolve(sub).resolve(hash);
                     validateFile(assetPath, size2, hash);
                     list.add(new FileEntry("asset", "Asset: " + logicalName, assetUrl, assetPath, size2, hash));
                 }

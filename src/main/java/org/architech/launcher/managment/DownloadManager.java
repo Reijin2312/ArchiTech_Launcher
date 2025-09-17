@@ -1,6 +1,6 @@
 package org.architech.launcher.managment;
 
-import org.architech.launcher.MCLauncher;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
@@ -217,7 +217,7 @@ public class DownloadManager {
 
                     String text = f.name + " (" + (downloadedFile / 1024) +
                             (f.size > 0 ? (" / " + (f.size / 1024)) : "") + " КБ)";
-                    MCLauncher.UI.updateProgress(text + (percent >= 0 ? " | Всего: " + percent + "%" : ""), globalProgress);
+                    ArchiTechLauncher.UI.updateProgress(text + (percent >= 0 ? " | Всего: " + percent + "%" : ""), globalProgress);
                 }
                 out.flush();
             }  finally {

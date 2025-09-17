@@ -1,6 +1,6 @@
 package org.architech.launcher.managment;
 
-import org.architech.launcher.MCLauncher;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
@@ -18,7 +18,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.architech.launcher.MCLauncher.UI;
+import static org.architech.launcher.ArchiTechLauncher.UI;
 
 public class NeoForgeManager {
 
@@ -132,15 +132,15 @@ public class NeoForgeManager {
 
         String serverInstallerPath = "neoforge/neoforge-" + latest + "-installer.jar";
         String encoded = encodePathForUri(serverInstallerPath);
-        String url = org.architech.launcher.MCLauncher.BACKEND_URL + "/api/files/file/" + encoded;
+        String url = ArchiTechLauncher.BACKEND_URL + "/api/files/file/" + encoded;
         Path installer = gameDir.resolve("neoforge-installer.jar");
         FileEntry entry = new FileEntry("neoforge", "NeoForge installer", url, installer, 0, null);
 
-        MCLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(entry);
+        ArchiTechLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(entry);
 
         if (UI != null) UI.updateProgress("Установка neoforge...", 0.5);
 
-        ProcessBuilder pb = new ProcessBuilder(MCLauncher.JAVA_PATH.toString(), "-jar", installer.toString(), "--installClient", gameDir.toString());
+        ProcessBuilder pb = new ProcessBuilder(ArchiTechLauncher.JAVA_PATH.toString(), "-jar", installer.toString(), "--installClient", gameDir.toString());
         pb.directory(gameDir.toFile());
         pb.redirectErrorStream(true);
         Process p = pb.start();
@@ -193,7 +193,7 @@ public class NeoForgeManager {
             String serverPath = "neoforge/version";
             String encoded = encodePathForUri(serverPath);
             HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(org.architech.launcher.MCLauncher.BACKEND_URL + "/api/files/file/" + encoded))
+                    .uri(URI.create(ArchiTechLauncher.BACKEND_URL + "/api/files/file/" + encoded))
                     .timeout(Duration.ofSeconds(10))
                     .GET()
                     .build();

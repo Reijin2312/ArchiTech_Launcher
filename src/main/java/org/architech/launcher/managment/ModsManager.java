@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static org.architech.launcher.MCLauncher.BACKEND_URL;
-import static org.architech.launcher.MCLauncher.UI;
+import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
+import static org.architech.launcher.ArchiTechLauncher.UI;
 
 public class ModsManager {
     private static final HttpClient HTTP = HttpClient.newHttpClient();

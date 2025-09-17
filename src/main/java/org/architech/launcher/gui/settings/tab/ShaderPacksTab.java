@@ -12,7 +12,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import org.architech.launcher.MCLauncher;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
 import java.io.ByteArrayInputStream;
@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.architech.launcher.MCLauncher.GAME_DIR;
+import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 
 public class ShaderPacksTab {
     private static final double COL_NAME   = 320;
@@ -66,7 +66,7 @@ public class ShaderPacksTab {
 
         record PackMeta(Path path, String fileName, boolean disabled, String displayName, String version, String lastUpdated) {}
 
-        MCLauncher.submitBackground(() -> {
+        ArchiTechLauncher.submitBackground(() -> {
             List<PackMeta> metas = new ArrayList<>();
             try (DirectoryStream<Path> ds = Files.newDirectoryStream(packsDir)) {
                 for (Path p : ds) {
@@ -158,7 +158,7 @@ public class ShaderPacksTab {
                     list.getChildren().add(row);
 
                     // background icon load
-                    MCLauncher.submitBackground(() -> {
+                    ArchiTechLauncher.submitBackground(() -> {
                         byte[] bytes = robustLoadShaderPackIconBytes(m.path());
                         if (bytes != null && bytes.length > 0) {
                             Platform.runLater(() -> {

@@ -12,8 +12,8 @@ import java.nio.file.*;
 import java.io.*;
 import java.util.*;
 import java.util.zip.*;
-import static org.architech.launcher.MCLauncher.CONFIG_PATH;
-import static org.architech.launcher.MCLauncher.JAVA_PATH;
+import static org.architech.launcher.ArchiTechLauncher.CONFIG_PATH;
+import static org.architech.launcher.ArchiTechLauncher.JAVA_PATH;
 
 public class MinecraftLauncher {
 

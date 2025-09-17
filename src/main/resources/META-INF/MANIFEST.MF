@@ -1,3 +1,3 @@
 Manifest-Version: 1.0
-Main-Class: org.architech.launcher.MCLauncher
+Main-Class: org.architech.launcher.ArchiTechLauncher
 

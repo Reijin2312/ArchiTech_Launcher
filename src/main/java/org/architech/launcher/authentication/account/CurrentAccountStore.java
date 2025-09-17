@@ -1,6 +1,6 @@
     package org.architech.launcher.authentication.account;
 
-    import org.architech.launcher.MCLauncher;
+    import org.architech.launcher.ArchiTechLauncher;
     import org.architech.launcher.utils.Jsons;
     import org.architech.launcher.utils.logging.LogManager;
     import java.io.IOException;
@@ -12,7 +12,7 @@
     import java.util.logging.Level;
 
     public final class CurrentAccountStore {
-        private static final Path FILE = MCLauncher.ACCOUNT_FILE;
+        private static final Path FILE = ArchiTechLauncher.ACCOUNT_FILE;
 
         public static Account load() {
             try {

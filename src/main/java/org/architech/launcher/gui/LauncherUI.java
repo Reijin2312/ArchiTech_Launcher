@@ -23,7 +23,7 @@ import javafx.stage.Popup;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.util.Duration;
-import org.architech.launcher.MCLauncher;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountType;
 import org.architech.launcher.authentication.auth.Auth;
@@ -53,7 +53,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import static org.architech.launcher.MCLauncher.GAME_DIR;
+import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 
 public class LauncherUI {
     private final Button launchBtn;
@@ -317,7 +317,7 @@ public class LauncherUI {
         }
     }
 
-    public LauncherUI(Stage stage, Consumer<String> launchHandler) {
+    public LauncherUI(Stage stage, Consumer<String> launchHandler, Runnable updateHandler) {
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(20));
 
@@ -375,8 +375,7 @@ public class LauncherUI {
 
         Button checkUpdates = new Button("⟳");
         styleSmallButton(checkUpdates);
-
-        checkUpdates.setOnAction(e -> showInfo("Проверка обновлений пока не реализована"));
+        checkUpdates.setOnAction(e -> updateHandler.run());
 
         Image telegramIcon = new Image(Objects.requireNonNull(getClass().getResource("/images/tg.png")).toExternalForm());
         ImageView telegramView = new ImageView(telegramIcon);
@@ -435,7 +434,7 @@ public class LauncherUI {
             HBox.setHgrow(b, Priority.ALWAYS);
         }
 
-        MCLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
+        ArchiTechLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
             try {
                 ArchiTechServerInfo.ServerStatus s = ArchiTechServerInfo.fetchStatus("architech.mc-world.xyz", 25565, 3000);
                 Platform.runLater(() -> {
@@ -636,7 +635,7 @@ public class LauncherUI {
             timerFuture.cancel(true);
         }
 
-        timerFuture = MCLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
+        timerFuture = ArchiTechLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
             if (Thread.currentThread().isInterrupted()) return;
 
             long elapsed = System.currentTimeMillis() - startTimeMs;
@@ -786,7 +785,7 @@ public class LauncherUI {
             img.setFitHeight(64);
             img.setPreserveRatio(true);
 
-            MCLauncher.scheduledExecutor.execute(() -> {
+            ArchiTechLauncher.scheduledExecutor.execute(() -> {
                 try {
                     Image im = new Image(n.imageUrl, 64, 64, true, true);
                     Platform.runLater(() -> img.setImage(im));

@@ -16,7 +16,6 @@ import org.architech.launcher.utils.*;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.serverinfo.ServersDatGenerator;
 import org.architech.launcher.utils.serverinfo.ServersDatWriter;
-
 import java.io.*;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -31,7 +30,7 @@ import java.util.stream.Collectors;
 import static org.architech.launcher.managment.NeoForgeManager.getInstalledVersion;
 import static org.architech.launcher.utils.serverinfo.ServersDatWriter.writeServersDat;
 
-public class MCLauncher extends Application {
+public class ArchiTechLauncher extends Application {
 
     public static final String MINECRAFT_VERSION = "1.21.1";
 
@@ -53,6 +52,7 @@ public class MCLauncher extends Application {
     private static final ExecutorService backgroundExecutor = Executors.newCachedThreadPool(daemonFactory("bg"));
     public static final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor(daemonFactory("sched"));
     private static final AtomicReference<Future<?>> launchFuture = new AtomicReference<>();
+    private static final AtomicReference<Future<?>> updateFuture = new AtomicReference<>();
     private static final AtomicReference<DownloadManager> activeDownloadManager = new AtomicReference<>();
     private static volatile Process currentGameProcess = null;
 
@@ -82,7 +82,7 @@ public class MCLauncher extends Application {
         LIBRARIES_DIR = GAME_DIR.resolve("libraries");
         ASSETS_DIR = GAME_DIR.resolve("assets");
 
-        UI = new LauncherUI(stage, this::onLaunchClicked);
+        UI = new LauncherUI(stage, this::onLaunchClicked, this::onCheckUpdatesClicked);
 
         DiscordIntegration.start();
     }
@@ -210,6 +210,102 @@ public class MCLauncher extends Application {
 
         launchFuture.set(f);
     }
+
+    private void onCheckUpdatesClicked() {
+        Future<?> running = updateFuture.get();
+        if (running != null && !running.isDone()) {
+            running.cancel(true);
+            return;
+        }
+
+        Future<?> f = launcherExecutor.submit(() -> {
+            try {
+                Platform.runLater(() -> {
+                    UI.setLaunchingState(true);
+                    UI.startTimer();
+                });
+
+                UI.updateProgress("Проверка/подготовка обновлений...", 0);
+
+                VersionManager versionManager = new VersionManager();
+                JsonNode versionJson = versionManager.loadVersionJson(MINECRAFT_VERSION);
+                List<FileEntry> files = versionManager.buildRequiredFiles(versionJson, MINECRAFT_VERSION);
+
+                files.sort(Comparator.comparingInt(fEnt -> {
+                    if ("assetIndex".equals(fEnt.kind)) return 0;
+                    if ("client".equals(fEnt.kind)) return 1;
+                    if ("lib".equals(fEnt.kind)) return 2;
+                    if ("natives".equals(fEnt.kind)) return 3;
+                    if ("asset".equals(fEnt.kind)) return 4;
+                    return 5;
+                }));
+
+                DOWNLOAD_MANAGER = new DownloadManager();
+                activeDownloadManager.set(DOWNLOAD_MANAGER);
+
+                long total = DOWNLOAD_MANAGER.computeTotalBytesToDownload(files);
+                DOWNLOAD_MANAGER.setTotalBytesPlanned(total);
+
+                int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
+                int rounds = 3;
+                UI.updateProgress("Запускаю параллельную загрузку (" + threads + " потоков)...", 0);
+
+                List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds);
+
+                if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+
+                if (!failed.isEmpty()) {
+                    String names = failed.stream().map(x -> x.name).collect(Collectors.joining(", "));
+                    LogManager.getLogger().severe("Не удалось скачать некоторые файлы: " + names);
+                    throw new IOException("Не удалось скачать некоторые файлы: " + names);
+                }
+
+                NativesManager nativesManager = new NativesManager(GAME_DIR, MINECRAFT_VERSION);
+                nativesManager.prepareNatives(files);
+
+                NeoForgeManager.ensureInstalledAndReady(GAME_DIR, MINECRAFT_VERSION);
+
+                try {
+                    ModsManager.syncMods(GAME_DIR);
+                } catch (Exception ex) {
+                    LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
+                    Platform.runLater(() -> LauncherUI.showError("Ошибка синхронизации модов", ex.getMessage()));
+                }
+
+                Path serversDat = GAME_DIR.resolve("servers.dat");
+                if (!Files.exists(serversDat)) ServersDatGenerator.createServersDat(serversDat);
+
+                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("Сервер Minecraft", "architech.mc-world.xyz").withHidden(false);
+                List<ServersDatWriter.ServerEntry> list = Collections.singletonList(mySrv);
+
+                Files.createDirectories(serversDat.getParent());
+                writeServersDat(serversDat, list);
+
+                Platform.runLater(() -> {
+                    UI.updateProgress("Обновления применены — всё готово.", 1.0);
+                });
+
+            } catch (InterruptedException ie) {
+                // Прерывание — отмена операции
+                Platform.runLater(() -> UI.updateProgress("Операция отменена.", 1.0));
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                LogManager.getLogger().severe("Ошибка при проверке/обновлении: " + e.getMessage());
+                Platform.runLater(() -> LauncherUI.showError("Ошибка обновления", e.getMessage()));
+            } finally {
+                activeDownloadManager.set(null);
+                updateFuture.set(null);
+                if (DOWNLOAD_MANAGER != null) DOWNLOAD_MANAGER.cancelAllDownloads();
+                Platform.runLater(() -> {
+                    UI.stopTimer();
+                    UI.setLaunchingState(false);
+                });
+            }
+        });
+
+        updateFuture.set(f);
+    }
+
 
     public static void cancelLaunch() {
         Future<?> f = launchFuture.getAndSet(null);

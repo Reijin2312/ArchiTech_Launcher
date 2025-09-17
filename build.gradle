@@ -9,12 +9,12 @@ shadowJar {
     archiveBaseName.set('ArchiTech_Launcher')
     archiveVersion.set('1.0')
     manifest {
-        attributes 'Main-Class': 'org.architech.launcher.MCLauncher'
+        attributes 'Main-Class': 'org.architech.launcher.ArchiTechLauncher'
     }
 }
 
 application {
-    mainClass = 'org.architech.launcher.MCLauncher'
+    mainClass = 'org.architech.launcher.ArchiTechLauncher'
 }
 
 javafx {

@@ -9,7 +9,7 @@ import javafx.scene.control.OverrunStyle;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import org.architech.launcher.MCLauncher;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
 import java.io.ByteArrayInputStream;
@@ -28,7 +28,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static org.architech.launcher.MCLauncher.GAME_DIR;
+import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 
 public class ModsTab {
     private static final double COL_NAME   = 320;
@@ -70,7 +70,7 @@ public class ModsTab {
         // модель, собираем в фоне
         record ModMeta(Path path, String fileName, boolean disabled, String displayName, String version, String lastUpdated) {}
 
-        MCLauncher.submitBackground(() -> {
+        ArchiTechLauncher.submitBackground(() -> {
             List<ModMeta> metas = new ArrayList<>();
             try (DirectoryStream<Path> ds = Files.newDirectoryStream(modsDir, "*.jar*")) {
                 for (Path modPath : ds) {
@@ -160,7 +160,7 @@ public class ModsTab {
 
                     modsList.getChildren().add(row);
 
-                    MCLauncher.submitBackground(() -> {
+                    ArchiTechLauncher.submitBackground(() -> {
                         byte[] bytes = robustLoadIconBytes(m.path());
                         if (bytes != null && bytes.length > 0) {
                             Platform.runLater(() -> {
