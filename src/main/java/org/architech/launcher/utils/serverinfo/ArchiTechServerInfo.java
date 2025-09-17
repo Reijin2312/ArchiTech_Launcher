@@ -6,9 +6,11 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
-public final class MinecraftPing {
-    public record ServerStatus(int online, int max, int pingMs, String motd) {}
+public final class ArchiTechServerInfo {
+    public record ServerStatus(int online, int max, int pingMs, String motd, List<String> sample) {}
 
     public static ServerStatus fetchStatus(String host, int port, int timeoutMs) throws IOException {
         try (Socket socket = new Socket()) {
@@ -72,6 +74,26 @@ public final class MinecraftPing {
                 motd = root.path("motd").asText("");
             }
 
+            List<String> sampleNames = new ArrayList<>();
+            if (!players.isMissingNode()) {
+                JsonNode sampleNode = players.path("sample");
+                if (sampleNode.isArray()) {
+                    for (JsonNode item : sampleNode) {
+                        if (item.isTextual()) {
+                            String name = item.asText();
+                            if (name != null && !name.isBlank()) sampleNames.add(name);
+                        } else if (item.isObject()) {
+                            String name = item.path("name").asText(null);
+                            if ((name == null || name.isBlank())) name = item.path("id").asText(null);
+                            if (name != null && !name.isBlank()) sampleNames.add(name);
+                        } else {
+                            String name = item.asText(null);
+                            if (name != null && !name.isBlank()) sampleNames.add(name);
+                        }
+                    }
+                }
+            }
+
             ByteArrayOutputStream pingBuf = new ByteArrayOutputStream();
             writeVarInt(pingBuf, 0x01);
             long ts = System.currentTimeMillis();
@@ -96,7 +118,7 @@ public final class MinecraftPing {
 
             int pingMs = (int) (System.currentTimeMillis() - ts);
 
-            return new ServerStatus(online, max, pingMs, motd);
+            return new ServerStatus(online, max, pingMs, motd, sampleNames);
         }
     }
 

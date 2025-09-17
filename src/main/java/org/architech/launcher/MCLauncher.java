@@ -5,7 +5,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 import org.architech.launcher.discord.DiscordIntegration;
-import org.architech.launcher.gui.tab.SettingsTab;
+import org.architech.launcher.gui.settings.tab.SettingsTab;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.managment.DownloadManager;
 import org.architech.launcher.managment.ModsManager;

@@ -1,4 +1,4 @@
-package org.architech.launcher.gui;
+package org.architech.launcher.gui.settings;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -9,10 +9,10 @@ import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
-import org.architech.launcher.gui.tab.ModsTab;
-import org.architech.launcher.gui.tab.SettingsTab;
-import org.architech.launcher.gui.tab.ResourcePacksTab;
-import org.architech.launcher.gui.tab.ShaderPacksTab;
+import org.architech.launcher.gui.settings.tab.ModsTab;
+import org.architech.launcher.gui.settings.tab.SettingsTab;
+import org.architech.launcher.gui.settings.tab.ResourcePacksTab;
+import org.architech.launcher.gui.settings.tab.ShaderPacksTab;
 
 import java.util.Objects;
 
@@ -29,8 +29,8 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         ModsTab modsUI = new ModsTab();
-        ResourcePacksTab rpUI = new ResourcePacksTab(stage, parentScene);
-        ShaderPacksTab shUI = new ShaderPacksTab(stage, parentScene);
+        ResourcePacksTab rpUI = new ResourcePacksTab();
+        ShaderPacksTab shUI = new ShaderPacksTab();
         SettingsTab allSettingsUI = new SettingsTab(stage);
 
         Tab modsTab = new Tab("Моды", modsUI.createContent());

@@ -19,6 +19,10 @@ public final class HeadImage {
         return ElyHead.fromEly(a.username, size);
     }
 
+    public static Image forElyAccountWithName(String name, int size) {
+        return ElyHead.fromEly(name, size);
+    }
+
     public static Image fromUuid(String uuid, int size) {
         if (uuid == null) return FALLBACK;
         String raw = uuid.replace("-", "");

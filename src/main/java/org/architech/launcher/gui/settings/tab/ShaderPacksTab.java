@@ -1,4 +1,4 @@
-package org.architech.launcher.gui.tab;
+package org.architech.launcher.gui.settings.tab;
 
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -15,7 +15,6 @@ import javafx.scene.layout.*;
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -31,7 +30,7 @@ import java.util.regex.Pattern;
 
 import static org.architech.launcher.MCLauncher.GAME_DIR;
 
-public class ResourcePacksTab {
+public class ShaderPacksTab {
     private static final double COL_NAME   = 320;
     private static final double COL_VER    = 140;
     private static final double COL_DATE   = 180;
@@ -46,7 +45,7 @@ public class ResourcePacksTab {
         list.setFillWidth(true);
         list.setPadding(new Insets(8, 16, 16, 16));
 
-        Path packsDir = GAME_DIR.resolve("resourcepacks");
+        Path packsDir = GAME_DIR.resolve("shaderpacks");
         try { Files.createDirectories(packsDir); } catch (Exception ignored) {}
 
         HBox header = new HBox(12);
@@ -78,15 +77,15 @@ public class ResourcePacksTab {
                         boolean accepted = Files.isDirectory(p)
                                 || visible.toLowerCase().endsWith(".zip");
                         if (!accepted) continue;
-                        String version = parseResourcePackVersion(p);
+                        String version = parseShaderPackVersion(p);
                         String lastUpdated = formatFileTime(Files.getLastModifiedTime(p));
                         metas.add(new PackMeta(p, fn, disabled, visible, version, lastUpdated));
                     } catch (Exception exInner) {
-                        LogManager.getLogger().warning("resourcepacks: read meta failed for " + p + ": " + exInner.getMessage());
+                        LogManager.getLogger().warning("shaderpacks: read meta failed for " + p + ": " + exInner.getMessage());
                     }
                 }
             } catch (Exception ex) {
-                Platform.runLater(() -> LauncherUI.showError("Ошибка загрузки списка ресурс-паков", ex.getMessage()));
+                Platform.runLater(() -> LauncherUI.showError("Ошибка загрузки списка шейдер-паков", ex.getMessage()));
                 return;
             }
 
@@ -144,7 +143,7 @@ public class ResourcePacksTab {
                                 row.getStyleClass().add("disabled");
                             }
                         } catch (Exception ex) {
-                            LauncherUI.showError("Не удалось переключить пакет", ex.getMessage());
+                            LauncherUI.showError("Не удалось переключить шейдер-пак", ex.getMessage());
                             toggle.setSelected(oldVal);
                         }
                     });
@@ -160,7 +159,7 @@ public class ResourcePacksTab {
 
                     // background icon load
                     MCLauncher.submitBackground(() -> {
-                        byte[] bytes = robustLoadPackIconBytes(m.path());
+                        byte[] bytes = robustLoadShaderPackIconBytes(m.path());
                         if (bytes != null && bytes.length > 0) {
                             Platform.runLater(() -> {
                                 try { icon.setImage(new Image(new ByteArrayInputStream(bytes))); } catch (Exception ignored) {}
@@ -196,22 +195,35 @@ public class ResourcePacksTab {
         return DATE_FMT.format(ins.atZone(ZoneId.systemDefault()));
     }
 
-    private String parseResourcePackVersion(Path packPath) {
+    private String parseShaderPackVersion(Path packPath) {
+        // пытаемся найти shaderpack.properties или shaderpack.txt, иначе —
         try {
             if (Files.isDirectory(packPath)) {
-                Path mcmeta = packPath.resolve("pack.mcmeta");
-                if (Files.exists(mcmeta)) {
-                    String content = Files.readString(mcmeta, StandardCharsets.UTF_8);
-                    Matcher m = Pattern.compile("\"pack_format\"\\s*:\\s*(\\d+)").matcher(content);
-                    if (m.find()) return "pack_format " + m.group(1);
+                Path p1 = packPath.resolve("shaderpack.properties");
+                if (Files.exists(p1)) {
+                    String s = Files.readString(p1, StandardCharsets.UTF_8);
+                    Matcher m = Pattern.compile("(?m)^\\s*version\\s*=\\s*(.+)$").matcher(s);
+                    if (m.find()) return m.group(1).trim();
+                }
+                Path p2 = packPath.resolve("shaderpack.txt");
+                if (Files.exists(p2)) {
+                    String s = Files.readString(p2, StandardCharsets.UTF_8);
+                    Matcher m = Pattern.compile("(?m)^\\s*version\\s*[:=]\\s*(.+)$").matcher(s);
+                    if (m.find()) return m.group(1).trim();
                 }
             } else {
                 try (FileSystem fs = FileSystems.newFileSystem(packPath, (ClassLoader) null)) {
-                    Path mcmeta = fs.getPath("pack.mcmeta");
-                    if (Files.exists(mcmeta)) {
-                        String content = Files.readString(mcmeta, StandardCharsets.UTF_8);
-                        Matcher m = Pattern.compile("\"pack_format\"\\s*:\\s*(\\d+)").matcher(content);
-                        if (m.find()) return "pack_format " + m.group(1);
+                    Path p1 = fs.getPath("shaderpack.properties");
+                    if (Files.exists(p1)) {
+                        String s = Files.readString(p1, StandardCharsets.UTF_8);
+                        Matcher m = Pattern.compile("(?m)^\\s*version\\s*=\\s*(.+)$").matcher(s);
+                        if (m.find()) return m.group(1).trim();
+                    }
+                    Path p2 = fs.getPath("shaderpack.txt");
+                    if (Files.exists(p2)) {
+                        String s = Files.readString(p2, StandardCharsets.UTF_8);
+                        Matcher m = Pattern.compile("(?m)^\\s*version\\s*[:=]\\s*(.+)$").matcher(s);
+                        if (m.find()) return m.group(1).trim();
                     }
                 }
             }
@@ -219,14 +231,18 @@ public class ResourcePacksTab {
         return "—";
     }
 
-    private byte[] robustLoadPackIconBytes(Path packPath) {
+    private byte[] robustLoadShaderPackIconBytes(Path packPath) {
         try {
             if (Files.isDirectory(packPath)) {
-                Path p = packPath.resolve("pack.png");
+                Path p = packPath.resolve("preview.png");
+                if (Files.exists(p)) return Files.readAllBytes(p);
+                p = packPath.resolve("pack.png");
                 if (Files.exists(p)) return Files.readAllBytes(p);
             } else {
                 try (FileSystem fs = FileSystems.newFileSystem(packPath, (ClassLoader) null)) {
-                    Path p = fs.getPath("pack.png");
+                    Path p = fs.getPath("preview.png");
+                    if (Files.exists(p)) return Files.readAllBytes(p);
+                    p = fs.getPath("pack.png");
                     if (Files.exists(p)) return Files.readAllBytes(p);
                 }
             }

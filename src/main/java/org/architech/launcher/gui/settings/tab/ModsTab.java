@@ -1,4 +1,4 @@
-package org.architech.launcher.gui.tab;
+package org.architech.launcher.gui.settings.tab;
 
 import javafx.application.Platform;
 import javafx.geometry.Insets;

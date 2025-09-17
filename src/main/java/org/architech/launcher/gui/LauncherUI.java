@@ -1,6 +1,7 @@
 package org.architech.launcher.gui;
 
 import com.sun.net.httpserver.HttpServer;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -18,7 +19,10 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
+import javafx.stage.Popup;
 import javafx.stage.Stage;
+import javafx.stage.Window;
+import javafx.util.Duration;
 import org.architech.launcher.MCLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountType;
@@ -27,8 +31,9 @@ import org.architech.launcher.authentication.auth.AuthService;
 import org.architech.launcher.authentication.ely_by.ElyOAuth;
 import org.architech.launcher.authentication.requests.GameParams;
 import org.architech.launcher.gui.head.HeadImage;
+import org.architech.launcher.gui.settings.MainSettingsUI;
 import org.architech.launcher.utils.logging.LogManager;
-import org.architech.launcher.utils.serverinfo.MinecraftPing;
+import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
 import org.architech.launcher.utils.Utils;
 import javafx.scene.paint.Color;
 import java.awt.*;
@@ -65,6 +70,9 @@ public class LauncherUI {
     private final Label onlineLabelField = new Label("Онлайн: —");
     private final Label pingLabelField = new Label("Пинг: — ms");
     private final Circle pingDotField = new Circle(6);
+    private final Popup playersPopup = new Popup();
+    private List<String> latestOnlinePlayers = Collections.emptyList();
+    private boolean popupHovered = false;
 
     private long startTimeMs;
     private ScheduledFuture<?> timerFuture;
@@ -429,10 +437,11 @@ public class LauncherUI {
 
         MCLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
             try {
-                MinecraftPing.ServerStatus s = MinecraftPing.fetchStatus("architech.mc-world.xyz", 25565, 3000);
+                ArchiTechServerInfo.ServerStatus s = ArchiTechServerInfo.fetchStatus("architech.mc-world.xyz", 25565, 3000);
                 Platform.runLater(() -> {
                     onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
                     pingLabelField.setText("Пинг: " + s.pingMs() + " ms");
+                    latestOnlinePlayers = (s.sample() == null) ? Collections.emptyList() : List.copyOf(s.sample());
                     if (s.pingMs() <= 100) pingDotField.setFill(Color.GREEN);
                     else if (s.pingMs() <= 250) pingDotField.setFill(Color.GOLD);
                     else pingDotField.setFill(Color.ORANGERED);
@@ -552,6 +561,29 @@ public class LauncherUI {
         BorderPane bottomLine = new BorderPane();
         bottomLine.setLeft(progressLabel);
         bottomLine.setRight(timerLabel);
+
+        playersPopup.setAutoFix(true);
+        playersPopup.setAutoHide(false);
+        playersPopup.setHideOnEscape(true);
+
+        leftInfo.setOnMouseEntered(e -> {
+            if (latestOnlinePlayers != null && !latestOnlinePlayers.isEmpty()) {
+                showPlayersPopup(e.getScreenX(), e.getScreenY());
+            }
+        });
+        leftInfo.setOnMouseMoved(e -> {
+            if (playersPopup.isShowing()) {
+                playersPopup.setX(e.getScreenX() + 12);
+                playersPopup.setY(e.getScreenY() + 12);
+            }
+        });
+        leftInfo.setOnMouseExited(e -> {
+            PauseTransition pt = new PauseTransition(Duration.millis(120));
+            pt.setOnFinished(ev -> {
+                if (!popupHovered) playersPopup.hide();
+            });
+            pt.play();
+        });
 
         VBox bottom = new VBox(8, bottomLine, barWrapper);
         bottom.setPadding(new Insets(10, 0, 0, 0));
@@ -803,4 +835,48 @@ public class LauncherUI {
             }
         });
     }
+
+    private void showPlayersPopup(double screenX, double screenY) {
+        Platform.runLater(() -> {
+            VBox content = new VBox(6);
+            content.setPadding(new Insets(6));
+            content.setStyle("-fx-background-color: rgba(24,24,24,0.95); -fx-padding: 6; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.04); -fx-border-radius:6;");
+            content.setPrefWidth(220);
+
+            if (latestOnlinePlayers == null || latestOnlinePlayers.isEmpty()) {
+                Label l = new Label("Список игроков недоступен");
+                l.setStyle("-fx-text-fill: #ddd;");
+                content.getChildren().add(l);
+            } else {
+                for (String name : latestOnlinePlayers) {
+                    HBox row = new HBox(8);
+                    row.setAlignment(Pos.CENTER_LEFT);
+
+                    Image head = HeadImage.fromName(name, 20);
+                    ImageView iv = new ImageView(head);
+                    iv.setFitWidth(20);
+                    iv.setFitHeight(20);
+
+                    Label nameLbl = new Label(name);
+                    nameLbl.setStyle("-fx-text-fill: white;");
+
+                    row.getChildren().addAll(iv, nameLbl);
+                    content.getChildren().add(row);
+                }
+            }
+
+            content.setOnMouseEntered(ev -> popupHovered = true);
+            content.setOnMouseExited(ev -> {
+                popupHovered = false;
+                playersPopup.hide();
+            });
+
+            playersPopup.getContent().clear();
+            playersPopup.getContent().add(content);
+
+            Window win = onlineLabelField.getScene().getWindow();
+            playersPopup.show(win, screenX + 12, screenY + 12);
+        });
+    }
+
 }

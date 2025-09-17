@@ -1,4 +1,4 @@
-package org.architech.launcher.gui.tab;
+package org.architech.launcher.gui.settings.tab;
 
 import com.sun.management.OperatingSystemMXBean;
 import javafx.geometry.Insets;
