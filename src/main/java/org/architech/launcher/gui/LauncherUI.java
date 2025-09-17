@@ -821,6 +821,8 @@ public class LauncherUI {
             timerFuture.cancel(true);
             timerFuture = null;
         }
+        startTimeMs = System.currentTimeMillis();
+        Platform.runLater(() -> timerLabel.setText("Времени прошло: 00:00:00"));
     }
 
     public void setLaunchingState(boolean launching) {

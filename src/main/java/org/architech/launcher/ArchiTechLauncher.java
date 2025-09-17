@@ -286,7 +286,6 @@ public class ArchiTechLauncher extends Application {
                 });
 
             } catch (InterruptedException ie) {
-                // Прерывание — отмена операции
                 Platform.runLater(() -> UI.updateProgress("Операция отменена.", 1.0));
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
