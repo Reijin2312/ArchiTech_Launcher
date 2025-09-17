@@ -814,8 +814,7 @@ public class LauncherUI {
 
         return sp;
     }
-
-
+    
     public void stopTimer() {
         if (timerFuture != null && !timerFuture.isDone()) {
             timerFuture.cancel(true);
