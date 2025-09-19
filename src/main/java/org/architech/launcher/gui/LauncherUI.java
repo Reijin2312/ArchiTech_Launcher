@@ -746,9 +746,9 @@ public class LauncherUI {
         try {
             File dir = GAME_DIR.toFile();
 
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                Desktop.getDesktop().open(dir);
-            } else {
+           //// if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+             //   Desktop.getDesktop().open(dir);
+           // } else {
                 String os = System.getProperty("os.name").toLowerCase();
                 Runtime rt = Runtime.getRuntime();
 
@@ -761,7 +761,7 @@ public class LauncherUI {
                 } else {
                     throw new UnsupportedOperationException("Неизвестная ОС: " + os);
                 }
-            }
+           // }
         } catch (Exception ex) {
             LogManager.getLogger().severe("Не удалось открыть папку игры: " + ex.getMessage());
             showError("Упс! Не удалось открыть папку игры :(", ex.getMessage());
@@ -878,5 +878,4 @@ public class LauncherUI {
             playersPopup.show(win, screenX + 12, screenY + 12);
         });
     }
-
 }

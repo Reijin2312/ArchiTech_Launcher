@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.auth.Auth;
 import org.architech.launcher.utils.Jsons;
+import org.architech.launcher.utils.Utils;
 import org.architech.launcher.utils.logging.LogManager;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -24,7 +25,9 @@ public class MinecraftLauncher {
         }
 
         List<String> args = new ArrayList<>();
-        args.add(JAVA_PATH.resolve("bin").resolve("java.exe").toString());
+
+        String javaBin = Utils.isWindows() ? "java.exe" : "java";
+        args.add(JAVA_PATH.resolve("bin").resolve(javaBin).toString());
 
         String osName = System.getProperty("os.name").toLowerCase();
         String osArch = System.getProperty("os.arch").toLowerCase();

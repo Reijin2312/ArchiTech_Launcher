@@ -140,7 +140,9 @@ public class NeoForgeManager {
 
         if (UI != null) UI.updateProgress("Установка neoforge...", 0.5);
 
-        ProcessBuilder pb = new ProcessBuilder(ArchiTechLauncher.JAVA_PATH.toString(), "-jar", installer.toString(), "--installClient", gameDir.toString());
+        String javaBin = Utils.isWindows() ? "java.exe" : "java";
+        ProcessBuilder pb = new ProcessBuilder(ArchiTechLauncher.JAVA_PATH.resolve("bin").resolve(javaBin).toString(), "-jar", installer.toString(), "--installClient", gameDir.toString());
+
         pb.directory(gameDir.toFile());
         pb.redirectErrorStream(true);
         Process p = pb.start();
