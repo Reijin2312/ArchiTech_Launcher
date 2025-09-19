@@ -66,7 +66,6 @@ public class LauncherUI {
     private final Button accountBtn;
     private final ContextMenu accountMenu;
     private final ImageView headView;
-    private Account currentAccount;
     private final Label onlineLabelField = new Label("Онлайн: —");
     private final Label pingLabelField = new Label("Пинг: — ms");
     private final Circle pingDotField = new Circle(6);
@@ -74,8 +73,293 @@ public class LauncherUI {
     private List<String> latestOnlinePlayers = Collections.emptyList();
     private boolean popupHovered = false;
 
-    private long startTimeMs;
+    private Account currentAccount;
     private ScheduledFuture<?> timerFuture;
+    private long startTimeMs;
+
+    public LauncherUI(Stage stage, Consumer<String> launchHandler, Runnable updateHandler) {
+        BorderPane root = new BorderPane();
+        root.setPadding(new Insets(20));
+
+        usernameField = new TextField("Имя пользователя");
+        usernameField.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-border-color: #6b6b6b; -fx-padding: 0 36 0 8;");
+        usernameField.setPrefColumnCount(14);
+        usernameField.setPrefHeight(30);
+        usernameField.setEditable(false);
+        usernameField.setFocusTraversable(false);
+        usernameField.setMouseTransparent(true);
+
+        headView = new ImageView();
+        headView.setFitWidth(20);
+        headView.setFitHeight(20);
+        headView.setPreserveRatio(true);
+        headView.setSmooth(true);
+        headView.setMouseTransparent(true);
+
+        StackPane usernameStack = new StackPane(usernameField, headView);
+        StackPane.setAlignment(headView, Pos.CENTER_RIGHT);
+        StackPane.setMargin(headView, new Insets(0, 8, 0, 0));
+
+        accountMenu = new ContextMenu();
+
+        Label chevron = new Label("⌄");
+        chevron.setStyle("-fx-text-fill: black; -fx-font-size: 14px;");
+
+        accountBtn = new Button();
+        accountBtn.setPrefHeight(usernameField.getPrefHeight());
+        accountBtn.setPrefWidth(accountBtn.getPrefHeight());
+        accountBtn.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-font-size: 14px;");
+        accountBtn.setGraphic(chevron);
+        accountBtn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        accountBtn.setOnAction(e -> {
+            rebuildAccountMenu();
+            accountMenu.show(accountBtn, Side.BOTTOM, 0, 0);
+        });
+
+        setCurrentAccount(Auth.current());
+
+        launchBtn = new Button("ЗАПУСТИТЬ");
+        launchBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+        launchBtn.setMaxWidth(Double.MAX_VALUE);
+        launchBtn.setOnAction(e -> {
+            startTimer();
+            launchHandler.accept(usernameField.getText());
+        });
+
+        HBox buttons = new HBox(12);
+        buttons.setAlignment(Pos.CENTER);
+
+        Button openFolder = new Button("📂");
+        styleSmallButton(openFolder);
+        openFolder.setOnAction(e -> Utils.openGameDir());
+
+        Button checkUpdates = new Button("⟳");
+        styleSmallButton(checkUpdates);
+        checkUpdates.setOnAction(e -> updateHandler.run());
+
+        Image telegramIcon = new Image(Objects.requireNonNull(getClass().getResource("/images/tg.png")).toExternalForm());
+        ImageView telegramView = new ImageView(telegramIcon);
+        telegramView.setFitWidth(20);
+        telegramView.setFitHeight(20);
+
+        Button faqBtn = new Button();
+        styleSmallButton(faqBtn);
+        faqBtn.setGraphic(telegramView);
+        faqBtn.setOnAction(e -> {
+            try {
+                URI uri = new URI("https://t.me/archi_tech_official");
+
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                    Desktop.getDesktop().browse(uri);
+                } else {
+                    String os = System.getProperty("os.name").toLowerCase();
+                    Runtime rt = Runtime.getRuntime();
+
+                    if (os.contains("win")) {
+                        rt.exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
+                    } else if (os.contains("mac")) {
+                        rt.exec(new String[]{"open", uri.toString()});
+                    } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
+                        rt.exec(new String[]{"xdg-open", uri.toString()});
+                    } else {
+                        throw new UnsupportedOperationException("Неизвестная ОС: " + os);
+                    }
+                }
+            } catch (Exception ex) {
+                LogManager.getLogger().severe("Не удалось открыть Telegram: " + ex.getMessage());
+                showError("Упс! Не удалось открыть Telegram :(", ex.getMessage());
+            }
+        });
+
+
+        Button settingsBtn = new Button("⚙");
+        styleSmallButton(settingsBtn);
+
+        buttons.getChildren().addAll(openFolder, checkUpdates, faqBtn, settingsBtn);
+
+        HBox userRow = new HBox(8, usernameStack, accountBtn);
+        userRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox controls = new VBox(15, userRow, launchBtn, buttons);
+        controls.setAlignment(Pos.CENTER);
+        BorderPane left = new BorderPane();
+        left.setBottom(controls);
+        root.setLeft(left);
+
+        buttons.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(buttons, Priority.NEVER);
+
+        for (Button b : new Button[]{openFolder, checkUpdates, faqBtn, settingsBtn}) {
+            b.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(b, Priority.ALWAYS);
+        }
+
+        ArchiTechLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
+            try {
+                ArchiTechServerInfo.ServerStatus s = ArchiTechServerInfo.fetchStatus("architech.mc-world.xyz", 25565, 3000);
+                Platform.runLater(() -> {
+                    onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
+                    pingLabelField.setText("Пинг: " + s.pingMs() + " ms");
+                    latestOnlinePlayers = (s.sample() == null) ? Collections.emptyList() : List.copyOf(s.sample());
+                    if (s.pingMs() <= 100) pingDotField.setFill(Color.GREEN);
+                    else if (s.pingMs() <= 250) pingDotField.setFill(Color.GOLD);
+                    else pingDotField.setFill(Color.ORANGERED);
+                });
+            } catch (Throwable t) {
+                Platform.runLater(() -> {
+                    onlineLabelField.setText("Онлайн: —");
+                    pingLabelField.setText("Пинг: —");
+                    pingDotField.setFill(Color.GRAY);
+                });
+            }
+        }, 0, 10, TimeUnit.SECONDS);
+
+        // заголовок
+        Label newsTitle = new Label("Новости проекта");
+        newsTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;");
+        HBox titleBox = new HBox(newsTitle);
+        titleBox.setAlignment(Pos.CENTER);
+
+        List<NewsItem> newsItems = List.of(
+                new NewsItem("Заголовок 1", "https://example.com/img1.png"),
+                new NewsItem("Заголовок 2", "https://example.com/img2.png"),
+                new NewsItem("Заголовок 3", "https://example.com/img2.png"),
+                new NewsItem("Заголовок 4", "https://example.com/img2.png"),
+                new NewsItem("Заголовок 5", "https://example.com/img2.png"),
+                new NewsItem("Заголовок 6", "https://example.com/img2.png"),
+                new NewsItem("Заголовок 7", "https://example.com/img2.png"),
+                new NewsItem("Заголовок 8", "https://example.com/img2.png")
+        );
+        ScrollPane newsScroll = buildNewsList(newsItems);
+        newsScroll.setFitToWidth(true);
+        newsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        VBox newsContainer = new VBox(8);
+        newsContainer.setPadding(new Insets(10));
+        newsContainer.setAlignment(Pos.TOP_CENTER);
+        newsContainer.setFillWidth(true);
+        newsContainer.getChildren().add(titleBox);
+
+        Region sepTop = new Region();
+        sepTop.setPrefHeight(2);
+        sepTop.setPrefWidth(220);
+        sepTop.setStyle("-fx-background-color: rgba(255,255,255,1); -fx-background-radius: 2;");
+        HBox sepTopBox = new HBox(sepTop);
+        sepTopBox.setAlignment(Pos.CENTER);
+        newsContainer.getChildren().add(sepTopBox);
+
+        HBox infoBar = new HBox(12);
+        infoBar.setAlignment(Pos.CENTER);
+        infoBar.setPadding(new Insets(6, 12, 6, 12));
+        infoBar.setStyle("-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 4;");
+
+        HBox leftInfo = new HBox(6);
+        leftInfo.setAlignment(Pos.CENTER);
+        Label personIcon = new Label("\uD83D\uDC64"); // 👤
+        personIcon.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
+        onlineLabelField.setStyle("-fx-text-fill: white; -fx-font-size: 12px;");
+        leftInfo.getChildren().addAll(personIcon, onlineLabelField);
+
+        HBox rightInfo = new HBox(6);
+        rightInfo.setAlignment(Pos.CENTER);
+        pingLabelField.setStyle("-fx-text-fill: white; -fx-font-size: 12px;");
+        rightInfo.getChildren().addAll(pingDotField, pingLabelField);
+
+        infoBar.getChildren().addAll(leftInfo, new Label("|"), rightInfo);
+        newsContainer.getChildren().add(infoBar);
+
+        Region sepBottom = new Region();
+        sepBottom.setPrefHeight(2);
+        sepBottom.setPrefWidth(180);
+        sepBottom.setStyle("-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 2;");
+        HBox sepBottomBox = new HBox(sepBottom);
+        sepBottomBox.setAlignment(Pos.CENTER);
+        newsContainer.getChildren().add(sepBottomBox);
+
+        newsScroll.setMaxHeight(Region.USE_COMPUTED_SIZE);
+        newsContainer.getChildren().add(newsScroll);
+
+        StackPane newsWrapper = new StackPane(newsContainer);
+        newsWrapper.setPadding(new Insets(6));
+        newsWrapper.setStyle("-fx-background-color: rgba(30,30,30,0.55); -fx-background-radius: 8;");
+
+        VBox centerBox = new VBox(10, newsWrapper);
+        centerBox.setAlignment(Pos.TOP_CENTER);
+        VBox.setVgrow(newsWrapper, Priority.ALWAYS);
+
+        root.setCenter(centerBox);
+        BorderPane.setMargin(centerBox, new Insets(0, 0, 0, 20));
+
+        timerLabel = new Label("Времени прошло: 00:00:00");
+        timerLabel.setStyle("-fx-text-fill: white;");
+
+        percentLabel = new Label("0%");
+        percentLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+
+        progressBar = new ProgressBar(0);
+        progressBar.setPrefWidth(Double.MAX_VALUE);
+        progressBar.setStyle("-fx-accent: #4caf50;");
+
+        StackPane barWrapper = new StackPane(progressBar);
+        barWrapper.setAlignment(Pos.CENTER);
+        barWrapper.getChildren().add(percentLabel);
+
+        progressLabel = new Label("Ожидание...");
+        progressLabel.setStyle("-fx-text-fill: white;");
+
+        BorderPane bottomLine = new BorderPane();
+        bottomLine.setLeft(progressLabel);
+        bottomLine.setRight(timerLabel);
+
+        playersPopup.setAutoFix(true);
+        playersPopup.setAutoHide(false);
+        playersPopup.setHideOnEscape(true);
+
+        leftInfo.setOnMouseEntered(e -> {
+            if (latestOnlinePlayers != null && !latestOnlinePlayers.isEmpty()) {
+                showPlayersPopup(e.getScreenX(), e.getScreenY());
+            }
+        });
+        leftInfo.setOnMouseMoved(e -> {
+            if (playersPopup.isShowing()) {
+                playersPopup.setX(e.getScreenX() + 12);
+                playersPopup.setY(e.getScreenY() + 12);
+            }
+        });
+        leftInfo.setOnMouseExited(e -> {
+            PauseTransition pt = new PauseTransition(Duration.millis(120));
+            pt.setOnFinished(ev -> {
+                if (!popupHovered) playersPopup.hide();
+            });
+            pt.play();
+        });
+
+        VBox bottom = new VBox(8, bottomLine, barWrapper);
+        bottom.setPadding(new Insets(10, 0, 0, 0));
+        root.setBottom(bottom);
+
+        stage.setTitle("ArchiTech - лаунчер");
+        stage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResource("/images/icon.jpg")).toExternalForm()));
+
+        mainScene = new Scene(root, 900, 560);
+
+        mainScene.getStylesheets().addAll(
+                Objects.requireNonNull(getClass().getResource("/css/base.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/layout.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/components.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/controls.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/tabs.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/scroll.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()
+        );
+
+        root.setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
+
+        settingsBtn.setOnAction(e -> new MainSettingsUI(stage, mainScene).show());
+
+        stage.setScene(mainScene);
+        stage.show();
+    }
 
     private void rebuildAccountMenu() {
         accountMenu.getItems().clear();
@@ -94,8 +378,8 @@ public class LauncherUI {
 
     private void showOfflineDialog() {
         TextInputDialog d = new TextInputDialog((currentAccount != null && currentAccount.type == AccountType.OFFLINE)
-                        ? currentAccount.username
-                        : (usernameField.getText() == null ? "Player" : usernameField.getText()));
+                ? currentAccount.username
+                : (usernameField.getText() == null ? "Player" : usernameField.getText()));
         d.setTitle("Оффлайн вход");
         d.setHeaderText("Введите ник для оффлайн-режима");
         d.setContentText("Ник:");
@@ -117,7 +401,7 @@ public class LauncherUI {
         try {
             AuthService.MsAuthContext msCtx = new AuthService.MsAuthContext();
             String url = AuthService.buildMicrosoftLoginUrl(msCtx);
-            openInBrowser(url);
+            Utils.openInBrowser(url);
         } catch (Exception e) {
             showError("Не удалось открыть авторизацию Microsoft", e.getMessage());
         }
@@ -153,7 +437,7 @@ public class LauncherUI {
 
                 String state = UUID.randomUUID().toString();
                 String url = ElyOAuth.buildAuthorizeUrl(state, null);
-                openInBrowser(url);
+                Utils.openInBrowser(url);
 
                 String code = waitForAuthCodeAndValidateState(state);
                 Account a = AuthService.finishElyLoginWithCode(code);
@@ -189,37 +473,11 @@ public class LauncherUI {
                         return;
                     }
                 } catch (Exception ignore) {}
-                    Platform.runLater(() -> showError("Вход через ely.by не удался", ex.getMessage()));
+                Platform.runLater(() -> showError("Вход через ely.by не удался", ex.getMessage()));
             } finally {
                 Platform.runLater(() -> accountBtn.setDisable(false));
             }
         }, "ely-login").start();
-    }
-
-    private void openInBrowser(String url) {
-        try {
-            URI uri = new URI(url);
-
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(uri);
-            } else {
-                String os = System.getProperty("os.name").toLowerCase();
-                Runtime rt = Runtime.getRuntime();
-
-                if (os.contains("win")) {
-                    rt.exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
-                } else if (os.contains("mac")) {
-                    rt.exec(new String[]{"open", uri.toString()});
-                } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                    rt.exec(new String[]{"xdg-open", uri.toString()});
-                } else {
-                    throw new UnsupportedOperationException("Неизвестная ОС: " + os);
-                }
-            }
-        } catch (Exception e) {
-            LogManager.getLogger().severe("Не удалось открыть браузер: " + e.getMessage());
-            showError("Не удалось открыть браузер", e.getMessage());
-        }
     }
 
     private String waitForAuthCodeAndValidateState(String expectedState) throws Exception {
@@ -317,300 +575,6 @@ public class LauncherUI {
         }
     }
 
-    public LauncherUI(Stage stage, Consumer<String> launchHandler, Runnable updateHandler) {
-        BorderPane root = new BorderPane();
-        root.setPadding(new Insets(20));
-
-        usernameField = new TextField("Имя пользователя");
-        usernameField.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-border-color: #6b6b6b; -fx-padding: 0 36 0 8;");
-        usernameField.setPrefColumnCount(14);
-        usernameField.setPrefHeight(30);
-        usernameField.setEditable(false);
-        usernameField.setFocusTraversable(false);
-        usernameField.setMouseTransparent(true);
-
-        headView = new ImageView();
-        headView.setFitWidth(20);
-        headView.setFitHeight(20);
-        headView.setPreserveRatio(true);
-        headView.setSmooth(true);
-        headView.setMouseTransparent(true);
-
-        StackPane usernameStack = new StackPane(usernameField, headView);
-        StackPane.setAlignment(headView, Pos.CENTER_RIGHT);
-        StackPane.setMargin(headView, new Insets(0, 8, 0, 0));
-
-        accountMenu = new ContextMenu();
-
-        Label chevron = new Label("⌄");
-        chevron.setStyle("-fx-text-fill: black; -fx-font-size: 14px;");
-
-        accountBtn = new Button();
-        accountBtn.setPrefHeight(usernameField.getPrefHeight());
-        accountBtn.setPrefWidth(accountBtn.getPrefHeight());
-        accountBtn.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-font-size: 14px;");
-        accountBtn.setGraphic(chevron);
-        accountBtn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-        accountBtn.setOnAction(e -> {
-            rebuildAccountMenu();
-            accountMenu.show(accountBtn, Side.BOTTOM, 0, 0);
-        });
-
-        setCurrentAccount(Auth.current());
-
-        launchBtn = new Button("ЗАПУСТИТЬ");
-        launchBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
-        launchBtn.setMaxWidth(Double.MAX_VALUE);
-        launchBtn.setOnAction(e -> {
-            startTimer();
-            launchHandler.accept(usernameField.getText());
-        });
-
-        HBox buttons = new HBox(12);
-        buttons.setAlignment(Pos.CENTER);
-
-        Button openFolder = new Button("📂");
-        styleSmallButton(openFolder);
-        openFolder.setOnAction(e -> openGameDir());
-
-        Button checkUpdates = new Button("⟳");
-        styleSmallButton(checkUpdates);
-        checkUpdates.setOnAction(e -> updateHandler.run());
-
-        Image telegramIcon = new Image(Objects.requireNonNull(getClass().getResource("/images/tg.png")).toExternalForm());
-        ImageView telegramView = new ImageView(telegramIcon);
-        telegramView.setFitWidth(20);
-        telegramView.setFitHeight(20);
-
-        Button faqBtn = new Button();
-        styleSmallButton(faqBtn);
-        faqBtn.setGraphic(telegramView);
-        faqBtn.setOnAction(e -> {
-            try {
-                URI uri = new URI("https://t.me/archi_tech_official");
-
-                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                    Desktop.getDesktop().browse(uri);
-                } else {
-                    String os = System.getProperty("os.name").toLowerCase();
-                    Runtime rt = Runtime.getRuntime();
-
-                    if (os.contains("win")) {
-                        rt.exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
-                    } else if (os.contains("mac")) {
-                        rt.exec(new String[]{"open", uri.toString()});
-                    } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                        rt.exec(new String[]{"xdg-open", uri.toString()});
-                    } else {
-                        throw new UnsupportedOperationException("Неизвестная ОС: " + os);
-                    }
-                }
-            } catch (Exception ex) {
-                LogManager.getLogger().severe("Не удалось открыть Telegram: " + ex.getMessage());
-                showError("Упс! Не удалось открыть Telegram :(", ex.getMessage());
-            }
-        });
-
-
-        Button settingsBtn = new Button("⚙");
-        styleSmallButton(settingsBtn);
-
-        buttons.getChildren().addAll(openFolder, checkUpdates, faqBtn, settingsBtn);
-
-        HBox userRow = new HBox(8, usernameStack, accountBtn);
-        userRow.setAlignment(Pos.CENTER_LEFT);
-
-        VBox controls = new VBox(15, userRow, launchBtn, buttons);
-        controls.setAlignment(Pos.CENTER);
-        BorderPane left = new BorderPane();
-        left.setBottom(controls);
-        root.setLeft(left);
-
-        buttons.setMaxWidth(Double.MAX_VALUE);
-        VBox.setVgrow(buttons, Priority.NEVER);
-
-        for (Button b : new Button[]{openFolder, checkUpdates, faqBtn, settingsBtn}) {
-            b.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(b, Priority.ALWAYS);
-        }
-
-        ArchiTechLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
-            try {
-                ArchiTechServerInfo.ServerStatus s = ArchiTechServerInfo.fetchStatus("architech.mc-world.xyz", 25565, 3000);
-                Platform.runLater(() -> {
-                    onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
-                    pingLabelField.setText("Пинг: " + s.pingMs() + " ms");
-                    latestOnlinePlayers = (s.sample() == null) ? Collections.emptyList() : List.copyOf(s.sample());
-                    if (s.pingMs() <= 100) pingDotField.setFill(Color.GREEN);
-                    else if (s.pingMs() <= 250) pingDotField.setFill(Color.GOLD);
-                    else pingDotField.setFill(Color.ORANGERED);
-                });
-            } catch (Throwable t) {
-                Platform.runLater(() -> {
-                    onlineLabelField.setText("Онлайн: —");
-                    pingLabelField.setText("Пинг: —");
-                    pingDotField.setFill(Color.GRAY);
-                });
-            }
-        }, 0, 10, TimeUnit.SECONDS);
-
-        // заголовок
-        Label newsTitle = new Label("Новости проекта");
-        newsTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;");
-        HBox titleBox = new HBox(newsTitle);
-        titleBox.setAlignment(Pos.CENTER);
-
-// список новостей
-        List<NewsItem> newsItems = List.of(
-                new NewsItem("Заголовок 1", "https://example.com/img1.png"),
-                new NewsItem("Заголовок 2", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 3", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 4", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 5", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 6", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 7", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 8", "https://example.com/img2.png")
-        );
-        ScrollPane newsScroll = buildNewsList(newsItems);
-        newsScroll.setFitToWidth(true);
-        newsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-
-// контейнер новостей
-        VBox newsContainer = new VBox(8);
-        newsContainer.setPadding(new Insets(10));
-        newsContainer.setAlignment(Pos.TOP_CENTER);
-        newsContainer.setFillWidth(true);
-
-// заголовок
-        newsContainer.getChildren().add(titleBox);
-
-// верхняя полоска
-        Region sepTop = new Region();
-        sepTop.setPrefHeight(2);
-        sepTop.setPrefWidth(220);
-        sepTop.setStyle("-fx-background-color: rgba(255,255,255,1); -fx-background-radius: 2;");
-        HBox sepTopBox = new HBox(sepTop);
-        sepTopBox.setAlignment(Pos.CENTER);
-        newsContainer.getChildren().add(sepTopBox);
-
-// инфо-бар (онлайн + пинг)
-        HBox infoBar = new HBox(12);
-        infoBar.setAlignment(Pos.CENTER);
-        infoBar.setPadding(new Insets(6, 12, 6, 12));
-        infoBar.setStyle("-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 4;");
-
-// левый блок (онлайн)
-        HBox leftInfo = new HBox(6);
-        leftInfo.setAlignment(Pos.CENTER);
-        Label personIcon = new Label("\uD83D\uDC64"); // 👤
-        personIcon.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
-        onlineLabelField.setStyle("-fx-text-fill: white; -fx-font-size: 12px;");
-        leftInfo.getChildren().addAll(personIcon, onlineLabelField);
-
-// правый блок (пинг)
-        HBox rightInfo = new HBox(6);
-        rightInfo.setAlignment(Pos.CENTER);
-        pingLabelField.setStyle("-fx-text-fill: white; -fx-font-size: 12px;");
-        rightInfo.getChildren().addAll(pingDotField, pingLabelField);
-
-// объединяем
-        infoBar.getChildren().addAll(leftInfo, new Label("|"), rightInfo);
-        newsContainer.getChildren().add(infoBar);
-
-// нижняя полоска
-        Region sepBottom = new Region();
-        sepBottom.setPrefHeight(2);
-        sepBottom.setPrefWidth(180);
-        sepBottom.setStyle("-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 2;");
-        HBox sepBottomBox = new HBox(sepBottom);
-        sepBottomBox.setAlignment(Pos.CENTER);
-        newsContainer.getChildren().add(sepBottomBox);
-
-        newsScroll.setMaxHeight(Region.USE_COMPUTED_SIZE);
-        newsContainer.getChildren().add(newsScroll);
-
-        StackPane newsWrapper = new StackPane(newsContainer);
-        newsWrapper.setPadding(new Insets(6));
-        newsWrapper.setStyle("-fx-background-color: rgba(30,30,30,0.55); -fx-background-radius: 8;");
-
-        VBox centerBox = new VBox(10, newsWrapper);
-        centerBox.setAlignment(Pos.TOP_CENTER);
-        VBox.setVgrow(newsWrapper, Priority.ALWAYS);
-
-        root.setCenter(centerBox);
-        BorderPane.setMargin(centerBox, new Insets(0, 0, 0, 20));
-
-        timerLabel = new Label("Времени прошло: 00:00:00");
-        timerLabel.setStyle("-fx-text-fill: white;");
-
-        percentLabel = new Label("0%");
-        percentLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
-
-        progressBar = new ProgressBar(0);
-        progressBar.setPrefWidth(Double.MAX_VALUE);
-        progressBar.setStyle("-fx-accent: #4caf50;");
-
-        StackPane barWrapper = new StackPane(progressBar);
-        barWrapper.setAlignment(Pos.CENTER);
-        barWrapper.getChildren().add(percentLabel);
-
-        progressLabel = new Label("Ожидание...");
-        progressLabel.setStyle("-fx-text-fill: white;");
-
-        BorderPane bottomLine = new BorderPane();
-        bottomLine.setLeft(progressLabel);
-        bottomLine.setRight(timerLabel);
-
-        playersPopup.setAutoFix(true);
-        playersPopup.setAutoHide(false);
-        playersPopup.setHideOnEscape(true);
-
-        leftInfo.setOnMouseEntered(e -> {
-            if (latestOnlinePlayers != null && !latestOnlinePlayers.isEmpty()) {
-                showPlayersPopup(e.getScreenX(), e.getScreenY());
-            }
-        });
-        leftInfo.setOnMouseMoved(e -> {
-            if (playersPopup.isShowing()) {
-                playersPopup.setX(e.getScreenX() + 12);
-                playersPopup.setY(e.getScreenY() + 12);
-            }
-        });
-        leftInfo.setOnMouseExited(e -> {
-            PauseTransition pt = new PauseTransition(Duration.millis(120));
-            pt.setOnFinished(ev -> {
-                if (!popupHovered) playersPopup.hide();
-            });
-            pt.play();
-        });
-
-        VBox bottom = new VBox(8, bottomLine, barWrapper);
-        bottom.setPadding(new Insets(10, 0, 0, 0));
-        root.setBottom(bottom);
-
-        stage.setTitle("ArchiTech - лаунчер");
-        stage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResource("/images/icon.jpg")).toExternalForm()));
-
-        mainScene = new Scene(root, 900, 560);
-
-        mainScene.getStylesheets().addAll(
-                Objects.requireNonNull(getClass().getResource("/css/base.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/layout.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/components.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/controls.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/tabs.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/scroll.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()
-        );
-
-        root.setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
-
-        settingsBtn.setOnAction(e -> new MainSettingsUI(stage, mainScene).show());
-
-        stage.setScene(mainScene);
-        stage.show();
-    }
-
     private void styleSmallButton(Button btn) {
         btn.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-font-size: 14px;");
         btn.setPrefWidth(40);
@@ -704,68 +668,9 @@ public class LauncherUI {
         a.showAndWait().ifPresent(response -> {
             if (response == reportBtn) {
                 String encoded = URLEncoder.encode(msg + "\n\n" + details, StandardCharsets.UTF_8);
-                openWebpage("https://t.me/Raijin2312?text=" + encoded);
+                Utils.openWebpage("https://t.me/Raijin2312?text=" + encoded);
             }
         });
-    }
-
-    public static void openWebpage(String url) {
-        try {
-            URI uri = new URI(url);
-
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(uri);
-            } else {
-                String os = System.getProperty("os.name").toLowerCase();
-                Runtime rt = Runtime.getRuntime();
-
-                if (os.contains("win")) {
-                    // Windows
-                    rt.exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
-                } else if (os.contains("mac")) {
-                    // macOS
-                    rt.exec(new String[]{"open", uri.toString()});
-                } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                    // Linux/Unix
-                    rt.exec(new String[]{"xdg-open", uri.toString()});
-                } else {
-                    throw new UnsupportedOperationException("Неизвестная ОС: " + os);
-                }
-            }
-        } catch (Exception e) {
-            LogManager.getLogger().severe("Ошибка открытия веб-страницы: " + e.getMessage());
-        }
-    }
-
-    public void showInfo(String msg) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION, msg);
-        a.showAndWait();
-    }
-
-    private void openGameDir() {
-        try {
-            File dir = GAME_DIR.toFile();
-
-           //// if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-             //   Desktop.getDesktop().open(dir);
-           // } else {
-                String os = System.getProperty("os.name").toLowerCase();
-                Runtime rt = Runtime.getRuntime();
-
-                if (os.contains("win")) {
-                    rt.exec(new String[]{"explorer", dir.getAbsolutePath()});
-                } else if (os.contains("mac")) {
-                    rt.exec(new String[]{"open", dir.getAbsolutePath()});
-                } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                    rt.exec(new String[]{"xdg-open", dir.getAbsolutePath()});
-                } else {
-                    throw new UnsupportedOperationException("Неизвестная ОС: " + os);
-                }
-           // }
-        } catch (Exception ex) {
-            LogManager.getLogger().severe("Не удалось открыть папку игры: " + ex.getMessage());
-            showError("Упс! Не удалось открыть папку игры :(", ex.getMessage());
-        }
     }
 
     private record NewsItem(String title, String imageUrl) {}

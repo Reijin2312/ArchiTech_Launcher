@@ -5,8 +5,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.Jsons;
+import org.architech.launcher.utils.Utils;
 import org.architech.launcher.utils.logging.LogManager;
-import org.architech.launcher.utils.UtilsNet;
+
 import java.nio.file.*;
 import java.util.*;
 
@@ -17,7 +18,7 @@ public class VersionManager {
     public JsonNode loadVersionJson(String versionId) throws Exception {
         Files.createDirectories(ArchiTechLauncher.VERSIONS_DIR.resolve(versionId));
         String manifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
-        String manifestStr = UtilsNet.readUrl(manifestUrl);
+        String manifestStr = Utils.readUrl(manifestUrl);
 
         JsonNode manifest = org.architech.launcher.utils.Jsons.MAPPER.readTree(manifestStr);
         ArrayNode versions = (ArrayNode) manifest.get("versions");
@@ -31,7 +32,7 @@ public class VersionManager {
         }
         if (versionUrl == null) throw new RuntimeException("Версия " + versionId + " не найдена в манифесте");
 
-        String versionJsonStr = UtilsNet.readUrl(versionUrl);
+        String versionJsonStr = Utils.readUrl(versionUrl);
         Path jsonPath = ArchiTechLauncher.VERSIONS_DIR.resolve(versionId).resolve(versionId + ".json");
         Files.writeString(jsonPath, versionJsonStr, CREATE, TRUNCATE_EXISTING);
 
@@ -105,7 +106,7 @@ public class VersionManager {
             Files.createDirectories(indexPath.getParent());
             list.add(new FileEntry("assetIndex", "AssetIndex: " + assetsId, assetsUrl, indexPath, aiSize, aiSha1));
 
-            String assetsJsonStr = Files.exists(indexPath) ? Files.readString(indexPath) : UtilsNet.readUrl(assetsUrl);
+            String assetsJsonStr = Files.exists(indexPath) ? Files.readString(indexPath) : Utils.readUrl(assetsUrl);
             JsonNode assetsJson = org.architech.launcher.utils.Jsons.MAPPER.readTree(assetsJsonStr);
 
             JsonNode objects = assetsJson.path("objects");
@@ -138,7 +139,7 @@ public class VersionManager {
                 return;
             }
             if (expectedSha1 != null) {
-                String actualSha1 = UtilsNet.sha1(file);
+                String actualSha1 = Utils.sha1(file);
                 if (actualSha1 == null || !actualSha1.equalsIgnoreCase(expectedSha1)) {
                     Files.deleteIfExists(file);
                 }
