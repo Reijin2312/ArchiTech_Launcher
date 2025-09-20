@@ -27,8 +27,15 @@ import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 import static org.architech.launcher.gui.LauncherUI.showError;
 
 public class Utils {
-    public static double clamp01(double v) { return v < 0 ? 0 : Math.min(v, 1); }
-    public static boolean isWindows() { return System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win"); }
+
+    public static double clamp01(double v)
+    {
+        return v < 0 ? 0 : Math.min(v, 1);
+    }
+
+    public static boolean isWindows() {
+        return System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win");
+    }
 
     public static long tryHeadSize(String url) {
         try {
@@ -145,13 +152,10 @@ public class Utils {
                 Runtime rt = Runtime.getRuntime();
 
                 if (os.contains("win")) {
-                    // Windows
                     rt.exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
                 } else if (os.contains("mac")) {
-                    // macOS
                     rt.exec(new String[]{"open", uri.toString()});
                 } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                    // Linux/Unix
                     rt.exec(new String[]{"xdg-open", uri.toString()});
                 } else {
                     throw new UnsupportedOperationException("Неизвестная ОС: " + os);
@@ -165,23 +169,23 @@ public class Utils {
     public static void openGameDir() {
         try {
             File dir = GAME_DIR.toFile();
-
-            //// if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-            //   Desktop.getDesktop().open(dir);
-            // } else {
             String os = System.getProperty("os.name").toLowerCase();
             Runtime rt = Runtime.getRuntime();
 
             if (os.contains("win")) {
-                rt.exec(new String[]{"explorer", dir.getAbsolutePath()});
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                    Desktop.getDesktop().open(dir);
+                } else {
+                    rt.exec(new String[]{"explorer", dir.getAbsolutePath()});
+                }
             } else if (os.contains("mac")) {
                 rt.exec(new String[]{"open", dir.getAbsolutePath()});
             } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                rt.exec(new String[]{"xdg-open", dir.getAbsolutePath()});
+                rt.exec(new String[]{"/usr/bin/xdg-open", dir.getAbsolutePath()});
             } else {
                 throw new UnsupportedOperationException("Неизвестная ОС: " + os);
             }
-            // }
+
         } catch (Exception ex) {
             LogManager.getLogger().severe("Не удалось открыть папку игры: " + ex.getMessage());
             showError("Упс! Не удалось открыть папку игры :(", ex.getMessage());
