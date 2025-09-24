@@ -30,6 +30,7 @@ import org.architech.launcher.authentication.auth.Auth;
 import org.architech.launcher.authentication.auth.AuthService;
 import org.architech.launcher.authentication.ely_by.ElyOAuth;
 import org.architech.launcher.authentication.requests.GameParams;
+import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.head.HeadImage;
 import org.architech.launcher.gui.settings.MainSettingsUI;
 import org.architech.launcher.utils.logging.LogManager;
@@ -356,6 +357,8 @@ public class LauncherUI {
         root.setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
 
         settingsBtn.setOnAction(e -> new MainSettingsUI(stage, mainScene).show());
+
+        DiscordIntegration.update("В лаунчере", "На главной странице");
 
         stage.setScene(mainScene);
         stage.show();
@@ -684,9 +687,8 @@ public class LauncherUI {
             card.getStyleClass().add("news-card");
             card.setPrefWidth(640);
             card.setMaxWidth(640);
-            card.setMinHeight(88); // высота карточки — подгоните при необходимости
+            card.setMinHeight(88);
 
-            // картинка новости
             ImageView img = new ImageView();
             img.setFitWidth(64);
             img.setFitHeight(64);
@@ -694,7 +696,6 @@ public class LauncherUI {
             img.setSmooth(true);
             img.getStyleClass().add("news-image");
 
-            // фоновая загрузка картинки
             ArchiTechLauncher.scheduledExecutor.execute(() -> {
                 try {
                     Image im = new Image(n.imageUrl(), 64, 64, true, true);
@@ -704,30 +705,28 @@ public class LauncherUI {
                 }
             });
 
-            // правый блок: заголовок+дата сверху, описание снизу
             Label title = new Label(n.title());
             title.getStyleClass().add("news-title");
             title.setWrapText(true);
-            title.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(title, Priority.ALWAYS);
 
             Label date = new Label(n.date());
             date.getStyleClass().add("news-date");
-            date.setWrapText(false);
 
-            HBox topRow = new HBox(8, title, date);
-            topRow.setAlignment(Pos.TOP_LEFT);
-            HBox.setHgrow(title, Priority.ALWAYS);
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            HBox topRow = new HBox(8, title, spacer, date);
 
             Label desc = new Label(n.shortDesc());
             desc.getStyleClass().add("news-desc");
             desc.setWrapText(true);
-            desc.setMaxWidth(480);
+            desc.setMaxWidth(Double.MAX_VALUE);
             desc.setMaxHeight(Region.USE_PREF_SIZE);
 
             VBox content = new VBox(6, topRow, desc);
             content.setAlignment(Pos.TOP_LEFT);
             content.setFillWidth(true);
+            HBox.setHgrow(content, Priority.ALWAYS);
 
             HBox row = new HBox(12, img, content);
             row.setAlignment(Pos.CENTER_LEFT);
@@ -748,7 +747,6 @@ public class LauncherUI {
 
         return sp;
     }
-
 
     public void stopTimer() {
         if (timerFuture != null && !timerFuture.isDone()) {

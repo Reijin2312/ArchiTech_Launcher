@@ -1,15 +1,21 @@
 package org.architech.launcher.gui.settings.tab;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.util.Duration;
 import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
 import java.io.ByteArrayInputStream;
@@ -180,6 +186,29 @@ public class ModsTab {
                 scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
                 if (scroll.getContent() != null) scroll.getContent().setStyle("-fx-background-color: transparent;");
 
+            });
+
+            Platform.runLater(() -> {
+                int i = 0;
+                for (Node node : modsList.getChildren()) {
+                    if (node == header) continue;
+                    node.setOpacity(0);
+                    node.setTranslateY(10);
+
+                    FadeTransition ft = new FadeTransition(Duration.millis(200), node);
+                    ft.setFromValue(0);
+                    ft.setToValue(1);
+
+                    TranslateTransition tt = new TranslateTransition(Duration.millis(200), node);
+                    tt.setFromY(10);
+                    tt.setToY(0);
+
+                    ft.setDelay(Duration.millis(i * 40));
+                    tt.setDelay(Duration.millis(i * 40));
+
+                    new ParallelTransition(ft, tt).play();
+                    i++;
+                }
             });
         });
 

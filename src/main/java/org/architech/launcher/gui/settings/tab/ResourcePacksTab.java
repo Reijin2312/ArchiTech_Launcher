@@ -13,6 +13,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
 
@@ -187,6 +188,7 @@ public class ResourcePacksTab {
         box.setMinWidth(width); box.setPrefWidth(width); box.setMaxWidth(width);
         return box;
     }
+
     private static Pane fixedHeaderLabel(String text, double width) {
         Label l = new Label(text); l.setAlignment(Pos.CENTER); return fixedCell(l, width, Pos.CENTER);
     }

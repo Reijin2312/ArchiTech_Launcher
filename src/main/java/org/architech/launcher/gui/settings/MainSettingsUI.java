@@ -1,5 +1,6 @@
 package org.architech.launcher.gui.settings;
 
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -9,6 +10,7 @@ import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.settings.tab.ModsTab;
 import org.architech.launcher.gui.settings.tab.SettingsTab;
 import org.architech.launcher.gui.settings.tab.ResourcePacksTab;
@@ -40,6 +42,14 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
 
         tabs.getTabs().addAll(modsTab, resourceTab, shadersTab, settingsTab);
 
+        tabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+            if (newTab == modsTab) DiscordIntegration.update("В лаунчере", "Просматривает моды");
+            else if (newTab == shadersTab) DiscordIntegration.update("В лаунчере", "Просматривает шейдер-паки");
+            else if (newTab == resourceTab) DiscordIntegration.update("В лаунчере", "Просматривает ресурс-паки");
+            else if (newTab == settingsTab) DiscordIntegration.update("В лаунчере", "Просматривает настройки");
+            else DiscordIntegration.update("В лаунчере", "Просматривает настройки");
+        });
+
         BorderPane wrapper = new BorderPane();
         wrapper.getStyleClass().add("settings-pane");
         wrapper.setCenter(tabs);
@@ -48,7 +58,11 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
 
         Button backBtn = new Button("Назад");
         styleMainButton(backBtn);
-        backBtn.setOnAction(e -> stage.setScene(parentScene));
+        backBtn.setOnAction(e -> {
+            DiscordIntegration.update("В лаунчере", "На главной странице");
+            stage.setScene(parentScene);
+        });
+
         HBox bottom = new HBox(backBtn);
         bottom.setAlignment(Pos.CENTER_LEFT);
         bottom.setPadding(new Insets(12, 16, 16, 16));
@@ -65,6 +79,14 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
                 Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()
         );
         stage.setScene(scene);
+
+        Platform.runLater(() -> {
+            Tab cur = tabs.getSelectionModel().getSelectedItem();
+            if (cur == modsTab) DiscordIntegration.update("В лаунчере", "Просматривает моды");
+            else if (cur == shadersTab) DiscordIntegration.update("В лаунчере", "Просматривает шейдер-паки");
+            else if (cur == resourceTab) DiscordIntegration.update("В лаунчере", "Просматривает ресурс-паки");
+            else DiscordIntegration.update("В лаунчере", "Просматривает настройки");
+        });
     }
 
     private void styleMainButton(Button btn) {

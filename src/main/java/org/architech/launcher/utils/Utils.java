@@ -293,7 +293,7 @@ public class Utils {
     }
 
     public static int roundRam(int raw) {
-        return (int) Math.round(raw/256.0) * 256;
+        return (int) Math.round(raw/1024.0) * 1024;
     }
 
 }

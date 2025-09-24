@@ -9,6 +9,7 @@ import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
+import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
@@ -16,6 +17,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
+import java.util.function.UnaryOperator;
 
 import static org.architech.launcher.ArchiTechLauncher.*;
 
@@ -27,7 +29,7 @@ public class SettingsTab {
     private ComboBox<String> gpuCombo;
 
     private Slider ramSlider;
-    private Label ramValueLabel;
+    private TextField ramField;
 
     private CheckBox closeOnLaunch;
     private TextField widthField;
@@ -122,7 +124,6 @@ public class SettingsTab {
         HBox ramRow = leftRow("Память (МБ):", ramSlider = new Slider(1024,16384,4096), false);
         ramSlider.setBlockIncrement(1024);
         ramSlider.setSnapToTicks(true);
-        ramValueLabel = new Label("2048");
         ramSlider.setShowTickMarks(true);
         ramSlider.setShowTickLabels(true);
         ramSlider.setMajorTickUnit(1024);
@@ -130,8 +131,31 @@ public class SettingsTab {
         ramSlider.setSnapToTicks(true);
         ramSlider.setMinWidth(400);
         ramSlider.setMaxWidth(Double.MAX_VALUE);
-        ramSlider.valueProperty().addListener((o,ov,nv)-> ramValueLabel.setText(String.valueOf(Utils.roundRam(nv.intValue()))));
-        ramRow.getChildren().add(ramValueLabel);
+
+        ramField = new TextField(String.valueOf(Utils.roundRam((int) ramSlider.getValue())));
+        TextFormatter<Integer> ramFormatter = getIntegerTextFormatter();
+        ramField.setTextFormatter(ramFormatter);
+        ramField.setPrefColumnCount(6);
+        ramField.setPrefHeight(28);
+
+        ramSlider.valueProperty().addListener((obs, ov, nv) -> {
+            int val = Utils.roundRam(nv.intValue());
+            if (!ramField.isFocused() && !Objects.equals(ramFormatter.getValue(), val)) {
+                ramFormatter.setValue(val);
+            }
+        });
+
+        ramFormatter.valueProperty().addListener((obs, ov, nv) -> {
+            if (ramField.isFocused() && (ramField.getText() == null || ramField.getText().isEmpty())) return;
+            if (nv == null) return;
+            int newVal = Utils.roundRam(nv);
+            int clamped = Math.max((int) ramSlider.getMin(), Math.min((int) ramSlider.getMax(), newVal));
+            if (clamped != (int) ramSlider.getValue()) {
+                ramSlider.setValue(clamped);
+            }
+        });
+
+        ramRow.getChildren().add(ramField);
         box.getChildren().add(ramRow);
 
         closeOnLaunch = new CheckBox("Закрывать лаунчер после запуска");
@@ -178,7 +202,18 @@ public class SettingsTab {
         jvmArgsArea.textProperty().addListener((obs, o, n) -> saveConfig());
 
         loadConfig();
+
         return root;
+    }
+
+    private TextFormatter<Integer> getIntegerTextFormatter() {
+        UnaryOperator<TextFormatter.Change> filter = change -> change;
+        StringConverter<Integer> intConv = new StringConverter<>() {
+            @Override public String toString(Integer i) { return i == null ? "" : i + " МБ"; }
+            @Override public Integer fromString(String s) {  String digits = s.replaceAll("\\D", "");
+                return digits.isEmpty() ? 0 : Integer.parseInt(digits); }
+        };
+        return new TextFormatter<>(intConv, Utils.roundRam((int) ramSlider.getValue()), filter);
     }
 
     private HBox leftRow(String label, Node control, boolean grow) {
@@ -305,6 +340,7 @@ public class SettingsTab {
             def.put("maxMemory", recommended);
 
             def.put("closeOnLaunch", false);
+            def.put("autoUpdate", true);
 
             try {
                 java.awt.Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
