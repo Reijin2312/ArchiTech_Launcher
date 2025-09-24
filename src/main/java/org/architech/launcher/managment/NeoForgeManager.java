@@ -196,7 +196,7 @@ public class NeoForgeManager {
             String encoded = encodePathForUri(serverPath);
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(ArchiTechLauncher.BACKEND_URL + "/api/files/file/" + encoded))
-                    .timeout(Duration.ofSeconds(10))
+                    .timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT))
                     .GET()
                     .build();
             HttpResponse<byte[]> res = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofByteArray());

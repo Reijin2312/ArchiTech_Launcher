@@ -43,7 +43,9 @@ public class ArchiTechLauncher extends Application {
     public static Path JAVA_PATH;
     public static Path ACCOUNT_FILE;
     public static String BACKEND_URL;
-    public static boolean closeOnLaunch = false;
+    public static int HTTP_TIMEOUT;
+    public static boolean CLOSE_ON_LAUNCH = false;
+    public static boolean AUTO_UPDATE_CLIENT = true;
 
     public static LauncherUI UI;
     public static DownloadManager DOWNLOAD_MANAGER = null;
@@ -74,7 +76,9 @@ public class ArchiTechLauncher extends Application {
                 if (cfg == null) return;
                 if (cfg.containsKey("gameDir")) GAME_DIR = Path.of(cfg.get("gameDir").toString());
                 if (cfg.containsKey("javaPath")) JAVA_PATH = Path.of(cfg.get("javaPath").toString());
-                if (cfg.containsKey("closeOnLaunch")) closeOnLaunch = (boolean) cfg.get("closeOnLaunch");
+                if (cfg.containsKey("closeOnLaunch")) CLOSE_ON_LAUNCH = (boolean) cfg.get("closeOnLaunch");
+                if (cfg.containsKey("netTimeout")) HTTP_TIMEOUT = (int) cfg.get("netTimeout");
+                if (cfg.containsKey("autoUpdate")) AUTO_UPDATE_CLIENT = (boolean) cfg.get("autoUpdate");
             }
         }
 
@@ -112,41 +116,43 @@ public class ArchiTechLauncher extends Application {
 
                 UI.updateProgress("Подготовка к запуску...", 0);
 
-                VersionManager versionManager = new VersionManager();
-                JsonNode versionJson = versionManager.loadVersionJson(MINECRAFT_VERSION);
-                List<FileEntry> files = versionManager.buildRequiredFiles(versionJson, MINECRAFT_VERSION);
-
-                files.sort(Comparator.comparingInt(fEnt -> {
-                    if ("assetIndex".equals(fEnt.kind)) return 0;
-                    if ("client".equals(fEnt.kind)) return 1;
-                    if ("lib".equals(fEnt.kind)) return 2;
-                    if ("natives".equals(fEnt.kind)) return 3;
-                    if ("asset".equals(fEnt.kind)) return 4;
-                    return 5;
-                }));
+                int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
+                int rounds = 3;
 
                 DOWNLOAD_MANAGER = new DownloadManager();
                 activeDownloadManager.set(DOWNLOAD_MANAGER);
 
-                long total = DOWNLOAD_MANAGER.computeTotalBytesToDownload(files);
-                DOWNLOAD_MANAGER.setTotalBytesPlanned(total);
-
-                int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
-                int rounds = 3;
                 UI.updateProgress("Запускаю параллельную загрузку (" + threads + " потоков)...", 0);
 
-                List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds);
+                if (AUTO_UPDATE_CLIENT) {
+                    VersionManager versionManager = new VersionManager();
+                    JsonNode versionJson = versionManager.loadVersionJson(MINECRAFT_VERSION);
+                    List<FileEntry> files = versionManager.buildRequiredFiles(versionJson, MINECRAFT_VERSION);
 
-                if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+                    files.sort(Comparator.comparingInt(fEnt -> {
+                        if ("assetIndex".equals(fEnt.kind)) return 0;
+                        if ("client".equals(fEnt.kind)) return 1;
+                        if ("lib".equals(fEnt.kind)) return 2;
+                        if ("natives".equals(fEnt.kind)) return 3;
+                        if ("asset".equals(fEnt.kind)) return 4;
+                        return 5;
+                    }));
 
-                if (!failed.isEmpty()) {
-                    String names = failed.stream().map(x -> x.name).collect(Collectors.joining(", "));
-                    LogManager.getLogger().severe("Не удалось скачать некоторые файлы: " + names);
-                    throw new IOException("Не удалось скачать некоторые файлы: " + names);
+                    DOWNLOAD_MANAGER.setTotalBytesPlanned(DOWNLOAD_MANAGER.computeTotalBytesToDownload(files));
+
+                    List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds);
+
+                    if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+
+                    if (!failed.isEmpty()) {
+                        String names = failed.stream().map(x -> x.name).collect(Collectors.joining(", "));
+                        LogManager.getLogger().severe("Не удалось скачать некоторые файлы: " + names);
+                        throw new IOException("Не удалось скачать некоторые файлы: " + names);
+                    }
+
+                    NativesManager nativesManager = new NativesManager(GAME_DIR, MINECRAFT_VERSION);
+                    nativesManager.prepareNatives(files);
                 }
-
-                NativesManager nativesManager = new NativesManager(GAME_DIR, MINECRAFT_VERSION);
-                nativesManager.prepareNatives(files);
 
                 NeoForgeManager.ensureInstalledAndReady(GAME_DIR, MINECRAFT_VERSION);
 
@@ -170,6 +176,11 @@ public class ArchiTechLauncher extends Application {
                 currentGameProcess = p;
 
                 UI.updateProgress("Клиент запущен...", 1);
+
+                if (CLOSE_ON_LAUNCH) {
+                    Platform.runLater(Platform::exit);
+                    return;
+                }
 
                 try {
                     while (true) {

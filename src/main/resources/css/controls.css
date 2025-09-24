@@ -20,6 +20,20 @@
     -fx-padding: 6 8 6 8;
 }
 
+.settings-pane .slider {
+    -fx-tick-label-fill: white; /* на случай, если скин поддерживает это свойство */
+}
+
+.settings-pane .slider .tick-label {
+    -fx-fill: white;      /* для Text-узлов */
+    -fx-text-fill: white; /* для Labeled-узлов */
+}
+
+.settings-pane .slider .track .tick-mark,
+.settings-pane .slider .tick-mark {
+    -fx-stroke: white;    /* цвет штрихов на дорожке */
+}
+
 .settings-pane .text-field,
 .settings-pane .combo-box,
 .settings-pane .text-area,

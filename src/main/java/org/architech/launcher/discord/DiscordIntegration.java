@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 public class DiscordIntegration {
     private static final String APP_ID = "1409949210568298647";
+    private static DiscordRichPresence presence;
 
     private static final ScheduledExecutorService discordExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "RPC-Callback-Handler");
@@ -22,11 +23,9 @@ public class DiscordIntegration {
         DiscordEventHandlers handlers = new DiscordEventHandlers.Builder().build();
         DiscordRPC.discordInitialize(APP_ID, handlers, true);
 
-        DiscordRichPresence presence = new DiscordRichPresence.Builder("В лаунчере")
-                .setDetails("Загрузка клиента")
+        presence = new DiscordRichPresence.Builder("В лаунчере").setDetails("На главной странице")
                 .setBigImage("embedded_cover", "Launcher")
                 .build();
-
         DiscordRPC.discordUpdatePresence(presence);
 
         discordExecutor.scheduleWithFixedDelay(() -> {
@@ -34,6 +33,13 @@ public class DiscordIntegration {
         }, 0, 2, TimeUnit.SECONDS);
 
         LogManager.getLogger().info("Запуск интеграции с discord...");
+    }
+
+    public static void update(String mainStatus, String details) {
+        presence = new DiscordRichPresence.Builder(mainStatus).setDetails(details)
+                .setBigImage("embedded_cover", "Launcher")
+                .build();
+        DiscordRPC.discordUpdatePresence(presence);
     }
 
     public static void stop() {

@@ -37,7 +37,6 @@ import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
 import org.architech.launcher.utils.Utils;
 import javafx.scene.paint.Color;
 import java.awt.*;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -52,8 +51,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-
-import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 
 public class LauncherUI {
     private final Button launchBtn;
@@ -221,15 +218,18 @@ public class LauncherUI {
         titleBox.setAlignment(Pos.CENTER);
 
         List<NewsItem> newsItems = List.of(
-                new NewsItem("Заголовок 1", "https://example.com/img1.png"),
-                new NewsItem("Заголовок 2", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 3", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 4", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 5", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 6", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 7", "https://example.com/img2.png"),
-                new NewsItem("Заголовок 8", "https://example.com/img2.png")
+                new NewsItem("Заголовок 1", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
+                new NewsItem("Заголовок 2", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
+                new NewsItem("Заголовок 3", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
+                new NewsItem("Заголовок 4", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
+                new NewsItem("Заголовок 5", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
+                new NewsItem("Заголовок 6", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
+                new NewsItem("Заголовок 7", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
+                new NewsItem("Заголовок 8", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
+                new NewsItem("Заголовок 9", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
+                new NewsItem("Заголовок 10", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24")
         );
+
         ScrollPane newsScroll = buildNewsList(newsItems);
         newsScroll.setFitToWidth(true);
         newsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
@@ -673,7 +673,7 @@ public class LauncherUI {
         });
     }
 
-    private record NewsItem(String title, String imageUrl) {}
+    private record NewsItem(String title, String imageUrl, String shortDesc, String date) {}
 
     private ScrollPane buildNewsList(List<NewsItem> items) {
         VBox list = new VBox(12);
@@ -684,27 +684,56 @@ public class LauncherUI {
             card.getStyleClass().add("news-card");
             card.setPrefWidth(640);
             card.setMaxWidth(640);
+            card.setMinHeight(88); // высота карточки — подгоните при необходимости
 
+            // картинка новости
             ImageView img = new ImageView();
             img.setFitWidth(64);
             img.setFitHeight(64);
             img.setPreserveRatio(true);
+            img.setSmooth(true);
+            img.getStyleClass().add("news-image");
 
+            // фоновая загрузка картинки
             ArchiTechLauncher.scheduledExecutor.execute(() -> {
                 try {
-                    Image im = new Image(n.imageUrl, 64, 64, true, true);
+                    Image im = new Image(n.imageUrl(), 64, 64, true, true);
                     Platform.runLater(() -> img.setImage(im));
                 } catch (Exception ex) {
                     LogManager.getLogger().severe("Ошибка создания иконки новостей " + ex.getMessage());
                 }
             });
-            card.setTop(img);
 
-            Label title = new Label(n.title);
+            // правый блок: заголовок+дата сверху, описание снизу
+            Label title = new Label(n.title());
             title.getStyleClass().add("news-title");
             title.setWrapText(true);
-            BorderPane.setMargin(title, new Insets(8, 8, 8, 8));
-            card.setBottom(title);
+            title.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(title, Priority.ALWAYS);
+
+            Label date = new Label(n.date());
+            date.getStyleClass().add("news-date");
+            date.setWrapText(false);
+
+            HBox topRow = new HBox(8, title, date);
+            topRow.setAlignment(Pos.TOP_LEFT);
+            HBox.setHgrow(title, Priority.ALWAYS);
+
+            Label desc = new Label(n.shortDesc());
+            desc.getStyleClass().add("news-desc");
+            desc.setWrapText(true);
+            desc.setMaxWidth(480);
+            desc.setMaxHeight(Region.USE_PREF_SIZE);
+
+            VBox content = new VBox(6, topRow, desc);
+            content.setAlignment(Pos.TOP_LEFT);
+            content.setFillWidth(true);
+
+            HBox row = new HBox(12, img, content);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setPadding(new Insets(8));
+
+            card.setCenter(row);
 
             list.getChildren().add(card);
         }
@@ -719,7 +748,8 @@ public class LauncherUI {
 
         return sp;
     }
-    
+
+
     public void stopTimer() {
         if (timerFuture != null && !timerFuture.isDone()) {
             timerFuture.cancel(true);

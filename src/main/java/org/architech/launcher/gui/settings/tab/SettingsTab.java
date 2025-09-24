@@ -1,18 +1,18 @@
 package org.architech.launcher.gui.settings.tab;
 
-import com.sun.management.OperatingSystemMXBean;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
 import java.io.*;
-import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
@@ -82,7 +82,7 @@ public class SettingsTab {
         box.getChildren().add(javaRow);
 
         box.getChildren().add(leftRow("Видеокарта:", gpuCombo = new ComboBox<>(), false));
-        List<String> gpus = detectGPUs();
+        List<String> gpus = Utils.detectGPUs();
         if (gpus.isEmpty()) gpuCombo.getItems().add("Автоматический выбор");
         else gpuCombo.getItems().addAll(gpus);
         gpuCombo.getSelectionModel().selectFirst();
@@ -119,11 +119,18 @@ public class SettingsTab {
         box.getChildren().add(leftRow("Лимит FPS:", fpsSpinner = new Spinner<>(30,240,60,1), false));
         fpsSpinner.setEditable(true);
 
-        HBox ramRow = leftRow("Память (МБ):", ramSlider = new Slider(512,32768,2048), false);
-        ramSlider.setBlockIncrement(256);
+        HBox ramRow = leftRow("Память (МБ):", ramSlider = new Slider(1024,16384,4096), false);
+        ramSlider.setBlockIncrement(1024);
         ramSlider.setSnapToTicks(true);
         ramValueLabel = new Label("2048");
-        ramSlider.valueProperty().addListener((o,ov,nv)-> ramValueLabel.setText(String.valueOf(roundRam(nv.intValue()))));
+        ramSlider.setShowTickMarks(true);
+        ramSlider.setShowTickLabels(true);
+        ramSlider.setMajorTickUnit(1024);
+        ramSlider.setMinorTickCount(0);
+        ramSlider.setSnapToTicks(true);
+        ramSlider.setMinWidth(400);
+        ramSlider.setMaxWidth(Double.MAX_VALUE);
+        ramSlider.valueProperty().addListener((o,ov,nv)-> ramValueLabel.setText(String.valueOf(Utils.roundRam(nv.intValue()))));
         ramRow.getChildren().add(ramValueLabel);
         box.getChildren().add(ramRow);
 
@@ -174,7 +181,7 @@ public class SettingsTab {
         return root;
     }
 
-    private HBox leftRow(String label, javafx.scene.Node control, boolean grow) {
+    private HBox leftRow(String label, Node control, boolean grow) {
         Label lbl = new Label(label);
         HBox row = new HBox(10, lbl, control);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -212,7 +219,7 @@ public class SettingsTab {
         cfg.put("gameDir", gameDirField.getText());
         cfg.put("javaPath", javaField.getText());
         cfg.put("gpu", gpuCombo.getValue());
-        cfg.put("maxMemory", roundRam((int) ramSlider.getValue()));
+        cfg.put("maxMemory", Utils.roundRam((int) ramSlider.getValue()));
         cfg.put("closeOnLaunch", closeOnLaunch.isSelected());
         cfg.put("winWidth", widthField.getText());
         cfg.put("winHeight", heightField.getText());
@@ -263,8 +270,6 @@ public class SettingsTab {
         }
     }
 
-    private int roundRam(int raw) { return (int)Math.round(raw/256.0)*256; }
-
     public static void createDefaultConfigIfMissing() {
         try {
             if (Files.exists(CONFIG_PATH)) return;
@@ -283,7 +288,7 @@ public class SettingsTab {
                 def.put("javaPath", systemJavaDir.toString());
             } else {
                 LogManager.getLogger().severe("Не найдена java");
-                Path base = Objects.requireNonNull(findJava21());
+                Path base = Objects.requireNonNull(Utils.findJava21());
                 Path candidate = base.resolve("bin").resolve(type);
                 if (Files.isExecutable(candidate)) {
                     def.put("javaPath", base.toString());
@@ -293,10 +298,10 @@ public class SettingsTab {
                 }
             }
 
-            List<String> gpus = detectGPUs();
+            List<String> gpus = Utils.detectGPUs();
             def.put("gpu", (gpus.isEmpty() ? "Автоматический выбор" : gpus.getFirst()));
 
-            int recommended = getRecommended();
+            int recommended = Utils.getRecommendedMemory();
             def.put("maxMemory", recommended);
 
             def.put("closeOnLaunch", false);
@@ -322,95 +327,5 @@ public class SettingsTab {
         }
     }
 
-    public static Path findJava21() {
-        String[] searchDirs = {"C:/Program Files/Java", "C:/Program Files (x86)/Java", "/usr/lib/jvm", "/Library/Java/JavaVirtualMachines"};
-        for (String base : searchDirs) {
-            File dir = new File(base);
-            if (!dir.exists()) continue;
-            File[] subdirs = dir.listFiles(File::isDirectory);
-            if (subdirs == null) continue;
-            for (File sd : subdirs) {
-                Path javaBin = Paths.get(sd.getAbsolutePath(), "bin", Utils.isWindows() ? "java.exe" : "java");
-                if (!Files.exists(javaBin)) continue;
-                try {
-                    Process p = new ProcessBuilder(javaBin.toString(), "-version")
-                            .redirectErrorStream(true)
-                            .start();
-                    try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                        String line;
-                        while ((line = br.readLine()) != null) {
-                            if (line.contains("version")) {
-                                int i1 = line.indexOf('"');
-                                int i2 = line.indexOf('"', i1 + 1);
-                                if (i1 >= 0 && i2 > i1) {
-                                    String ver = line.substring(i1 + 1, i2);
-                                    if (ver.startsWith("21")) return Path.of(sd.getAbsolutePath());
-                                }
-                            }
-                        }
-                    }
-                } catch (IOException ex) {
-                    LogManager.getLogger().severe("Ошибка нахождения Java 21 " + ex.getMessage());
-                }
-            }
-        }
-        return null;
-    }
-
-    private static List<String> detectGPUs() {
-        List<String> result = new ArrayList<>();
-        String os = System.getProperty("os.name").toLowerCase();
-
-        try {
-            Process p;
-            if (os.contains("win")) {
-                p = new ProcessBuilder("wmic", "path", "win32_VideoController", "get", "Name").start();
-            } else if (os.contains("mac")) {
-                p = new ProcessBuilder("system_profiler", "SPDisplaysDataType").start();
-            } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                p = new ProcessBuilder("lspci").start();
-            } else {
-                throw new UnsupportedOperationException("Неизвестная ОС: " + os);
-            }
-
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                String line;
-                while ((line = br.readLine()) != null) {
-                    line = line.trim();
-                    if (line.isEmpty()) continue;
-
-                    if (os.contains("win")) {
-                        if (!line.toLowerCase(Locale.ROOT).contains("name")) result.add(line);
-                    } else if (os.contains("mac")) {
-                        if (line.startsWith("Chipset Model:") || line.startsWith("Graphics:")) {
-                            result.add(line.split(":")[1].trim());
-                        }
-                    } else {
-                        if (line.toLowerCase().contains("vga") || line.toLowerCase().contains("3d")) {
-                            String[] parts = line.split(":", 2);
-                            if (parts.length == 2) result.add(parts[1].trim());
-                        }
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            LogManager.getLogger().severe("Ошибка обнаружения GPU: " + ex.getMessage());
-        }
-
-        return result;
-    }
-
-    private static int getRecommended() {
-        int recommended = 2048;
-        try {
-            OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-            long totalMb = os.getTotalMemorySize() / (1024L * 1024L);
-            if (totalMb > 0) {
-                recommended = (int) Math.max(1024, Math.min(totalMb / 4, 32768));
-            }
-        } catch (Throwable ignored) {
-        }
-        return recommended;
-    }
 }
 

@@ -1,6 +1,7 @@
 package org.architech.launcher.authentication.json;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.utils.Jsons;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -13,13 +14,13 @@ import java.util.Map;
 public final class HttpJson {
     private static final HttpClient C = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_2)
-            .connectTimeout(Duration.ofSeconds(20))
+            .connectTimeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT))
             .build();
 
     public static JsonNode postForm(String url, Map<String,String> form) throws Exception {
         String body = UrlEncoded.form(form);
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
+                .timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT))
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("Accept", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
@@ -30,7 +31,7 @@ public final class HttpJson {
     public static JsonNode postJson(String url, Object payload) throws Exception {
         String body = (payload instanceof String) ? (String) payload : Jsons.MAPPER.writeValueAsString(payload);
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
+                .timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
@@ -40,7 +41,7 @@ public final class HttpJson {
 
     public static JsonNode getJson(String url, String bearer) throws Exception {
         HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
+                .timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT))
                 .header("Accept", "application/json");
         if (bearer != null && !bearer.isEmpty()) b.header("Authorization", "Bearer " + bearer);
         return sendJson(b.GET().build());

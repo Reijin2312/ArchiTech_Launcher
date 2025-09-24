@@ -1,14 +1,14 @@
 package org.architech.launcher.utils;
 
+import com.sun.management.OperatingSystemMXBean;
 import javafx.scene.control.Alert;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.utils.logging.LogManager;
 
 import javax.net.ssl.SSLContext;
 import java.awt.*;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
+import java.io.*;
+import java.lang.management.ManagementFactory;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -17,10 +17,13 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 
 import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
@@ -30,6 +33,7 @@ public class Utils {
 
     public static double clamp01(double v)
     {
+
         return v < 0 ? 0 : Math.min(v, 1);
     }
 
@@ -78,14 +82,14 @@ public class Utils {
         SSLContext ssl = SSLContext.getDefault();
         HttpResponse<String> resp;
         try (HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
+                .connectTimeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT))
                 .version(HttpClient.Version.HTTP_1_1)
                 .sslContext(ssl)
                 .build()) {
 
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(urlStr))
-                    .timeout(Duration.ofSeconds(30))
+                    .timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT))
                     .header("User-Agent", "ArchiTech-Launcher/1.0")
                     .GET()
                     .build();
@@ -195,6 +199,101 @@ public class Utils {
     public void showInfo(String msg) {
         Alert a = new Alert(Alert.AlertType.INFORMATION, msg);
         a.showAndWait();
+    }
+
+    public static Path findJava21() {
+        String[] searchDirs = {"C:/Program Files/Java", "C:/Program Files (x86)/Java", "/usr/lib/jvm", "/Library/Java/JavaVirtualMachines"};
+        for (String base : searchDirs) {
+            File dir = new File(base);
+            if (!dir.exists()) continue;
+            File[] subdirs = dir.listFiles(File::isDirectory);
+            if (subdirs == null) continue;
+            for (File sd : subdirs) {
+                Path javaBin = Paths.get(sd.getAbsolutePath(), "bin", Utils.isWindows() ? "java.exe" : "java");
+                if (!Files.exists(javaBin)) continue;
+                try {
+                    Process p = new ProcessBuilder(javaBin.toString(), "-version")
+                            .redirectErrorStream(true)
+                            .start();
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            if (line.contains("version")) {
+                                int i1 = line.indexOf('"');
+                                int i2 = line.indexOf('"', i1 + 1);
+                                if (i1 >= 0 && i2 > i1) {
+                                    String ver = line.substring(i1 + 1, i2);
+                                    if (ver.startsWith("21")) return Path.of(sd.getAbsolutePath());
+                                }
+                            }
+                        }
+                    }
+                } catch (IOException ex) {
+                    LogManager.getLogger().severe("Ошибка нахождения Java 21 " + ex.getMessage());
+                }
+            }
+        }
+        return null;
+    }
+
+    public static List<String> detectGPUs() {
+        List<String> result = new ArrayList<>();
+        String os = System.getProperty("os.name").toLowerCase();
+
+        try {
+            Process p;
+            if (os.contains("win")) {
+                p = new ProcessBuilder("wmic", "path", "win32_VideoController", "get", "Name").start();
+            } else if (os.contains("mac")) {
+                p = new ProcessBuilder("system_profiler", "SPDisplaysDataType").start();
+            } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
+                p = new ProcessBuilder("lspci").start();
+            } else {
+                throw new UnsupportedOperationException("Неизвестная ОС: " + os);
+            }
+
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    line = line.trim();
+                    if (line.isEmpty()) continue;
+
+                    if (os.contains("win")) {
+                        if (!line.toLowerCase(Locale.ROOT).contains("name")) result.add(line);
+                    } else if (os.contains("mac")) {
+                        if (line.startsWith("Chipset Model:") || line.startsWith("Graphics:")) {
+                            result.add(line.split(":")[1].trim());
+                        }
+                    } else {
+                        if (line.toLowerCase().contains("vga") || line.toLowerCase().contains("3d")) {
+                            String[] parts = line.split(":", 2);
+                            if (parts.length == 2) result.add(parts[1].trim());
+                        }
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            LogManager.getLogger().severe("Ошибка обнаружения GPU: " + ex.getMessage());
+        }
+
+        return result;
+    }
+
+    public static int getRecommendedMemory() {
+        int recommended = 2048;
+        try {
+            OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+            long totalMb = os.getTotalMemorySize() / (1024L * 1024L);
+            if (totalMb > 0) {
+                recommended = (int) Math.max(1024, Math.min(totalMb / 4, 32768));
+            }
+        } catch (Throwable ignored) {
+        }
+        return recommended;
+    }
+
+    public static int roundRam(int raw) {
+        return (int) Math.round(raw/256.0) * 256;
     }
 
 }
