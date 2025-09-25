@@ -1,5 +1,6 @@
 package org.architech.launcher.gui;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.net.httpserver.HttpServer;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -33,6 +34,7 @@ import org.architech.launcher.authentication.requests.GameParams;
 import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.head.HeadImage;
 import org.architech.launcher.gui.settings.MainSettingsUI;
+import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
 import org.architech.launcher.utils.Utils;
@@ -212,24 +214,32 @@ public class LauncherUI {
             }
         }, 0, 10, TimeUnit.SECONDS);
 
-        // заголовок
         Label newsTitle = new Label("Новости проекта");
         newsTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;");
         HBox titleBox = new HBox(newsTitle);
         titleBox.setAlignment(Pos.CENTER);
 
-        List<NewsItem> newsItems = List.of(
-                new NewsItem("Заголовок 1", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
-                new NewsItem("Заголовок 2", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
-                new NewsItem("Заголовок 3", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
-                new NewsItem("Заголовок 4", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
-                new NewsItem("Заголовок 5", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
-                new NewsItem("Заголовок 6", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
-                new NewsItem("Заголовок 7", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
-                new NewsItem("Заголовок 8", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
-                new NewsItem("Заголовок 9", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24"),
-                new NewsItem("Заголовок 10", "https://media.tenor.com/kglDzTqoEUAAAAAM/maxwell-cat.gif", "Краткое описание первой новости, одно-два предложения.", "2025-09-24")
-        );
+        List<NewsItem> newsItems;
+        try {
+            String json = Utils.readUrl(ArchiTechLauncher.BACKEND_URL + "/api/files/file/news/news.json");
+            JsonNode arr = Jsons.MAPPER.readTree(json);
+            List<NewsItem> tmp = new ArrayList<>();
+            if (arr.isArray()) {
+                for (JsonNode n : arr) {
+                    String title = n.path("title").asText("");
+                    String img = n.path("imageUrl").asText("");
+                    String desc = n.path("shortDesc").asText("");
+                    String date = n.path("date").asText("");
+                    tmp.add(new NewsItem(title, img, desc, date));
+                    System.out.println(title);
+                }
+            }
+            newsItems = List.copyOf(tmp);
+        } catch (Exception ex) {
+            LogManager.getLogger().warning("Не удалось загрузить новости: " + ex.getMessage());
+            System.out.println("hahahaha " + ex.getMessage());
+            newsItems = List.of();
+        }
 
         ScrollPane newsScroll = buildNewsList(newsItems);
         newsScroll.setFitToWidth(true);

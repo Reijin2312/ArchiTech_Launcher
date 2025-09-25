@@ -48,6 +48,9 @@ public class ModsManager {
         newManifest.files = newManifest.files.stream()
                 .filter(f -> !normalizePath(f.path).startsWith("neoforge/"))
                 .collect(Collectors.toList());
+        newManifest.files = newManifest.files.stream()
+                .filter(f -> !normalizePath(f.path).startsWith("news/"))
+                .collect(Collectors.toList());
 
         Files.createDirectories(modsDir);
 
