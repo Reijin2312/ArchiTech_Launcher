@@ -541,7 +541,7 @@ public class LauncherUI {
 
     private String buildCallbackHtml(String title) {
         String bgCss = "background: linear-gradient(180deg,#202938 0%,#141a26 100%);";
-        try (InputStream is = getClass().getResourceAsStream("images/bg.png")) {
+        try (InputStream is = getClass().getResourceAsStream("images/bg2.png")) {
             if (is != null) {
                 String b64 = Base64.getEncoder().encodeToString(is.readAllBytes());
                 bgCss = "background-image:url('data:image/png;base64," + b64 + "');" +
