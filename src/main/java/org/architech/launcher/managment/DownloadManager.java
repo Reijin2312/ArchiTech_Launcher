@@ -56,15 +56,15 @@ public class DownloadManager {
         return sum;
     }
 
-    public void ensureFilePresentAndValid(FileEntry f) throws Exception {
-        boolean ok = downloadWithRoundsSingleFile(f, 3, 2000);
+    public void ensureFilePresentAndValid(FileEntry f, boolean updateUI) throws Exception {
+        boolean ok = downloadWithRoundsSingleFile(f, 3, 2000, updateUI);
         if (!ok) {
             LogManager.getLogger().warning("Файл не удалось корректно скачать: " + f.name);
             throw new IOException("Файл не удалось корректно скачать: " + f.name);
         }
     }
 
-    public List<FileEntry> downloadFilesInParallel(List<FileEntry> files, int threads, int rounds) throws InterruptedException {
+    public List<FileEntry> downloadFilesInParallel(List<FileEntry> files, int threads, int rounds, boolean updateUI) throws InterruptedException {
         Objects.requireNonNull(files);
         List<FileEntry> remaining = new ArrayList<>();
         for (FileEntry f : files) {
@@ -85,7 +85,7 @@ public class DownloadManager {
                         try {
                             Path parent = f.path.getParent();
                             if (parent != null) Files.createDirectories(parent);
-                            boolean ok = downloadWithRoundsSingleFile(f, 1, 0);
+                            boolean ok = downloadWithRoundsSingleFile(f, 1, 0, updateUI);
                             if (!ok) failedThisRound.add(f);
                         } catch (Throwable t) {
                             failedThisRound.add(f);
@@ -118,7 +118,7 @@ public class DownloadManager {
         return remaining;
     }
 
-    private boolean downloadWithRoundsSingleFile(FileEntry f, int maxAttempts, long waitBetweenAttemptsMs) {
+    private boolean downloadWithRoundsSingleFile(FileEntry f, int maxAttempts, long waitBetweenAttemptsMs, boolean updateUI) {
         Path key = f.path.toAbsolutePath().normalize();
         Object lock = fileLocks.computeIfAbsent(key, k -> new Object());
         synchronized (lock) {
@@ -127,7 +127,7 @@ public class DownloadManager {
 
                 for (int attempt = 1; attempt <= Math.max(1, maxAttempts); attempt++) {
                     try {
-                        downloadAtomicOnce(f);
+                        downloadAtomicOnce(f, updateUI);
                         if (isFileValid(f)) return true;
                         try {
                             Files.deleteIfExists(f.path);
@@ -160,7 +160,7 @@ public class DownloadManager {
         }
     }
 
-    private void downloadAtomicOnce(FileEntry f) throws Exception {
+    private void downloadAtomicOnce(FileEntry f, boolean updateUI) throws Exception {
         URI uri = new URI(f.url);
         URLConnection raw = uri.toURL().openConnection();
         if (!(raw instanceof HttpURLConnection conn)) {
@@ -217,7 +217,7 @@ public class DownloadManager {
 
                     String text = f.name + " (" + (downloadedFile / 1024) +
                             (f.size > 0 ? (" / " + (f.size / 1024)) : "") + " КБ)";
-                    ArchiTechLauncher.UI.updateProgress(text + (percent >= 0 ? " | Всего: " + percent + "%" : ""), globalProgress);
+                    if (updateUI) ArchiTechLauncher.UI.updateProgress(text + (percent >= 0 ? " | Всего: " + percent + "%" : ""), globalProgress);
                 }
                 out.flush();
             }  finally {

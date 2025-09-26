@@ -235,13 +235,11 @@ public class LauncherUI {
                     String desc = n.path("shortDesc").asText("");
                     String date = n.path("date").asText("");
                     tmp.add(new NewsItem(title, img, desc, date));
-                    System.out.println(title);
                 }
             }
             newsItems = List.copyOf(tmp);
         } catch (Exception ex) {
             LogManager.getLogger().warning("Не удалось загрузить новости: " + ex.getMessage());
-            System.out.println("hahahaha " + ex.getMessage());
             newsItems = List.of();
         }
 
@@ -724,7 +722,7 @@ public class LauncherUI {
 
                     FileEntry fe = new FileEntry("news-icon", n.title(), n.imageUrl(), target, 0L, null);
 
-                    ArchiTechLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(fe);
+                    ArchiTechLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(fe, false);
 
                     if (Files.exists(target) && Files.size(target) > 0) {
                         Platform.runLater(() -> {

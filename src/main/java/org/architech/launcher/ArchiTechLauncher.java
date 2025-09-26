@@ -140,7 +140,7 @@ public class ArchiTechLauncher extends Application {
 
                     DOWNLOAD_MANAGER.setTotalBytesPlanned(DOWNLOAD_MANAGER.computeTotalBytesToDownload(files));
 
-                    List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds);
+                    List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds, true);
 
                     if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
 
@@ -261,7 +261,7 @@ public class ArchiTechLauncher extends Application {
                 int rounds = 3;
                 UI.updateProgress("Запускаю параллельную загрузку (" + threads + " потоков)...", 0);
 
-                List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds);
+                List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds, true);
 
                 if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
 

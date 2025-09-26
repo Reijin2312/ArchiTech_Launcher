@@ -136,7 +136,7 @@ public class NeoForgeManager {
         Path installer = gameDir.resolve("neoforge-installer.jar");
         FileEntry entry = new FileEntry("neoforge", "NeoForge installer", url, installer, 0, null);
 
-        ArchiTechLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(entry);
+        ArchiTechLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(entry, true);
 
         if (UI != null) UI.updateProgress("Установка neoforge...", 0.5);
 
