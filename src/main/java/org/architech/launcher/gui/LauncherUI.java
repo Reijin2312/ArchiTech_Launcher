@@ -34,6 +34,7 @@ import org.architech.launcher.authentication.requests.GameParams;
 import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.head.HeadImage;
 import org.architech.launcher.gui.settings.MainSettingsUI;
+import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
@@ -48,6 +49,9 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -692,6 +696,13 @@ public class LauncherUI {
         VBox list = new VBox(12);
         list.setPadding(new Insets(10));
 
+        Path cacheDir = Paths.get(System.getProperty("user.home"), ".architech", "cache", "news-icons");
+        try {
+            Files.createDirectories(cacheDir);
+        } catch (IOException e) {
+            LogManager.getLogger().severe("Ошибка создания каталога кэша: " + e.getMessage());
+        }
+
         for (NewsItem n : items) {
             BorderPane card = new BorderPane();
             card.getStyleClass().add("news-card");
@@ -708,10 +719,31 @@ public class LauncherUI {
 
             ArchiTechLauncher.scheduledExecutor.execute(() -> {
                 try {
-                    Image im = new Image(n.imageUrl(), 64, 64, true, true);
-                    Platform.runLater(() -> img.setImage(im));
+                    String fname = Utils.sha1Hex(n.imageUrl()) + ".img";
+                    Path target = cacheDir.resolve(fname);
+
+                    FileEntry fe = new FileEntry("news-icon", n.title(), n.imageUrl(), target, 0L, null);
+
+                    ArchiTechLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(fe);
+
+                    if (Files.exists(target) && Files.size(target) > 0) {
+                        Platform.runLater(() -> {
+                            try {
+                                Image imgObj = new Image(target.toUri().toString(), 64, 64, true, true);
+                                if (imgObj.isError()) {
+                                    LogManager.getLogger().severe("Ошибка загрузки Image: " + imgObj.getException());
+                                } else {
+                                    img.setImage(imgObj);
+                                }
+                            } catch (Exception e) {
+                                LogManager.getLogger().severe("Ошибка чтения иконки из кэша: " + e.getMessage());
+                            }
+                        });
+                    } else {
+                        LogManager.getLogger().warning("Файл иконки пустой или отсутствует: " + target);
+                    }
                 } catch (Exception ex) {
-                    LogManager.getLogger().severe("Ошибка создания иконки новостей " + ex.getMessage());
+                    LogManager.getLogger().severe("Не удалось скачать иконку новости: " + ex.getMessage());
                 }
             });
 

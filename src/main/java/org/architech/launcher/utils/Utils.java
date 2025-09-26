@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -295,6 +296,22 @@ public class Utils {
     public static int roundRam(int raw) {
         return (int) Math.round(raw/1024.0) * 1024;
     }
+
+    public static String sha1Hex(String data) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
+            byte[] digest = md.digest(bytes);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
 }
 

@@ -86,6 +86,7 @@ public class ArchiTechLauncher extends Application {
         LIBRARIES_DIR = GAME_DIR.resolve("libraries");
         ASSETS_DIR = GAME_DIR.resolve("assets");
 
+        DOWNLOAD_MANAGER = new DownloadManager();
         UI = new LauncherUI(stage, this::onLaunchClicked, this::onCheckUpdatesClicked);
 
         DiscordIntegration.start();
@@ -119,7 +120,6 @@ public class ArchiTechLauncher extends Application {
                 int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
                 int rounds = 3;
 
-                DOWNLOAD_MANAGER = new DownloadManager();
                 activeDownloadManager.set(DOWNLOAD_MANAGER);
 
                 UI.updateProgress("Запускаю параллельную загрузку (" + threads + " потоков)...", 0);
