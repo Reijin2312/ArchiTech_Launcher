@@ -9,6 +9,7 @@ import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
@@ -268,6 +269,7 @@ public class SettingsTab {
         cfg.put("netTimeout", netTimeoutSpinner.getValue());
         cfg.put("soundVolume", (int) soundVolumeSlider.getValue());
         cfg.put("uiScale", (int) scaleSlider.getValue());
+        cfg.put("background", LAUNCHER_BACKGROUND);
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {
@@ -352,6 +354,8 @@ public class SettingsTab {
                 def.put("winWidth", "854");
                 def.put("winHeight", "480");
             }
+
+            def.put("background", "СherryAndRiver.png");
 
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {

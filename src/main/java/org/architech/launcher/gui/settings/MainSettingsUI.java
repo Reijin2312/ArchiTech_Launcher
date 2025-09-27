@@ -10,15 +10,19 @@ import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.discord.DiscordIntegration;
-import org.architech.launcher.gui.settings.tab.ModsTab;
-import org.architech.launcher.gui.settings.tab.SettingsTab;
-import org.architech.launcher.gui.settings.tab.ResourcePacksTab;
-import org.architech.launcher.gui.settings.tab.ShaderPacksTab;
+import org.architech.launcher.gui.settings.tab.*;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Objects;
 
+import static org.architech.launcher.ArchiTechLauncher.LAUNCHER_DIR;
+
 public record MainSettingsUI(Stage stage, Scene parentScene) {
+
+    private static Scene MAIN_SETTINGS_SCENE;
 
     public void show() {
         double w = (stage.getScene() != null ? stage.getScene().getWidth() : parentScene.getWidth());
@@ -40,7 +44,9 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         Tab shadersTab = new Tab("Шейдеры", shUI.createContent());
         Tab settingsTab = new Tab("Настройки", allSettingsUI.createContent());
 
-        tabs.getTabs().addAll(modsTab, resourceTab, shadersTab, settingsTab);
+        BackgroundsTab bgUI = new BackgroundsTab(stage);
+        Tab backgroundsTab = new Tab("Фоны", bgUI.createContent());
+        tabs.getTabs().addAll(modsTab, resourceTab, shadersTab, settingsTab, backgroundsTab);
 
         tabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
             if (newTab == modsTab) DiscordIntegration.update("В лаунчере", "Просматривает моды");
@@ -76,8 +82,12 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
                 Objects.requireNonNull(getClass().getResource("/css/controls.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/tabs.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/scroll.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/backgrounds.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()
         );
+
+        loadBackgroundFromConfig();
+        MAIN_SETTINGS_SCENE = scene;
         stage.setScene(scene);
 
         Platform.runLater(() -> {
@@ -91,5 +101,26 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
 
     private void styleMainButton(Button btn) {
         btn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+    }
+
+    public static void applyBackground(Path imgPath) {
+        Platform.runLater(() -> {
+            try {
+                if (imgPath == null || !Files.exists(imgPath)) {
+                    MAIN_SETTINGS_SCENE.getRoot().setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
+                    return;
+                }
+                String url = imgPath.toUri().toString();
+                String style = "-fx-background-image: url('" + url + "'); -fx-background-size: cover; -fx-background-position: center;";
+                MAIN_SETTINGS_SCENE.getRoot().setStyle(style);
+            } catch (Exception e) {
+                MAIN_SETTINGS_SCENE.getRoot().setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
+            }
+        });
+    }
+
+    private void loadBackgroundFromConfig() {
+        Path p = LAUNCHER_DIR.resolve("backgrounds").resolve(ArchiTechLauncher.LAUNCHER_BACKGROUND);
+        if (Files.exists(p)) applyBackground(p);
     }
 }

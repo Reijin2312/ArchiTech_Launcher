@@ -190,29 +190,34 @@ public class ModsTab {
 
             Platform.runLater(() -> {
                 int i = 0;
-                for (Node node : modsList.getChildren()) {
-                    if (node == header) continue;
-                    node.setOpacity(0);
-                    node.setTranslateY(10);
-
-                    FadeTransition ft = new FadeTransition(Duration.millis(200), node);
-                    ft.setFromValue(0);
-                    ft.setToValue(1);
-
-                    TranslateTransition tt = new TranslateTransition(Duration.millis(200), node);
-                    tt.setFromY(10);
-                    tt.setToY(0);
-
-                    ft.setDelay(Duration.millis(i * 40));
-                    tt.setDelay(Duration.millis(i * 40));
-
-                    new ParallelTransition(ft, tt).play();
-                    i++;
-                }
+                playRowAnimations(modsList, header);
             });
         });
 
         return modsRoot;
+    }
+
+    private void playRowAnimations(VBox modsList, Node header) {
+        int i = 0;
+        for (Node node : modsList.getChildren()) {
+            if (node == header) continue;
+            node.setOpacity(0);
+            node.setTranslateY(10);
+
+            FadeTransition ft = new FadeTransition(Duration.millis(400), node);
+            ft.setFromValue(0);
+            ft.setToValue(1);
+
+            TranslateTransition tt = new TranslateTransition(Duration.millis(400), node);
+            tt.setFromY(10);
+            tt.setToY(0);
+
+            ft.setDelay(Duration.millis(i * 100));
+            tt.setDelay(Duration.millis(i * 100));
+
+            new ParallelTransition(ft, tt).play();
+            i++;
+        }
     }
 
     private static Pane fixedCell(javafx.scene.Node node, double width, Pos align) {

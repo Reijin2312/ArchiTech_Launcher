@@ -1,0 +1,8 @@
+.mods-pane .backgrounds-top { -fx-padding: 8 16 8 16; }
+.background-tile {
+    -fx-background-color: rgba(40,40,40,0.6);
+    -fx-background-radius: 6;
+    -fx-padding: 6;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 6,0,0,2);
+}
+.background-tile:hover { -fx-background-color: rgba(60,60,60,0.8); cursor: hand; }

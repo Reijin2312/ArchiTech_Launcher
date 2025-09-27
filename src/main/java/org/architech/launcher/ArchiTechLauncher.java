@@ -43,6 +43,7 @@ public class ArchiTechLauncher extends Application {
     public static Path JAVA_PATH;
     public static Path ACCOUNT_FILE;
     public static String BACKEND_URL;
+    public static String LAUNCHER_BACKGROUND;
     public static int HTTP_TIMEOUT;
     public static boolean CLOSE_ON_LAUNCH = false;
     public static boolean AUTO_UPDATE_CLIENT = true;
@@ -79,6 +80,11 @@ public class ArchiTechLauncher extends Application {
                 if (cfg.containsKey("closeOnLaunch")) CLOSE_ON_LAUNCH = (boolean) cfg.get("closeOnLaunch");
                 if (cfg.containsKey("netTimeout")) HTTP_TIMEOUT = (int) cfg.get("netTimeout");
                 if (cfg.containsKey("autoUpdate")) AUTO_UPDATE_CLIENT = (boolean) cfg.get("autoUpdate");
+                if (cfg.containsKey("background")) {
+                    LAUNCHER_BACKGROUND = (String) cfg.get("background");
+                } else {
+                    LAUNCHER_BACKGROUND = "CherryAndRiver.png";
+                }
             }
         }
 

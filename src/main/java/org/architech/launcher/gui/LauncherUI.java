@@ -41,9 +41,7 @@ import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
 import org.architech.launcher.utils.Utils;
 import javafx.scene.paint.Color;
 import java.awt.*;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
@@ -58,8 +56,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import static org.architech.launcher.ArchiTechLauncher.LAUNCHER_DIR;
 
 public class LauncherUI {
+    private static Scene MAIN_SCENE;
     private final Button launchBtn;
     private final TextField usernameField;
     private final ProgressBar progressBar;
@@ -82,6 +82,7 @@ public class LauncherUI {
     private long startTimeMs;
 
     public LauncherUI(Stage stage, Consumer<String> launchHandler, Runnable updateHandler) {
+
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(20));
 
@@ -174,7 +175,6 @@ public class LauncherUI {
                 showError("Упс! Не удалось открыть Telegram :(", ex.getMessage());
             }
         });
-
 
         Button settingsBtn = new Button("⚙");
         styleSmallButton(settingsBtn);
@@ -355,6 +355,8 @@ public class LauncherUI {
         stage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResource("/images/icon.jpg")).toExternalForm()));
 
         mainScene = new Scene(root, 900, 560);
+        MAIN_SCENE = mainScene;
+        loadBackgroundFromConfig();
 
         mainScene.getStylesheets().addAll(
                 Objects.requireNonNull(getClass().getResource("/css/base.css")).toExternalForm(),
@@ -363,6 +365,7 @@ public class LauncherUI {
                 Objects.requireNonNull(getClass().getResource("/css/controls.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/tabs.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/scroll.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/backgrounds.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()
         );
 
@@ -371,7 +374,6 @@ public class LauncherUI {
         settingsBtn.setOnAction(e -> new MainSettingsUI(stage, mainScene).show());
 
         DiscordIntegration.update("В лаунчере", "На главной странице");
-
         stage.setScene(mainScene);
         stage.show();
     }
@@ -851,4 +853,26 @@ public class LauncherUI {
             playersPopup.show(win, screenX + 12, screenY + 12);
         });
     }
+
+    public static void applyBackground(Path imgPath) {
+        Platform.runLater(() -> {
+            try {
+                if (imgPath == null || !Files.exists(imgPath)) {
+                    MAIN_SCENE.getRoot().setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
+                    return;
+                }
+                String url = imgPath.toUri().toString();
+                String style = "-fx-background-image: url('" + url + "'); -fx-background-size: cover; -fx-background-position: center;";
+                MAIN_SCENE.getRoot().setStyle(style);
+            } catch (Exception e) {
+                MAIN_SCENE.getRoot().setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
+            }
+        });
+    }
+
+    private void loadBackgroundFromConfig() {
+        Path p = LAUNCHER_DIR.resolve("backgrounds").resolve(ArchiTechLauncher.LAUNCHER_BACKGROUND);
+        if (Files.exists(p)) applyBackground(p);
+    }
+
 }
