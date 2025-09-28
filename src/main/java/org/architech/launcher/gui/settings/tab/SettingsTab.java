@@ -9,8 +9,6 @@ import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
-import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;

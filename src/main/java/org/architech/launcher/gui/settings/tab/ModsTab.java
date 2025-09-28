@@ -1,48 +1,31 @@
 package org.architech.launcher.gui.settings.tab;
 
-import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
-import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import javafx.util.Duration;
 import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.nio.file.attribute.FileTime;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.jar.Attributes;
-import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 
-public class ModsTab {
-    private static final double COL_NAME   = 320;
-    private static final double COL_VER    = 140;
-    private static final double COL_DATE   = 180;
-    private static final double COL_TOGGLE = 80;
+public class ModsTab extends AbstractAssetsTab {
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final String FALLBACK_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAF0lEQVR42mP8z/CfAQgwYGBgYGLAAQBVmgJ3jzg9HwAAAABJRU5ErkJggg==";
 
     public Parent createContent() {
         BorderPane modsRoot = new BorderPane();
@@ -55,7 +38,6 @@ public class ModsTab {
         Path modsDir = GAME_DIR.resolve("mods");
         try { Files.createDirectories(modsDir); } catch (Exception ignored) {}
 
-        // header (готовим один раз)
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setStyle("-fx-font-weight: bold; -fx-padding: 4 0 8 0;");
@@ -66,14 +48,12 @@ public class ModsTab {
                 fixedHeaderLabel("Активен",  COL_TOGGLE)
         );
 
-        // индикатор загрузки пока собираем данные
         ProgressIndicator loading = new ProgressIndicator();
         loading.setPrefSize(48, 48);
         StackPane loadingHolder = new StackPane(loading);
         loadingHolder.setPadding(new Insets(24));
         modsRoot.setCenter(loadingHolder);
 
-        // модель, собираем в фоне
         record ModMeta(Path path, String fileName, boolean disabled, String displayName, String version, String lastUpdated) {}
 
         ArchiTechLauncher.submitBackground(() -> {
@@ -88,7 +68,6 @@ public class ModsTab {
                         String lastUpdated = formatFileTime(Files.getLastModifiedTime(modPath));
                         metas.add(new ModMeta(modPath, fn, disabled, display, version == null ? "" : version, lastUpdated));
                     } catch (Exception exInner) {
-                        // пропустить проблемный файл, но логнуть
                         LogManager.getLogger().warning("mods: read meta failed for " + modPath + ": " + exInner.getMessage());
                     }
                 }
@@ -107,7 +86,6 @@ public class ModsTab {
                     row.setAlignment(Pos.CENTER_LEFT);
                     row.setMinHeight(48);
 
-                    // placeholder icon
                     ImageView icon = new ImageView();
                     icon.setFitHeight(24);
                     icon.setFitWidth(24);
@@ -170,9 +148,7 @@ public class ModsTab {
                         byte[] bytes = robustLoadIconBytes(m.path());
                         if (bytes != null && bytes.length > 0) {
                             Platform.runLater(() -> {
-                                try {
-                                    icon.setImage(new Image(new ByteArrayInputStream(bytes)));
-                                } catch (Exception ignored) {}
+                                try { icon.setImage(new Image(new ByteArrayInputStream(bytes))); } catch (Exception ignored) {}
                             });
                         }
                     });
@@ -185,62 +161,13 @@ public class ModsTab {
                 modsList.setStyle("-fx-background-color: transparent;");
                 scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
                 if (scroll.getContent() != null) scroll.getContent().setStyle("-fx-background-color: transparent;");
-
             });
 
-            Platform.runLater(() -> {
-                int i = 0;
-                playRowAnimations(modsList, header);
-            });
+            Platform.runLater(() -> playRowAnimations(modsList, header));
         });
 
         return modsRoot;
     }
-
-    private void playRowAnimations(VBox modsList, Node header) {
-        int i = 0;
-        for (Node node : modsList.getChildren()) {
-            if (node == header) continue;
-            node.setOpacity(0);
-            node.setTranslateY(10);
-
-            FadeTransition ft = new FadeTransition(Duration.millis(400), node);
-            ft.setFromValue(0);
-            ft.setToValue(1);
-
-            TranslateTransition tt = new TranslateTransition(Duration.millis(400), node);
-            tt.setFromY(10);
-            tt.setToY(0);
-
-            ft.setDelay(Duration.millis(i * 100));
-            tt.setDelay(Duration.millis(i * 100));
-
-            new ParallelTransition(ft, tt).play();
-            i++;
-        }
-    }
-
-    private static Pane fixedCell(javafx.scene.Node node, double width, Pos align) {
-        StackPane box = new StackPane(node);
-        box.setAlignment(align);
-        box.setMinWidth(width);
-        box.setPrefWidth(width);
-        box.setMaxWidth(width);
-        return box;
-    }
-
-    private static Pane fixedHeaderLabel(String text, double width) {
-        Label l = new Label(text);
-        l.setAlignment(Pos.CENTER);
-        return fixedCell(l, width, Pos.CENTER);
-    }
-
-    private String formatFileTime(FileTime ft) {
-        Instant ins = Instant.ofEpochMilli(ft.toMillis());
-        return DATE_FMT.format(ins.atZone(ZoneId.systemDefault()));
-    }
-
-    private static final String FALLBACK_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAF0lEQVR42mP8z/CfAQgwYGBgYGLAAQBVmgJ3jzg9HwAAAABJRU5ErkJggg==";
 
     private byte[] robustLoadIconBytes(Path jarPath) {
         try (FileSystem fs = FileSystems.newFileSystem(jarPath, (ClassLoader) null)) {
@@ -402,67 +329,6 @@ public class ModsTab {
                 }
             } catch (Exception ignored) {}
         }
-        return null;
-    }
-
-    private String parseModVersion(Path jarPath) {
-        try (FileSystem fs = FileSystems.newFileSystem(jarPath, (ClassLoader) null)) {
-            String v = readVersionFromModsToml(fs);
-            if (isGood(v)) return v;
-            v = readVersionFromJson(fs, "fabric.mod.json");
-            if (isGood(v)) return v;
-            v = readVersionFromJson(fs, "quilt.mod.json");
-            if (isGood(v)) return v;
-            v = readVersionFromManifest(fs);
-            if (isGood(v)) return v;
-        } catch (Exception ignored) {}
-        return "???";
-    }
-
-    private boolean isGood(String v) {
-        return v != null && !v.isBlank() && !v.contains("${") && !v.equalsIgnoreCase("unspecified");
-    }
-
-    private String readVersionFromModsToml(FileSystem fs) {
-        Path toml = fs.getPath("META-INF", "mods.toml");
-        if (!Files.exists(toml)) return null;
-        try {
-            String content = Files.readString(toml, StandardCharsets.UTF_8);
-            Matcher mods = Pattern.compile("\\[\\[mods]](.*?)(?=\\n\\[\\[|$)", Pattern.DOTALL).matcher(content);
-            if (mods.find()) {
-                String block = mods.group(1);
-                Matcher v = Pattern.compile("version\\s*=\\s*\"([^\"]+)\"").matcher(block);
-                if (v.find()) return v.group(1);
-            }
-            Matcher glob = Pattern.compile("(?m)^\\s*version\\s*=\\s*\"([^\"]+)\"\\s*$").matcher(content);
-            if (glob.find()) return glob.group(1);
-        } catch (Exception ignored) {}
-        return null;
-    }
-
-    private String readVersionFromJson(FileSystem fs, String fileName) {
-        Path json = fs.getPath(fileName);
-        if (!Files.exists(json)) return null;
-        try {
-            Matcher m = Pattern.compile("\"version\"\\s*:\\s*\"([^\"]+)\"").matcher(Files.readString(json, StandardCharsets.UTF_8));
-            if (m.find()) return m.group(1);
-        } catch (Exception ignored) {}
-        return null;
-    }
-
-    private String readVersionFromManifest(FileSystem fs) {
-        Path mf = fs.getPath("META-INF", "MANIFEST.MF");
-        if (!Files.exists(mf)) return null;
-        try (InputStream in = Files.newInputStream(mf)) {
-            Manifest man = new Manifest(in);
-            Attributes a = man.getMainAttributes();
-            String v = a.getValue(Attributes.Name.IMPLEMENTATION_VERSION);
-            if (isGood(v)) return v;
-            v = a.getValue("Bundle-Version");
-            if (isGood(v)) return v;
-            v = a.getValue(Attributes.Name.SPECIFICATION_VERSION);
-            if (isGood(v)) return v;
-        } catch (IOException ignored) {}
         return null;
     }
 }

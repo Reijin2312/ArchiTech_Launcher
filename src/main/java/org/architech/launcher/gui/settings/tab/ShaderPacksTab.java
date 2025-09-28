@@ -13,30 +13,17 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.nio.file.attribute.FileTime;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 
-public class ShaderPacksTab {
-    private static final double COL_NAME   = 320;
-    private static final double COL_VER    = 140;
-    private static final double COL_DATE   = 180;
-    private static final double COL_TOGGLE = 80;
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+public class ShaderPacksTab extends AbstractAssetsTab {
 
     public Parent createContent() {
         BorderPane root = new BorderPane();
@@ -76,13 +63,14 @@ public class ShaderPacksTab {
                         boolean disabled = fn.endsWith(".disabled");
                         String visible = fn.replaceAll("\\.disabled$", "");
                         boolean accepted = Files.isDirectory(p)
-                                || visible.toLowerCase().endsWith(".zip");
+                                || fn.toLowerCase().endsWith(".zip")
+                                || fn.toLowerCase().endsWith(".zip.disabled");
                         if (!accepted) continue;
                         String version = parseShaderPackVersion(p);
                         String lastUpdated = formatFileTime(Files.getLastModifiedTime(p));
                         metas.add(new PackMeta(p, fn, disabled, visible, version, lastUpdated));
                     } catch (Exception exInner) {
-                        LogManager.getLogger().warning("shaderpacks: read meta failed for " + p + ": " + exInner.getMessage());
+                        LogManager.getLogger().warning("shader packs: read meta failed for " + p + ": " + exInner.getMessage());
                     }
                 }
             } catch (Exception ex) {
@@ -176,78 +164,10 @@ public class ShaderPacksTab {
                 scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
                 if (scroll.getContent() != null) scroll.getContent().setStyle("-fx-background-color: transparent;");
             });
+
+            Platform.runLater(() -> playRowAnimations(list, header));
         });
 
         return root;
-    }
-
-    private static Pane fixedCell(javafx.scene.Node node, double width, Pos align) {
-        StackPane box = new StackPane(node);
-        box.setAlignment(align);
-        box.setMinWidth(width); box.setPrefWidth(width); box.setMaxWidth(width);
-        return box;
-    }
-    private static Pane fixedHeaderLabel(String text, double width) {
-        Label l = new Label(text); l.setAlignment(Pos.CENTER); return fixedCell(l, width, Pos.CENTER);
-    }
-
-    private String formatFileTime(FileTime ft) {
-        Instant ins = Instant.ofEpochMilli(ft.toMillis());
-        return DATE_FMT.format(ins.atZone(ZoneId.systemDefault()));
-    }
-
-    private String parseShaderPackVersion(Path packPath) {
-        // пытаемся найти shaderpack.properties или shaderpack.txt, иначе —
-        try {
-            if (Files.isDirectory(packPath)) {
-                Path p1 = packPath.resolve("shaderpack.properties");
-                if (Files.exists(p1)) {
-                    String s = Files.readString(p1, StandardCharsets.UTF_8);
-                    Matcher m = Pattern.compile("(?m)^\\s*version\\s*=\\s*(.+)$").matcher(s);
-                    if (m.find()) return m.group(1).trim();
-                }
-                Path p2 = packPath.resolve("shaderpack.txt");
-                if (Files.exists(p2)) {
-                    String s = Files.readString(p2, StandardCharsets.UTF_8);
-                    Matcher m = Pattern.compile("(?m)^\\s*version\\s*[:=]\\s*(.+)$").matcher(s);
-                    if (m.find()) return m.group(1).trim();
-                }
-            } else {
-                try (FileSystem fs = FileSystems.newFileSystem(packPath, (ClassLoader) null)) {
-                    Path p1 = fs.getPath("shaderpack.properties");
-                    if (Files.exists(p1)) {
-                        String s = Files.readString(p1, StandardCharsets.UTF_8);
-                        Matcher m = Pattern.compile("(?m)^\\s*version\\s*=\\s*(.+)$").matcher(s);
-                        if (m.find()) return m.group(1).trim();
-                    }
-                    Path p2 = fs.getPath("shaderpack.txt");
-                    if (Files.exists(p2)) {
-                        String s = Files.readString(p2, StandardCharsets.UTF_8);
-                        Matcher m = Pattern.compile("(?m)^\\s*version\\s*[:=]\\s*(.+)$").matcher(s);
-                        if (m.find()) return m.group(1).trim();
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
-        return "—";
-    }
-
-    private byte[] robustLoadShaderPackIconBytes(Path packPath) {
-        try {
-            if (Files.isDirectory(packPath)) {
-                Path p = packPath.resolve("preview.png");
-                if (Files.exists(p)) return Files.readAllBytes(p);
-                p = packPath.resolve("pack.png");
-                if (Files.exists(p)) return Files.readAllBytes(p);
-            } else {
-                try (FileSystem fs = FileSystems.newFileSystem(packPath, (ClassLoader) null)) {
-                    Path p = fs.getPath("preview.png");
-                    if (Files.exists(p)) return Files.readAllBytes(p);
-                    p = fs.getPath("pack.png");
-                    if (Files.exists(p)) return Files.readAllBytes(p);
-                }
-            }
-        } catch (Exception ignored) {}
-        return null;
     }
 }

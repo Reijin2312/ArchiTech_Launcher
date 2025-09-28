@@ -1,3 +1,4 @@
+// file: ResourcePacksTab.java
 package org.architech.launcher.gui.settings.tab;
 
 import javafx.application.Platform;
@@ -13,31 +14,17 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.logging.LogManager;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.nio.file.attribute.FileTime;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 
-public class ResourcePacksTab {
-    private static final double COL_NAME   = 320;
-    private static final double COL_VER    = 140;
-    private static final double COL_DATE   = 180;
-    private static final double COL_TOGGLE = 80;
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+public class ResourcePacksTab extends AbstractAssetsTab {
 
     public Parent createContent() {
         BorderPane root = new BorderPane();
@@ -79,7 +66,7 @@ public class ResourcePacksTab {
                         boolean accepted = Files.isDirectory(p)
                                 || visible.toLowerCase().endsWith(".zip");
                         if (!accepted) continue;
-                        String version = parseResourcePackVersion(p);
+                        String version = parseShaderPackVersion(p);
                         String lastUpdated = formatFileTime(Files.getLastModifiedTime(p));
                         metas.add(new PackMeta(p, fn, disabled, visible, version, lastUpdated));
                     } catch (Exception exInner) {
@@ -145,7 +132,7 @@ public class ResourcePacksTab {
                                 row.getStyleClass().add("disabled");
                             }
                         } catch (Exception ex) {
-                            LauncherUI.showError("Не удалось переключить пакет", ex.getMessage());
+                            LauncherUI.showError("Не удалось переключить ресурс-пак", ex.getMessage());
                             toggle.setSelected(oldVal);
                         }
                     });
@@ -159,9 +146,8 @@ public class ResourcePacksTab {
 
                     list.getChildren().add(row);
 
-                    // background icon load
                     ArchiTechLauncher.submitBackground(() -> {
-                        byte[] bytes = robustLoadPackIconBytes(m.path());
+                        byte[] bytes = robustLoadShaderPackIconBytes(m.path());
                         if (bytes != null && bytes.length > 0) {
                             Platform.runLater(() -> {
                                 try { icon.setImage(new Image(new ByteArrayInputStream(bytes))); } catch (Exception ignored) {}
@@ -177,62 +163,10 @@ public class ResourcePacksTab {
                 scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
                 if (scroll.getContent() != null) scroll.getContent().setStyle("-fx-background-color: transparent;");
             });
+
+            Platform.runLater(() -> playRowAnimations(list, header));
         });
 
         return root;
-    }
-
-    private static Pane fixedCell(javafx.scene.Node node, double width, Pos align) {
-        StackPane box = new StackPane(node);
-        box.setAlignment(align);
-        box.setMinWidth(width); box.setPrefWidth(width); box.setMaxWidth(width);
-        return box;
-    }
-
-    private static Pane fixedHeaderLabel(String text, double width) {
-        Label l = new Label(text); l.setAlignment(Pos.CENTER); return fixedCell(l, width, Pos.CENTER);
-    }
-
-    private String formatFileTime(FileTime ft) {
-        Instant ins = Instant.ofEpochMilli(ft.toMillis());
-        return DATE_FMT.format(ins.atZone(ZoneId.systemDefault()));
-    }
-
-    private String parseResourcePackVersion(Path packPath) {
-        try {
-            if (Files.isDirectory(packPath)) {
-                Path mcmeta = packPath.resolve("pack.mcmeta");
-                if (Files.exists(mcmeta)) {
-                    String content = Files.readString(mcmeta, StandardCharsets.UTF_8);
-                    Matcher m = Pattern.compile("\"pack_format\"\\s*:\\s*(\\d+)").matcher(content);
-                    if (m.find()) return "pack_format " + m.group(1);
-                }
-            } else {
-                try (FileSystem fs = FileSystems.newFileSystem(packPath, (ClassLoader) null)) {
-                    Path mcmeta = fs.getPath("pack.mcmeta");
-                    if (Files.exists(mcmeta)) {
-                        String content = Files.readString(mcmeta, StandardCharsets.UTF_8);
-                        Matcher m = Pattern.compile("\"pack_format\"\\s*:\\s*(\\d+)").matcher(content);
-                        if (m.find()) return "pack_format " + m.group(1);
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
-        return "—";
-    }
-
-    private byte[] robustLoadPackIconBytes(Path packPath) {
-        try {
-            if (Files.isDirectory(packPath)) {
-                Path p = packPath.resolve("pack.png");
-                if (Files.exists(p)) return Files.readAllBytes(p);
-            } else {
-                try (FileSystem fs = FileSystems.newFileSystem(packPath, (ClassLoader) null)) {
-                    Path p = fs.getPath("pack.png");
-                    if (Files.exists(p)) return Files.readAllBytes(p);
-                }
-            }
-        } catch (Exception ignored) {}
-        return null;
     }
 }
