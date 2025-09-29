@@ -4,6 +4,7 @@ package org.architech.launcher.gui.settings.tab;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.TranslateTransition;
+import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
@@ -31,6 +32,8 @@ public abstract class AbstractAssetsTab {
     protected static final double COL_DATE   = 180;
     protected static final double COL_TOGGLE = 80;
     protected static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    protected VBox modsListRef;
+    protected Node modsHeaderRef;
 
     protected static Pane fixedCell(javafx.scene.Node node, double width, Pos align) {
         StackPane box = new StackPane(node);
@@ -183,5 +186,10 @@ public abstract class AbstractAssetsTab {
             new ParallelTransition(ft, tt).play();
             i++;
         }
+    }
+
+    public void replayAnimations() {
+        if (modsListRef == null || modsHeaderRef == null) return;
+        Platform.runLater(() -> playRowAnimations(modsListRef, modsHeaderRef));
     }
 }

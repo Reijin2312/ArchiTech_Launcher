@@ -5,6 +5,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 import org.architech.launcher.discord.DiscordIntegration;
+import org.architech.launcher.gui.BackgroundCache;
 import org.architech.launcher.gui.settings.tab.SettingsTab;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.managment.DownloadManager;
@@ -52,7 +53,7 @@ public class ArchiTechLauncher extends Application {
     public static DownloadManager DOWNLOAD_MANAGER = null;
 
     private static final ExecutorService launcherExecutor = Executors.newSingleThreadExecutor(daemonFactory("launcher-worker"));
-    private static final ExecutorService backgroundExecutor = Executors.newCachedThreadPool(daemonFactory("bg"));
+    public static final ExecutorService backgroundExecutor = Executors.newCachedThreadPool(daemonFactory("bg"));
     public static final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor(daemonFactory("sched"));
     private static final AtomicReference<Future<?>> launchFuture = new AtomicReference<>();
     private static final AtomicReference<Future<?>> updateFuture = new AtomicReference<>();
@@ -81,12 +82,16 @@ public class ArchiTechLauncher extends Application {
                 if (cfg.containsKey("netTimeout")) HTTP_TIMEOUT = (int) cfg.get("netTimeout");
                 if (cfg.containsKey("autoUpdate")) AUTO_UPDATE_CLIENT = (boolean) cfg.get("autoUpdate");
                 if (cfg.containsKey("background")) {
-                    LAUNCHER_BACKGROUND = (String) cfg.get("background");
+                    Object bg = cfg.get("background");
+                    LAUNCHER_BACKGROUND = (bg instanceof String) ? ((String) bg).trim() : "CherryAndRiver.png";
                 } else {
                     LAUNCHER_BACKGROUND = "CherryAndRiver.png";
                 }
             }
         }
+
+        Path initialBg = LAUNCHER_DIR.resolve("backgrounds").resolve(LAUNCHER_BACKGROUND);
+        BackgroundCache.preload(initialBg);
 
         VERSIONS_DIR = GAME_DIR.resolve("versions");
         LIBRARIES_DIR = GAME_DIR.resolve("libraries");

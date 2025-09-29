@@ -4,6 +4,7 @@ package org.architech.launcher.gui.settings.tab;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
@@ -33,6 +34,7 @@ public class ResourcePacksTab extends AbstractAssetsTab {
         VBox list = new VBox(10);
         list.setFillWidth(true);
         list.setPadding(new Insets(8, 16, 16, 16));
+        this.modsListRef = list;
 
         Path packsDir = GAME_DIR.resolve("resourcepacks");
         try { Files.createDirectories(packsDir); } catch (Exception ignored) {}
@@ -46,6 +48,7 @@ public class ResourcePacksTab extends AbstractAssetsTab {
                 fixedHeaderLabel("Обновлён", COL_DATE),
                 fixedHeaderLabel("Активен",  COL_TOGGLE)
         );
+        this.modsHeaderRef = header;
 
         ProgressIndicator loading = new ProgressIndicator();
         loading.setPrefSize(48, 48);

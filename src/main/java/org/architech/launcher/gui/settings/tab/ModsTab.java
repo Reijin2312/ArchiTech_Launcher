@@ -34,6 +34,7 @@ public class ModsTab extends AbstractAssetsTab {
         VBox modsList = new VBox(10);
         modsList.setFillWidth(true);
         modsList.setPadding(new Insets(8, 16, 16, 16));
+        this.modsListRef = modsList;
 
         Path modsDir = GAME_DIR.resolve("mods");
         try { Files.createDirectories(modsDir); } catch (Exception ignored) {}
@@ -47,6 +48,7 @@ public class ModsTab extends AbstractAssetsTab {
                 fixedHeaderLabel("Обновлён", COL_DATE),
                 fixedHeaderLabel("Активен",  COL_TOGGLE)
         );
+        this.modsHeaderRef = header;
 
         ProgressIndicator loading = new ProgressIndicator();
         loading.setPrefSize(48, 48);
@@ -331,4 +333,5 @@ public class ModsTab extends AbstractAssetsTab {
         }
         return null;
     }
+
 }

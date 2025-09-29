@@ -2,7 +2,10 @@ package org.architech.launcher.gui;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.net.httpserver.HttpServer;
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -76,6 +79,7 @@ public class LauncherUI {
     private final Popup playersPopup = new Popup();
     private List<String> latestOnlinePlayers = Collections.emptyList();
     private boolean popupHovered = false;
+    private static VBox newsListRef;
 
     private Account currentAccount;
     private ScheduledFuture<?> timerFuture;
@@ -253,6 +257,8 @@ public class LauncherUI {
         newsContainer.setFillWidth(true);
         newsContainer.getChildren().add(titleBox);
 
+        replayNewsAnimations();
+
         Region sepTop = new Region();
         sepTop.setPrefHeight(2);
         sepTop.setPrefWidth(220);
@@ -356,7 +362,6 @@ public class LauncherUI {
 
         mainScene = new Scene(root, 900, 560);
         MAIN_SCENE = mainScene;
-        loadBackgroundFromConfig();
 
         mainScene.getStylesheets().addAll(
                 Objects.requireNonNull(getClass().getResource("/css/base.css")).toExternalForm(),
@@ -376,6 +381,7 @@ public class LauncherUI {
         DiscordIntegration.update("В лаунчере", "На главной странице");
         stage.setScene(mainScene);
         stage.show();
+        loadBackgroundFromConfig();
     }
 
     private void rebuildAccountMenu() {
@@ -695,6 +701,7 @@ public class LauncherUI {
     private ScrollPane buildNewsList(List<NewsItem> items) {
         VBox list = new VBox(12);
         list.setPadding(new Insets(10));
+        newsListRef = list;
 
         Path cacheDir = Paths.get(System.getProperty("user.home"), ".architech", "cache", "news-icons");
         try {
@@ -790,6 +797,29 @@ public class LauncherUI {
         return sp;
     }
 
+    public static void replayNewsAnimations() {
+        if (newsListRef == null) return;
+        Platform.runLater(() -> {
+            int i = 0;
+            for (Node node : newsListRef.getChildren()) {
+                node.setOpacity(0);
+                node.setTranslateY(10);
+
+                FadeTransition ft = new FadeTransition(Duration.millis(400), node);
+                ft.setFromValue(0); ft.setToValue(1);
+
+                TranslateTransition tt = new TranslateTransition(Duration.millis(400), node);
+                tt.setFromY(10); tt.setToY(0);
+
+                ft.setDelay(Duration.millis(i * 100));
+                tt.setDelay(Duration.millis(i * 100));
+
+                new ParallelTransition(ft, tt).play();
+                i++;
+            }
+        });
+    }
+
     public void stopTimer() {
         if (timerFuture != null && !timerFuture.isDone()) {
             timerFuture.cancel(true);
@@ -855,19 +885,9 @@ public class LauncherUI {
     }
 
     public static void applyBackground(Path imgPath) {
-        Platform.runLater(() -> {
-            try {
-                if (imgPath == null || !Files.exists(imgPath)) {
-                    MAIN_SCENE.getRoot().setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
-                    return;
-                }
-                String url = imgPath.toUri().toString();
-                String style = "-fx-background-image: url('" + url + "'); -fx-background-size: cover; -fx-background-position: center;";
-                MAIN_SCENE.getRoot().setStyle(style);
-            } catch (Exception e) {
-                MAIN_SCENE.getRoot().setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
-            }
-        });
+        if (MAIN_SCENE != null && MAIN_SCENE.getRoot() instanceof Region region) {
+            BackgroundCache.apply(imgPath, region);
+        }
     }
 
     private void loadBackgroundFromConfig() {

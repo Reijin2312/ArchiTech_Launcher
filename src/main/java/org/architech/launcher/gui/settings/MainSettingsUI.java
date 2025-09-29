@@ -9,11 +9,13 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.stage.Stage;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.discord.DiscordIntegration;
+import org.architech.launcher.gui.BackgroundCache;
+import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.gui.settings.tab.*;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -48,6 +50,10 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         Tab backgroundsTab = new Tab("Фоны", bgUI.createContent());
         tabs.getTabs().addAll(modsTab, resourceTab, shadersTab, settingsTab, backgroundsTab);
 
+        modsTab.setOnSelectionChanged(e -> { if (modsTab.isSelected()) modsUI.replayAnimations(); });
+        resourceTab.setOnSelectionChanged(e -> { if (resourceTab.isSelected()) rpUI.replayAnimations(); });
+        shadersTab.setOnSelectionChanged(e -> { if (shadersTab.isSelected()) shUI.replayAnimations(); });
+
         tabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
             if (newTab == modsTab) DiscordIntegration.update("В лаунчере", "Просматривает моды");
             else if (newTab == shadersTab) DiscordIntegration.update("В лаунчере", "Просматривает шейдер-паки");
@@ -67,6 +73,7 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         backBtn.setOnAction(e -> {
             DiscordIntegration.update("В лаунчере", "На главной странице");
             stage.setScene(parentScene);
+            LauncherUI.replayNewsAnimations();
         });
 
         HBox bottom = new HBox(backBtn);
@@ -75,6 +82,9 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         root.setBottom(bottom);
 
         Scene scene = new Scene(root, w, h);
+        loadBackgroundFromConfig();
+        MAIN_SETTINGS_SCENE = scene;
+
         scene.getStylesheets().addAll(
                 Objects.requireNonNull(getClass().getResource("/css/base.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/layout.css")).toExternalForm(),
@@ -86,8 +96,6 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
                 Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()
         );
 
-        loadBackgroundFromConfig();
-        MAIN_SETTINGS_SCENE = scene;
         stage.setScene(scene);
 
         Platform.runLater(() -> {
@@ -104,19 +112,9 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
     }
 
     public static void applyBackground(Path imgPath) {
-        Platform.runLater(() -> {
-            try {
-                if (imgPath == null || !Files.exists(imgPath)) {
-                    MAIN_SETTINGS_SCENE.getRoot().setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
-                    return;
-                }
-                String url = imgPath.toUri().toString();
-                String style = "-fx-background-image: url('" + url + "'); -fx-background-size: cover; -fx-background-position: center;";
-                MAIN_SETTINGS_SCENE.getRoot().setStyle(style);
-            } catch (Exception e) {
-                MAIN_SETTINGS_SCENE.getRoot().setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
-            }
-        });
+        if (MAIN_SETTINGS_SCENE != null && MAIN_SETTINGS_SCENE.getRoot() instanceof Region region) {
+            BackgroundCache.apply(imgPath, region);
+        }
     }
 
     private void loadBackgroundFromConfig() {

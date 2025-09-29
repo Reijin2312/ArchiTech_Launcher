@@ -5,6 +5,7 @@ build/
 !**/src/test/**/build/
 
 launcher.log
+launcher.log1
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
