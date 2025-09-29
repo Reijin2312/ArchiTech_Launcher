@@ -55,9 +55,7 @@ public class VersionManager {
         JsonNode libs = versionJson.path("libraries");
         String os = detectOS();
         if (libs.isArray()) {
-            for (JsonNode el : libs) {
-                JsonNode lib = el;
-
+            for (JsonNode lib : libs) {
                 if (!isAllowedByRules(lib, os)) continue;
                 if (!lib.has("downloads")) continue;
                 JsonNode downloads = lib.get("downloads");
@@ -163,11 +161,10 @@ public class VersionManager {
         ArrayNode rules = (ArrayNode) rulesNode;
         Boolean allow = null;
         for (JsonNode el : rules) {
-            JsonNode r = el;
-            String action = get(r, "action", "allow");
+            String action = get(el, "action", "allow");
             String osName = null;
-            if (r.has("os")) {
-                JsonNode osObj = r.get("os");
+            if (el.has("os")) {
+                JsonNode osObj = el.get("os");
                 osName = osObj.path("name").asText(null);
             }
             boolean osMatch = (osName == null) || osName.equals(os);

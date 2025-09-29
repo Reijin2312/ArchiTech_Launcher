@@ -3,3 +3,68 @@
 }
 
 .hidden { -fx-opacity: 0; -fx-max-height: 0; -fx-min-height: 0; }
+
+.main-news-title {
+     -fx-font-size: 18px;
+     -fx-font-weight: bold;
+     -fx-text-fill: white;
+ }
+
+ .sep-top {
+     -fx-background-color: rgba(255,255,255,1);
+     -fx-background-radius: 2;
+ }
+
+ .info-bar {
+     -fx-background-color: rgba(255,255,255,0.08);
+     -fx-background-radius: 4;
+ }
+
+.username-field {
+    -fx-background-color: #3c3f41;
+    -fx-text-fill: white;
+    -fx-border-color: #6b6b6b;
+    -fx-padding: 0 36 0 8;
+}
+
+ .launch-btn {
+     -fx-background-color: #4caf50;
+     -fx-text-fill: white;
+     -fx-font-size: 14px;
+     -fx-font-weight: bold;
+ }
+
+ .account-btn {
+    -fx-background-color: #3c3f41;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+ }
+
+ .chevron {
+    -fx-text-fill: black;
+    -fx-font-size: 14px;
+ }
+
+.person-icon {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+}
+
+.online-label-field, .ping-label-field {
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+}
+
+.sep-bottom {
+    -fx-background-color: rgba(255,255,255,0.08);
+    -fx-background-radius: 2;
+}
+
+.news-wrapper {
+    -fx-background-color: rgba(30,30,30,0.55);
+    -fx-background-radius: 8;
+}
+
+.timer-label {
+    -fx-text-fill: white;
+}

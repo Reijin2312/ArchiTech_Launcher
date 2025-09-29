@@ -13,6 +13,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.LauncherUI;
+import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.gui.settings.MainSettingsUI;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
@@ -82,11 +83,10 @@ public class BackgroundsTab {
                 String name = System.currentTimeMillis() + "-" + f.getName();
                 Path dest = backgroundsDir.resolve(name);
                 Files.copy(f.toPath(), dest, StandardCopyOption.REPLACE_EXISTING);
-                // после добавления — синхронизируем список и состояние
                 loadAndShow();
             } catch (Exception ex) {
                 LogManager.getLogger().warning("add background failed: " + ex.getMessage());
-                Platform.runLater(() -> LauncherUI.showError("Не удалось добавить фон", ex.getMessage()));
+                Platform.runLater(() -> ErrorPanel.showError("Не удалось добавить фон", ex.getMessage()));
             }
         });
 
@@ -101,13 +101,12 @@ public class BackgroundsTab {
                 items.addAll(s.filter(p -> {
                     String n = p.getFileName().toString().toLowerCase();
                     return n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg");
-                }).sorted().collect(Collectors.toList()));
+                }).sorted().toList());
             } catch (Exception ignored) {}
 
             readSelectedFromConfig();
 
             Platform.runLater(() -> {
-                // попытка явного применения фона из конфигурации перед отрисовкой
                 if (selectedFileName != null && !selectedFileName.isBlank()) {
                     String cfg = selectedFileName.trim();
                     Path match = null;
@@ -127,12 +126,10 @@ public class BackgroundsTab {
                             LogManager.getLogger().warning("apply background on load failed: " + ex.getMessage());
                         }
                     } else {
-                        // если в списке нет файла из конфига — не оставляем случайного выделения
                         selectedFileName = selectedFileName.trim();
                     }
                 }
                 rebuildGrid(items);
-                // снять фокус с плиток, чтобы внешние CSS-псевдоклассы не подсвечивали первый элемент
                 clearFocus();
             });
         });
@@ -220,46 +217,7 @@ public class BackgroundsTab {
             }
 
             ContextMenu menu = new ContextMenu();
-            MenuItem deleteItem = new MenuItem("Удалить");
-            deleteItem.setOnAction(ae -> {
-                ArchiTechLauncher.submitBackground(() -> {
-                    try {
-                        Files.deleteIfExists(p);
-
-                        try {
-                            Map<String,Object> cfg = new LinkedHashMap<>();
-                            if (Files.exists(ArchiTechLauncher.CONFIG_PATH)) {
-                                try (Reader r = Files.newBufferedReader(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
-                                    Map<?,?> old = Jsons.MAPPER.readValue(r, Map.class);
-                                    if (old != null) cfg.putAll((Map) old);
-                                } catch (Exception ignored) {}
-                            }
-
-                            Object bgObj = cfg.get("background");
-                            String current = (bgObj instanceof String) ? ((String) bgObj).trim() : null;
-                            if (current != null && current.equalsIgnoreCase(p.getFileName().toString().trim())) {
-                                cfg.remove("background");
-                                Files.createDirectories(ArchiTechLauncher.CONFIG_PATH.getParent());
-                                try (Writer w = Files.newBufferedWriter(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
-                                    Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValue(w, cfg);
-                                } catch (Exception ignored) {}
-                                selectedFileName = null;
-                                Platform.runLater(() -> {
-                                    try { MainSettingsUI.applyBackground(null); } catch (Exception ignored) {}
-                                    try { LauncherUI.applyBackground(null); } catch (Exception ignored) {}
-                                });
-                            }
-                        } catch (Exception ex) {
-                            LogManager.getLogger().warning("Не удалось обновить конфиг после удаления: " + ex.getMessage());
-                        }
-
-                        Platform.runLater(this::loadAndShow);
-                    } catch (Exception ex) {
-                        Platform.runLater(() -> LauncherUI.showError("Не удалось удалить фон", ex.getMessage()));
-                        LogManager.getLogger().warning("delete background failed: " + ex.getMessage());
-                    }
-                });
-            });
+            MenuItem deleteItem = getDeleteItem(p);
             menu.getItems().add(deleteItem);
 
             tile.setOnMouseClicked(ev -> {
@@ -278,6 +236,50 @@ public class BackgroundsTab {
 
             grid.add(tile, col, row);
         }
+    }
+
+    private MenuItem getDeleteItem(Path p) {
+        MenuItem deleteItem = new MenuItem("Удалить");
+        deleteItem.setOnAction(ae -> {
+            ArchiTechLauncher.submitBackground(() -> {
+                try {
+                    Files.deleteIfExists(p);
+
+                    try {
+                        Map<String,Object> cfg = new LinkedHashMap<>();
+                        if (Files.exists(ArchiTechLauncher.CONFIG_PATH)) {
+                            try (Reader r = Files.newBufferedReader(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
+                                Map<?,?> old = Jsons.MAPPER.readValue(r, Map.class);
+                                if (old != null) cfg.putAll((Map) old);
+                            } catch (Exception ignored) {}
+                        }
+
+                        Object bgObj = cfg.get("background");
+                        String current = (bgObj instanceof String) ? ((String) bgObj).trim() : null;
+                        if (current != null && current.equalsIgnoreCase(p.getFileName().toString().trim())) {
+                            cfg.remove("background");
+                            Files.createDirectories(ArchiTechLauncher.CONFIG_PATH.getParent());
+                            try (Writer w = Files.newBufferedWriter(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
+                                Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValue(w, cfg);
+                            } catch (Exception ignored) {}
+                            selectedFileName = null;
+                            Platform.runLater(() -> {
+                                try { MainSettingsUI.applyBackground(null); } catch (Exception ignored) {}
+                                try { LauncherUI.applyBackground(null); } catch (Exception ignored) {}
+                            });
+                        }
+                    } catch (Exception ex) {
+                        LogManager.getLogger().warning("Не удалось обновить конфиг после удаления: " + ex.getMessage());
+                    }
+
+                    Platform.runLater(this::loadAndShow);
+                } catch (Exception ex) {
+                    Platform.runLater(() -> ErrorPanel.showError("Не удалось удалить фон", ex.getMessage()));
+                    LogManager.getLogger().warning("delete background failed: " + ex.getMessage());
+                }
+            });
+        });
+        return deleteItem;
     }
 
     private void applyAndSaveBackground(Path p) {

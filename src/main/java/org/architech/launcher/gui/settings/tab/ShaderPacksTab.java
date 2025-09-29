@@ -3,7 +3,6 @@ package org.architech.launcher.gui.settings.tab;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
@@ -15,6 +14,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.LauncherUI;
+import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.logging.LogManager;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -77,7 +77,7 @@ public class ShaderPacksTab extends AbstractAssetsTab {
                     }
                 }
             } catch (Exception ex) {
-                Platform.runLater(() -> LauncherUI.showError("Ошибка загрузки списка шейдер-паков", ex.getMessage()));
+                Platform.runLater(() -> ErrorPanel.showError("Ошибка загрузки списка шейдер-паков", ex.getMessage()));
                 return;
             }
 
@@ -135,7 +135,7 @@ public class ShaderPacksTab extends AbstractAssetsTab {
                                 row.getStyleClass().add("disabled");
                             }
                         } catch (Exception ex) {
-                            LauncherUI.showError("Не удалось переключить шейдер-пак", ex.getMessage());
+                            ErrorPanel.showError("Не удалось переключить шейдер-пак", ex.getMessage());
                             toggle.setSelected(oldVal);
                         }
                     });

@@ -44,8 +44,7 @@ public final class BackgroundCache {
                 Platform.runLater(() -> {
                     try {
                         Image img = new Image(new ByteArrayInputStream(bytes));
-                        // обязательная проверка: декодировка прошла успешно и изображение не нулевого размера
-                        if (img == null || img.isError() || img.getWidth() <= 0) {
+                        if (img.isError() || img.getWidth() <= 0) {
                             LogManager.getLogger().warning("BackgroundCache: decode produced invalid image for " + p);
                             created.completeExceptionally(new RuntimeException("decode failed or zero-size"));
                         } else {
@@ -64,7 +63,6 @@ public final class BackgroundCache {
         });
     }
 
-    // apply — оставить, но логировать ошибку и не удалять градиент до успеха
     public static void apply(Path p, Region region) {
         if (region == null) return;
         if (p == null || !Files.exists(p)) {
@@ -82,21 +80,19 @@ public final class BackgroundCache {
             if (img != null) applyImage(region, img);
         }).exceptionally(ex -> {
             LogManager.getLogger().warning("BackgroundCache.apply failed for " + p + " : " + (ex == null ? "null" : ex.getMessage()));
-            // при ошибке восстанавливаем градиент (без удаления/смены стилей, чтобы не оставлять белый)
             Platform.runLater(() -> region.setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);"));
             return null;
         });
     }
 
-    // applyImage — проверять валидность перед снятием стиля и установкой бэкраунда
     private static void applyImage(Region region, Image img) {
         if (img == null || img.isError() || img.getWidth() <= 0) {
             Platform.runLater(() -> region.setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);"));
             return;
         }
         Platform.runLater(() -> {
-            region.setStyle(null); // снять градиент только если изображение валидно
-            BackgroundSize bs = new BackgroundSize(100, 100, true, true, false, true); // cover
+            region.setStyle(null);
+            BackgroundSize bs = new BackgroundSize(100, 100, true, true, false, true);
             BackgroundImage bi = new BackgroundImage(img,
                     BackgroundRepeat.NO_REPEAT,
                     BackgroundRepeat.NO_REPEAT,

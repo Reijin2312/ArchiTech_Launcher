@@ -38,7 +38,6 @@ public final class ArchiTechServerInfo {
             req.writeTo(out);
             out.flush();
 
-            // --- read status response
             int len = readVarInt(in);
             byte[] data = new byte[len];
             readFully(in, data);

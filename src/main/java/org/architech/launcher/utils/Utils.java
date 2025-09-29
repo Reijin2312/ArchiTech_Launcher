@@ -3,8 +3,8 @@ package org.architech.launcher.utils;
 import com.sun.management.OperatingSystemMXBean;
 import javafx.scene.control.Alert;
 import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.logging.LogManager;
-
 import javax.net.ssl.SSLContext;
 import java.awt.*;
 import java.io.*;
@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Locale;
 
 import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
-import static org.architech.launcher.gui.LauncherUI.showError;
 
 public class Utils {
 
@@ -142,7 +141,7 @@ public class Utils {
             }
         } catch (Exception e) {
             LogManager.getLogger().severe("Не удалось открыть браузер: " + e.getMessage());
-            showError("Не удалось открыть браузер", e.getMessage());
+            ErrorPanel.showError("Не удалось открыть браузер", e.getMessage());
         }
     }
 
@@ -193,7 +192,7 @@ public class Utils {
 
         } catch (Exception ex) {
             LogManager.getLogger().severe("Не удалось открыть папку игры: " + ex.getMessage());
-            showError("Упс! Не удалось открыть папку игры :(", ex.getMessage());
+            ErrorPanel.showError("Упс! Не удалось открыть папку игры :(", ex.getMessage());
         }
     }
 

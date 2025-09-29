@@ -1,32 +1,22 @@
 package org.architech.launcher.gui;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.net.httpserver.HttpServer;
-import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
-import javafx.animation.PauseTransition;
-import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
-import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
-import javafx.stage.Popup;
 import javafx.stage.Stage;
-import javafx.stage.Window;
-import javafx.util.Duration;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountType;
@@ -35,10 +25,12 @@ import org.architech.launcher.authentication.auth.AuthService;
 import org.architech.launcher.authentication.ely_by.ElyOAuth;
 import org.architech.launcher.authentication.requests.GameParams;
 import org.architech.launcher.discord.DiscordIntegration;
-import org.architech.launcher.gui.head.HeadImage;
+import org.architech.launcher.gui.error.ErrorPanel;
+import org.architech.launcher.gui.player.PlayerPopup;
+import org.architech.launcher.gui.player.head.HeadImage;
+import org.architech.launcher.gui.news.NewsList;
 import org.architech.launcher.gui.settings.MainSettingsUI;
-import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.utils.Jsons;
+import org.architech.launcher.gui.timer.Timer;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
 import org.architech.launcher.utils.Utils;
@@ -48,42 +40,31 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import static org.architech.launcher.ArchiTechLauncher.LAUNCHER_DIR;
 
 public class LauncherUI {
-    private static Scene MAIN_SCENE;
     private final Button launchBtn;
     private final TextField usernameField;
     private final ProgressBar progressBar;
     private final Label progressLabel;
     private final Label percentLabel;
-    private final Label timerLabel;
-    private final Scene mainScene;
+    private static Scene mainScene;
     private final Button accountBtn;
     private final ContextMenu accountMenu;
     private final ImageView headView;
     private final Label onlineLabelField = new Label("Онлайн: —");
     private final Label pingLabelField = new Label("Пинг: — ms");
     private final Circle pingDotField = new Circle(6);
-    private final Popup playersPopup = new Popup();
-    private List<String> latestOnlinePlayers = Collections.emptyList();
-    private boolean popupHovered = false;
-    private static VBox newsListRef;
 
     private Account currentAccount;
-    private ScheduledFuture<?> timerFuture;
-    private long startTimeMs;
 
     public LauncherUI(Stage stage, Consumer<String> launchHandler, Runnable updateHandler) {
 
@@ -91,7 +72,7 @@ public class LauncherUI {
         root.setPadding(new Insets(20));
 
         usernameField = new TextField("Имя пользователя");
-        usernameField.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-border-color: #6b6b6b; -fx-padding: 0 36 0 8;");
+        usernameField.getStyleClass().add("username-field");
         usernameField.setPrefColumnCount(14);
         usernameField.setPrefHeight(30);
         usernameField.setEditable(false);
@@ -112,12 +93,12 @@ public class LauncherUI {
         accountMenu = new ContextMenu();
 
         Label chevron = new Label("⌄");
-        chevron.setStyle("-fx-text-fill: black; -fx-font-size: 14px;");
+        chevron.getStyleClass().add("chevron");
 
         accountBtn = new Button();
         accountBtn.setPrefHeight(usernameField.getPrefHeight());
         accountBtn.setPrefWidth(accountBtn.getPrefHeight());
-        accountBtn.setStyle("-fx-background-color: #3c3f41; -fx-text-fill: white; -fx-font-size: 14px;");
+        accountBtn.getStyleClass().add("account-btn");
         accountBtn.setGraphic(chevron);
         accountBtn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
         accountBtn.setOnAction(e -> {
@@ -127,11 +108,15 @@ public class LauncherUI {
 
         setCurrentAccount(Auth.current());
 
+        Label timerLabel = new Label("Времени прошло: 00:00:00");
+        timerLabel.getStyleClass().add("timer-label");
+        org.architech.launcher.gui.timer.Timer.timerLabel = timerLabel;
+
         launchBtn = new Button("ЗАПУСТИТЬ");
-        launchBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+        launchBtn.getStyleClass().add("launch-btn");
         launchBtn.setMaxWidth(Double.MAX_VALUE);
         launchBtn.setOnAction(e -> {
-            startTimer();
+            Timer.startTimer();
             launchHandler.accept(usernameField.getText());
         });
 
@@ -176,7 +161,7 @@ public class LauncherUI {
                 }
             } catch (Exception ex) {
                 LogManager.getLogger().severe("Не удалось открыть Telegram: " + ex.getMessage());
-                showError("Упс! Не удалось открыть Telegram :(", ex.getMessage());
+                ErrorPanel.showError("Упс! Не удалось открыть Telegram :(", ex.getMessage());
             }
         });
 
@@ -208,7 +193,7 @@ public class LauncherUI {
                 Platform.runLater(() -> {
                     onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
                     pingLabelField.setText("Пинг: " + s.pingMs() + " ms");
-                    latestOnlinePlayers = (s.sample() == null) ? Collections.emptyList() : List.copyOf(s.sample());
+                    PlayerPopup.latestOnlinePlayers = (s.sample() == null) ? Collections.emptyList() : List.copyOf(s.sample());
                     if (s.pingMs() <= 100) pingDotField.setFill(Color.GREEN);
                     else if (s.pingMs() <= 250) pingDotField.setFill(Color.GOLD);
                     else pingDotField.setFill(Color.ORANGERED);
@@ -223,31 +208,11 @@ public class LauncherUI {
         }, 0, 10, TimeUnit.SECONDS);
 
         Label newsTitle = new Label("Новости проекта");
-        newsTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;");
+        newsTitle.getStyleClass().add("main-news-title");
         HBox titleBox = new HBox(newsTitle);
         titleBox.setAlignment(Pos.CENTER);
 
-        List<NewsItem> newsItems;
-        try {
-            String json = Utils.readUrl(ArchiTechLauncher.BACKEND_URL + "/api/files/file/news/news.json");
-            JsonNode arr = Jsons.MAPPER.readTree(json);
-            List<NewsItem> tmp = new ArrayList<>();
-            if (arr.isArray()) {
-                for (JsonNode n : arr) {
-                    String title = n.path("title").asText("");
-                    String img = n.path("imageUrl").asText("");
-                    String desc = n.path("shortDesc").asText("");
-                    String date = n.path("date").asText("");
-                    tmp.add(new NewsItem(title, img, desc, date));
-                }
-            }
-            newsItems = List.copyOf(tmp);
-        } catch (Exception ex) {
-            LogManager.getLogger().warning("Не удалось загрузить новости: " + ex.getMessage());
-            newsItems = List.of();
-        }
-
-        ScrollPane newsScroll = buildNewsList(newsItems);
+        ScrollPane newsScroll = NewsList.buildNewsList();
         newsScroll.setFitToWidth(true);
         newsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
@@ -257,12 +222,13 @@ public class LauncherUI {
         newsContainer.setFillWidth(true);
         newsContainer.getChildren().add(titleBox);
 
-        replayNewsAnimations();
+        NewsList.replayNewsAnimations();
 
         Region sepTop = new Region();
         sepTop.setPrefHeight(2);
         sepTop.setPrefWidth(220);
-        sepTop.setStyle("-fx-background-color: rgba(255,255,255,1); -fx-background-radius: 2;");
+        sepTop.getStyleClass().add("sep-top");
+
         HBox sepTopBox = new HBox(sepTop);
         sepTopBox.setAlignment(Pos.CENTER);
         newsContainer.getChildren().add(sepTopBox);
@@ -270,18 +236,20 @@ public class LauncherUI {
         HBox infoBar = new HBox(12);
         infoBar.setAlignment(Pos.CENTER);
         infoBar.setPadding(new Insets(6, 12, 6, 12));
-        infoBar.setStyle("-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 4;");
+        infoBar.getStyleClass().add("info-bar");
 
         HBox leftInfo = new HBox(6);
         leftInfo.setAlignment(Pos.CENTER);
+
         Label personIcon = new Label("\uD83D\uDC64"); // 👤
-        personIcon.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
-        onlineLabelField.setStyle("-fx-text-fill: white; -fx-font-size: 12px;");
+        personIcon.getStyleClass().add("person-icon");
+
+        onlineLabelField.getStyleClass().add("online-label-field");
         leftInfo.getChildren().addAll(personIcon, onlineLabelField);
 
         HBox rightInfo = new HBox(6);
         rightInfo.setAlignment(Pos.CENTER);
-        pingLabelField.setStyle("-fx-text-fill: white; -fx-font-size: 12px;");
+        pingLabelField.getStyleClass().add("ping-label-field");
         rightInfo.getChildren().addAll(pingDotField, pingLabelField);
 
         infoBar.getChildren().addAll(leftInfo, new Label("|"), rightInfo);
@@ -290,7 +258,8 @@ public class LauncherUI {
         Region sepBottom = new Region();
         sepBottom.setPrefHeight(2);
         sepBottom.setPrefWidth(180);
-        sepBottom.setStyle("-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 2;");
+        sepBottom.getStyleClass().add("sep-bottom");
+
         HBox sepBottomBox = new HBox(sepBottom);
         sepBottomBox.setAlignment(Pos.CENTER);
         newsContainer.getChildren().add(sepBottomBox);
@@ -300,7 +269,7 @@ public class LauncherUI {
 
         StackPane newsWrapper = new StackPane(newsContainer);
         newsWrapper.setPadding(new Insets(6));
-        newsWrapper.setStyle("-fx-background-color: rgba(30,30,30,0.55); -fx-background-radius: 8;");
+        newsWrapper.getStyleClass().add("news-wrapper");
 
         VBox centerBox = new VBox(10, newsWrapper);
         centerBox.setAlignment(Pos.TOP_CENTER);
@@ -308,9 +277,6 @@ public class LauncherUI {
 
         root.setCenter(centerBox);
         BorderPane.setMargin(centerBox, new Insets(0, 0, 0, 20));
-
-        timerLabel = new Label("Времени прошло: 00:00:00");
-        timerLabel.setStyle("-fx-text-fill: white;");
 
         percentLabel = new Label("0%");
         percentLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
@@ -330,28 +296,7 @@ public class LauncherUI {
         bottomLine.setLeft(progressLabel);
         bottomLine.setRight(timerLabel);
 
-        playersPopup.setAutoFix(true);
-        playersPopup.setAutoHide(false);
-        playersPopup.setHideOnEscape(true);
-
-        leftInfo.setOnMouseEntered(e -> {
-            if (latestOnlinePlayers != null && !latestOnlinePlayers.isEmpty()) {
-                showPlayersPopup(e.getScreenX(), e.getScreenY());
-            }
-        });
-        leftInfo.setOnMouseMoved(e -> {
-            if (playersPopup.isShowing()) {
-                playersPopup.setX(e.getScreenX() + 12);
-                playersPopup.setY(e.getScreenY() + 12);
-            }
-        });
-        leftInfo.setOnMouseExited(e -> {
-            PauseTransition pt = new PauseTransition(Duration.millis(120));
-            pt.setOnFinished(ev -> {
-                if (!popupHovered) playersPopup.hide();
-            });
-            pt.play();
-        });
+        PlayerPopup.setup(leftInfo, onlineLabelField);
 
         VBox bottom = new VBox(8, bottomLine, barWrapper);
         bottom.setPadding(new Insets(10, 0, 0, 0));
@@ -361,8 +306,6 @@ public class LauncherUI {
         stage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResource("/images/icon.jpg")).toExternalForm()));
 
         mainScene = new Scene(root, 900, 560);
-        MAIN_SCENE = mainScene;
-
         mainScene.getStylesheets().addAll(
                 Objects.requireNonNull(getClass().getResource("/css/base.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/layout.css")).toExternalForm(),
@@ -415,7 +358,7 @@ public class LauncherUI {
                 Auth.set(a);
             } catch (Exception ex) {
                 LogManager.getLogger().severe("Не удалось установить оффлайн ник " + ex.getMessage());
-                showError("Упс! Не удалось установить оффлайн ник :(", ex.getMessage());
+                ErrorPanel.showError("Упс! Не удалось установить оффлайн ник :(", ex.getMessage());
             }
         });
     }
@@ -426,7 +369,7 @@ public class LauncherUI {
             String url = AuthService.buildMicrosoftLoginUrl(msCtx);
             Utils.openInBrowser(url);
         } catch (Exception e) {
-            showError("Не удалось открыть авторизацию Microsoft", e.getMessage());
+            ErrorPanel.showError("Не удалось открыть авторизацию Microsoft", e.getMessage());
         }
     }
 
@@ -451,7 +394,7 @@ public class LauncherUI {
                         }
                     } catch (Exception ex) {
                         LogManager.getLogger().severe("Ошибка получения параметров аккаунта: " + ex.getMessage());
-                        Platform.runLater(() -> showError("Упс! :( Ошибка получения параметров аккаунта", ex.getMessage()));
+                        Platform.runLater(() -> ErrorPanel.showError("Упс! :( Ошибка получения параметров аккаунта", ex.getMessage()));
                     }
                     final Account accSilent = silent;
                     Platform.runLater(() -> setCurrentAccount(accSilent));
@@ -481,7 +424,7 @@ public class LauncherUI {
                         }
                     } catch (Exception ex) {
                         LogManager.getLogger().severe("Ошибка получения параметров аккаунта: " + ex.getMessage());
-                        Platform.runLater(() -> showError("Упс! :( Ошибка получения параметров аккаунта", ex.getMessage()));
+                        Platform.runLater(() -> ErrorPanel.showError("Упс! :( Ошибка получения параметров аккаунта", ex.getMessage()));
                     }
                 }
 
@@ -496,7 +439,7 @@ public class LauncherUI {
                         return;
                     }
                 } catch (Exception ignore) {}
-                Platform.runLater(() -> showError("Вход через ely.by не удался", ex.getMessage()));
+                Platform.runLater(() -> ErrorPanel.showError("Вход через ely.by не удался", ex.getMessage()));
             } finally {
                 Platform.runLater(() -> accountBtn.setDisable(false));
             }
@@ -615,220 +558,6 @@ public class LauncherUI {
         });
     }
 
-    public void startTimer() {
-        startTimeMs = System.currentTimeMillis();
-
-        if (timerFuture != null && !timerFuture.isDone()) {
-            timerFuture.cancel(true);
-        }
-
-        timerFuture = ArchiTechLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
-            if (Thread.currentThread().isInterrupted()) return;
-
-            long elapsed = System.currentTimeMillis() - startTimeMs;
-            long sec = elapsed / 1000;
-            long h = sec / 3600;
-            long m = (sec % 3600) / 60;
-            long s = sec % 60;
-
-            String formatted = String.format("Времени прошло: %02d:%02d:%02d", h, m, s);
-            Platform.runLater(() -> timerLabel.setText(formatted));
-        }, 0, 1, TimeUnit.SECONDS);
-    }
-
-    public static void showError(String msg, String details) {
-        Alert a = new Alert(Alert.AlertType.ERROR);
-        a.setTitle("Критическая ошибка");
-        a.setHeaderText("Кажется, что-то сломалось :(");
-        a.setContentText(msg);
-
-        DialogPane pane = a.getDialogPane();
-        pane.setStyle("-fx-background-color: #2b2b2b; -fx-font-size: 14px;");
-        pane.lookup(".content.label").setStyle("-fx-text-fill: white;");
-
-        TextArea textArea = new TextArea(details);
-        textArea.setEditable(false);
-        textArea.setWrapText(true);
-        textArea.setStyle("-fx-control-inner-background: #1e1e1e; -fx-text-fill: white;");
-        textArea.setPrefRowCount(Math.min(10, details.split("\n").length + 1)); // подгон по строкам
-        textArea.setMaxWidth(Double.MAX_VALUE);
-        textArea.setPrefWidth(500);
-
-        Label detailsLabel = new Label("Подробности:");
-        detailsLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
-
-        ImageView gifView = new ImageView(new Image(
-                Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/cat.gif"))
-        ));
-        gifView.setPreserveRatio(true);
-        gifView.setFitWidth(500);
-
-        VBox expandableBox = new VBox(8, detailsLabel, textArea, gifView);
-        expandableBox.setAlignment(Pos.CENTER);
-        expandableBox.setStyle("-fx-background-color: #2b2b2b;");
-        expandableBox.setPadding(new Insets(10));
-
-        pane.setPrefWidth(500);
-        pane.setMinWidth(500);
-        pane.setMaxWidth(500);
-
-        a.getDialogPane().setExpandableContent(expandableBox);
-
-        ButtonType reportBtn = new ButtonType("Сообщить", ButtonBar.ButtonData.OTHER);
-        a.getButtonTypes().setAll(reportBtn);
-
-        Node reportNode = a.getDialogPane().lookupButton(reportBtn);
-        if (reportNode instanceof Button) {
-            reportNode.setStyle("-fx-font-size: 11px; -fx-padding: 4 8;");
-        }
-
-        Stage stage = (Stage) pane.getScene().getWindow();
-        stage.getIcons().add(new Image(
-                Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))
-        ));
-        stage.setResizable(false);
-
-        a.showAndWait().ifPresent(response -> {
-            if (response == reportBtn) {
-                String encoded = URLEncoder.encode(msg + "\n\n" + details, StandardCharsets.UTF_8);
-                Utils.openWebpage("https://t.me/Raijin2312?text=" + encoded);
-            }
-        });
-    }
-
-    private record NewsItem(String title, String imageUrl, String shortDesc, String date) {}
-
-    private ScrollPane buildNewsList(List<NewsItem> items) {
-        VBox list = new VBox(12);
-        list.setPadding(new Insets(10));
-        newsListRef = list;
-
-        Path cacheDir = Paths.get(System.getProperty("user.home"), ".architech", "cache", "news-icons");
-        try {
-            Files.createDirectories(cacheDir);
-        } catch (IOException e) {
-            LogManager.getLogger().severe("Ошибка создания каталога кэша: " + e.getMessage());
-        }
-
-        for (NewsItem n : items) {
-            BorderPane card = new BorderPane();
-            card.getStyleClass().add("news-card");
-            card.setPrefWidth(640);
-            card.setMaxWidth(640);
-            card.setMinHeight(88);
-
-            ImageView img = new ImageView();
-            img.setFitWidth(64);
-            img.setFitHeight(64);
-            img.setPreserveRatio(true);
-            img.setSmooth(true);
-            img.getStyleClass().add("news-image");
-
-            ArchiTechLauncher.scheduledExecutor.execute(() -> {
-                try {
-                    String fname = Utils.sha1Hex(n.imageUrl()) + ".img";
-                    Path target = cacheDir.resolve(fname);
-
-                    FileEntry fe = new FileEntry("news-icon", n.title(), n.imageUrl(), target, 0L, null);
-
-                    ArchiTechLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(fe, false);
-
-                    if (Files.exists(target) && Files.size(target) > 0) {
-                        Platform.runLater(() -> {
-                            try {
-                                Image imgObj = new Image(target.toUri().toString(), 64, 64, true, true);
-                                if (imgObj.isError()) {
-                                    LogManager.getLogger().severe("Ошибка загрузки Image: " + imgObj.getException());
-                                } else {
-                                    img.setImage(imgObj);
-                                }
-                            } catch (Exception e) {
-                                LogManager.getLogger().severe("Ошибка чтения иконки из кэша: " + e.getMessage());
-                            }
-                        });
-                    } else {
-                        LogManager.getLogger().warning("Файл иконки пустой или отсутствует: " + target);
-                    }
-                } catch (Exception ex) {
-                    LogManager.getLogger().severe("Не удалось скачать иконку новости: " + ex.getMessage());
-                }
-            });
-
-            Label title = new Label(n.title());
-            title.getStyleClass().add("news-title");
-            title.setWrapText(true);
-
-            Label date = new Label(n.date());
-            date.getStyleClass().add("news-date");
-
-            Region spacer = new Region();
-            HBox.setHgrow(spacer, Priority.ALWAYS);
-
-            HBox topRow = new HBox(8, title, spacer, date);
-
-            Label desc = new Label(n.shortDesc());
-            desc.getStyleClass().add("news-desc");
-            desc.setWrapText(true);
-            desc.setMaxWidth(Double.MAX_VALUE);
-            desc.setMaxHeight(Region.USE_PREF_SIZE);
-
-            VBox content = new VBox(6, topRow, desc);
-            content.setAlignment(Pos.TOP_LEFT);
-            content.setFillWidth(true);
-            HBox.setHgrow(content, Priority.ALWAYS);
-
-            HBox row = new HBox(12, img, content);
-            row.setAlignment(Pos.CENTER_LEFT);
-            row.setPadding(new Insets(8));
-
-            card.setCenter(row);
-
-            list.getChildren().add(card);
-        }
-
-        ScrollPane sp = new ScrollPane(list);
-        sp.setFitToWidth(true);
-        sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        sp.getStyleClass().add("news-scroll");
-        sp.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        if (sp.getContent() != null) sp.getContent().setStyle("-fx-background-color: transparent;");
-
-        return sp;
-    }
-
-    public static void replayNewsAnimations() {
-        if (newsListRef == null) return;
-        Platform.runLater(() -> {
-            int i = 0;
-            for (Node node : newsListRef.getChildren()) {
-                node.setOpacity(0);
-                node.setTranslateY(10);
-
-                FadeTransition ft = new FadeTransition(Duration.millis(400), node);
-                ft.setFromValue(0); ft.setToValue(1);
-
-                TranslateTransition tt = new TranslateTransition(Duration.millis(400), node);
-                tt.setFromY(10); tt.setToY(0);
-
-                ft.setDelay(Duration.millis(i * 100));
-                tt.setDelay(Duration.millis(i * 100));
-
-                new ParallelTransition(ft, tt).play();
-                i++;
-            }
-        });
-    }
-
-    public void stopTimer() {
-        if (timerFuture != null && !timerFuture.isDone()) {
-            timerFuture.cancel(true);
-            timerFuture = null;
-        }
-        startTimeMs = System.currentTimeMillis();
-        Platform.runLater(() -> timerLabel.setText("Времени прошло: 00:00:00"));
-    }
-
     public void setLaunchingState(boolean launching) {
         Platform.runLater(() -> {
             if (launching) {
@@ -841,51 +570,8 @@ public class LauncherUI {
         });
     }
 
-    private void showPlayersPopup(double screenX, double screenY) {
-        Platform.runLater(() -> {
-            VBox content = new VBox(6);
-            content.setPadding(new Insets(6));
-            content.setStyle("-fx-background-color: rgba(24,24,24,0.95); -fx-padding: 6; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.04); -fx-border-radius:6;");
-            content.setPrefWidth(220);
-
-            if (latestOnlinePlayers == null || latestOnlinePlayers.isEmpty()) {
-                Label l = new Label("Список игроков недоступен");
-                l.setStyle("-fx-text-fill: #ddd;");
-                content.getChildren().add(l);
-            } else {
-                for (String name : latestOnlinePlayers) {
-                    HBox row = new HBox(8);
-                    row.setAlignment(Pos.CENTER_LEFT);
-
-                    Image head = HeadImage.fromName(name, 20);
-                    ImageView iv = new ImageView(head);
-                    iv.setFitWidth(20);
-                    iv.setFitHeight(20);
-
-                    Label nameLbl = new Label(name);
-                    nameLbl.setStyle("-fx-text-fill: white;");
-
-                    row.getChildren().addAll(iv, nameLbl);
-                    content.getChildren().add(row);
-                }
-            }
-
-            content.setOnMouseEntered(ev -> popupHovered = true);
-            content.setOnMouseExited(ev -> {
-                popupHovered = false;
-                playersPopup.hide();
-            });
-
-            playersPopup.getContent().clear();
-            playersPopup.getContent().add(content);
-
-            Window win = onlineLabelField.getScene().getWindow();
-            playersPopup.show(win, screenX + 12, screenY + 12);
-        });
-    }
-
     public static void applyBackground(Path imgPath) {
-        if (MAIN_SCENE != null && MAIN_SCENE.getRoot() instanceof Region region) {
+        if (mainScene != null && mainScene.getRoot() instanceof Region region) {
             BackgroundCache.apply(imgPath, region);
         }
     }

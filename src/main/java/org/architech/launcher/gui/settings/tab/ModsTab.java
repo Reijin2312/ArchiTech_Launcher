@@ -11,6 +11,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.LauncherUI;
+import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.logging.LogManager;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -74,7 +75,7 @@ public class ModsTab extends AbstractAssetsTab {
                     }
                 }
             } catch (Exception ex) {
-                Platform.runLater(() -> LauncherUI.showError("Ошибка загрузки списка модов", ex.getMessage()));
+                Platform.runLater(() -> ErrorPanel.showError("Ошибка загрузки списка модов", ex.getMessage()));
                 return;
             }
 
@@ -132,7 +133,7 @@ public class ModsTab extends AbstractAssetsTab {
                                 row.getStyleClass().add("disabled");
                             }
                         } catch (Exception ex) {
-                            LauncherUI.showError("Не удалось переключить мод", ex.getMessage());
+                            ErrorPanel.showError("Не удалось переключить мод", ex.getMessage());
                             toggle.setSelected(oldVal);
                         }
                     });

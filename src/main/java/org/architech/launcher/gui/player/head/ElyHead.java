@@ -1,4 +1,4 @@
-package org.architech.launcher.gui.head;
+package org.architech.launcher.gui.player.head;
 
 import javafx.scene.image.Image;
 import javax.imageio.ImageIO;

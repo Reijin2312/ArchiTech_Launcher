@@ -14,7 +14,7 @@ import javafx.stage.Stage;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.BackgroundCache;
-import org.architech.launcher.gui.LauncherUI;
+import org.architech.launcher.gui.news.NewsList;
 import org.architech.launcher.gui.settings.tab.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -73,7 +73,7 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         backBtn.setOnAction(e -> {
             DiscordIntegration.update("В лаунчере", "На главной странице");
             stage.setScene(parentScene);
-            LauncherUI.replayNewsAnimations();
+            NewsList.replayNewsAnimations();
         });
 
         HBox bottom = new HBox(backBtn);

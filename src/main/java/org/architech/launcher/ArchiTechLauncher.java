@@ -6,8 +6,10 @@ import javafx.application.Platform;
 import javafx.stage.Stage;
 import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.BackgroundCache;
+import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.gui.settings.tab.SettingsTab;
 import org.architech.launcher.gui.LauncherUI;
+import org.architech.launcher.gui.timer.Timer;
 import org.architech.launcher.managment.DownloadManager;
 import org.architech.launcher.managment.ModsManager;
 import org.architech.launcher.managment.NativesManager;
@@ -123,7 +125,7 @@ public class ArchiTechLauncher extends Application {
             try {
                 Platform.runLater(() -> {
                     UI.setLaunchingState(true);
-                    UI.startTimer();
+                    Timer.startTimer();
                 });
 
                 UI.updateProgress("Подготовка к запуску...", 0);
@@ -171,7 +173,7 @@ public class ArchiTechLauncher extends Application {
                     ModsManager.syncMods(GAME_DIR);
                 } catch (Exception ex) {
                     LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
-                    Platform.runLater(() -> LauncherUI.showError("Ошибка синхронизации модов", ex.getMessage()));
+                    Platform.runLater(() -> ErrorPanel.showError("Ошибка синхронизации модов", ex.getMessage()));
                 }
 
                 Path serversDat = GAME_DIR.resolve("servers.dat");
@@ -200,7 +202,7 @@ public class ArchiTechLauncher extends Application {
                             throw new InterruptedException();
                         }
                         try {
-                            int exit = p.exitValue();
+                            p.exitValue();
                             break;
                         } catch (IllegalThreadStateException itse) {
                             Thread.sleep(500);
@@ -216,7 +218,7 @@ public class ArchiTechLauncher extends Application {
                 Platform.runLater(() -> UI.updateProgress("Ожидание...", 1.0));
             } catch (Exception e) {
                 LogManager.getLogger().severe("Ошибка запуска: " + e.getMessage());
-                Platform.runLater(() -> LauncherUI.showError("Ошибка запуска", e.getMessage()));
+                Platform.runLater(() -> ErrorPanel.showError("Ошибка запуска", e.getMessage()));
             } finally {
                 activeDownloadManager.set(null);
                 currentGameProcess = null;
@@ -224,7 +226,7 @@ public class ArchiTechLauncher extends Application {
                 if (DOWNLOAD_MANAGER != null) DOWNLOAD_MANAGER.cancelAllDownloads();
 
                 Platform.runLater(() -> {
-                    UI.stopTimer();
+                    Timer.stopTimer();
                     UI.setLaunchingState(false);
                 });
             }
@@ -244,7 +246,7 @@ public class ArchiTechLauncher extends Application {
             try {
                 Platform.runLater(() -> {
                     UI.setLaunchingState(true);
-                    UI.startTimer();
+                    Timer.startTimer();
                 });
 
                 UI.updateProgress("Проверка/подготовка обновлений...", 0);
@@ -291,7 +293,7 @@ public class ArchiTechLauncher extends Application {
                     ModsManager.syncMods(GAME_DIR);
                 } catch (Exception ex) {
                     LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
-                    Platform.runLater(() -> LauncherUI.showError("Ошибка синхронизации модов", ex.getMessage()));
+                    Platform.runLater(() -> ErrorPanel.showError("Ошибка синхронизации модов", ex.getMessage()));
                 }
 
                 Path serversDat = GAME_DIR.resolve("servers.dat");
@@ -303,22 +305,20 @@ public class ArchiTechLauncher extends Application {
                 Files.createDirectories(serversDat.getParent());
                 writeServersDat(serversDat, list);
 
-                Platform.runLater(() -> {
-                    UI.updateProgress("Обновления применены — всё готово.", 1.0);
-                });
+                Platform.runLater(() -> UI.updateProgress("Обновления применены — всё готово.", 1.0));
 
             } catch (InterruptedException ie) {
                 Platform.runLater(() -> UI.updateProgress("Операция отменена.", 1.0));
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
                 LogManager.getLogger().severe("Ошибка при проверке/обновлении: " + e.getMessage());
-                Platform.runLater(() -> LauncherUI.showError("Ошибка обновления", e.getMessage()));
+                Platform.runLater(() -> ErrorPanel.showError("Ошибка обновления", e.getMessage()));
             } finally {
                 activeDownloadManager.set(null);
                 updateFuture.set(null);
                 if (DOWNLOAD_MANAGER != null) DOWNLOAD_MANAGER.cancelAllDownloads();
                 Platform.runLater(() -> {
-                    UI.stopTimer();
+                    Timer.stopTimer();
                     UI.setLaunchingState(false);
                 });
             }
@@ -326,7 +326,6 @@ public class ArchiTechLauncher extends Application {
 
         updateFuture.set(f);
     }
-
 
     public static void cancelLaunch() {
         Future<?> f = launchFuture.getAndSet(null);
@@ -341,7 +340,7 @@ public class ArchiTechLauncher extends Application {
 
         Platform.runLater(() -> {
             if (UI != null) {
-                UI.stopTimer();
+                Timer.stopTimer();
                 UI.setLaunchingState(false);
             }
         });
@@ -358,9 +357,5 @@ public class ArchiTechLauncher extends Application {
 
     public static void submitBackground(Runnable r) {
         backgroundExecutor.submit(r);
-    }
-
-    public static <T> Future<T> submitBackground(Callable<T> c) {
-        return backgroundExecutor.submit(c);
     }
 }

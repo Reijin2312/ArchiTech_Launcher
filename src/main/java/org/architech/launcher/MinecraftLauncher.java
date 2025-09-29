@@ -85,8 +85,6 @@ public class MinecraftLauncher {
 
             int maxMemory = ((Number) (cfg.containsKey("maxMemory") ? cfg.get("maxMemory") : 2048)).intValue();
             args.add("-Xmx" + maxMemory + "M");
-
-            String lang = (cfg.containsKey("language") ? cfg.get("language") : "Русский").toString();
         }
 
         List<String> jvmArgs = new ArrayList<>();
