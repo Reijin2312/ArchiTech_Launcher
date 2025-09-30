@@ -86,11 +86,11 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         MAIN_SETTINGS_SCENE = scene;
 
         scene.getStylesheets().addAll(
-                Objects.requireNonNull(getClass().getResource("/css/base.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/MainScreen.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/layout.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/components.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/controls.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/tabs.css")).toExternalForm(),
+                Objects.requireNonNull(getClass().getResource("/css/Tabs.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/scroll.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/backgrounds.css")).toExternalForm(),
                 Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()

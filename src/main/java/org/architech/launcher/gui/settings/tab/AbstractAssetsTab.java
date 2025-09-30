@@ -1,4 +1,3 @@
-// file: AbstractAssetsTab.java
 package org.architech.launcher.gui.settings.tab;
 
 import javafx.animation.FadeTransition;
@@ -41,6 +40,7 @@ public abstract class AbstractAssetsTab {
         box.setMinWidth(width); box.setPrefWidth(width); box.setMaxWidth(width);
         return box;
     }
+
     protected static Pane fixedHeaderLabel(String text, double width) {
         Label l = new Label(text); l.setAlignment(Pos.CENTER); return fixedCell(l, width, Pos.CENTER);
     }

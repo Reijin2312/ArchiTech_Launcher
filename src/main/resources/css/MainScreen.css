@@ -25,6 +25,7 @@
     -fx-text-fill: white;
     -fx-border-color: #6b6b6b;
     -fx-padding: 0 36 0 8;
+    -fx-pref-height: 30px;
 }
 
  .launch-btn {
@@ -67,4 +68,24 @@
 
 .timer-label {
     -fx-text-fill: white;
+}
+
+.percent-label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.progress-bar {
+    -fx-accent: #4caf50;
+}
+
+.progress-label {
+    -fx-text-fill: white;
+}
+
+.small-button {
+    -fx-background-color: #3c3f41;
+    -fx-text-fill: white; -fx-font-size: 14px;
+    -fx-pref-width: 40;
+    -fx-pref-height: 30;
 }

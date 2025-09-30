@@ -30,7 +30,7 @@
 }
 
 .settings-pane .tab-pane .tab:selected {
-    -fx-background-color: rgba(60,60,60,0.9); /* светлее обычного */
+    -fx-background-color: rgba(60,60,60,0.9);
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 6, 0, 0, 2);
     -fx-border-color: transparent;
 }
