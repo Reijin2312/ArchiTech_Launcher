@@ -307,10 +307,10 @@ public class LauncherUI {
 
     private void setCurrentAccount(Account a) {
         this.currentAccount = a;
-        if (a == null || a.type == AccountType.OFFLINE) {
-            if (a != null) usernameField.setText(a.username);
+        if (a == null || a.getType() == AccountType.OFFLINE) {
+            if (a != null) usernameField.setText(a.getUsername());
         } else {
-            usernameField.setText(a.username != null ? a.username : "");
+            usernameField.setText(a.getUsername() != null ? a.getUsername() : "");
             Image img = HeadImage.forAccount(a, 20);
             headView.setImage(img);
         }

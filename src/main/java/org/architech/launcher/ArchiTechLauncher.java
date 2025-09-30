@@ -52,7 +52,7 @@ public class ArchiTechLauncher extends Application {
     public static boolean AUTO_UPDATE_CLIENT = true;
 
     public static LauncherUI UI;
-    public static DownloadManager DOWNLOAD_MANAGER = null;
+    public static final DownloadManager DOWNLOAD_MANAGER = new DownloadManager();
 
     private static final ExecutorService launcherExecutor = Executors.newSingleThreadExecutor(daemonFactory("launcher-worker"));
     public static final ExecutorService backgroundExecutor = Executors.newCachedThreadPool(daemonFactory("bg"));
@@ -99,7 +99,7 @@ public class ArchiTechLauncher extends Application {
         LIBRARIES_DIR = GAME_DIR.resolve("libraries");
         ASSETS_DIR = GAME_DIR.resolve("assets");
 
-        DOWNLOAD_MANAGER = new DownloadManager();
+
         UI = new LauncherUI(stage, this::onLaunchClicked, this::onCheckUpdatesClicked);
 
         DiscordIntegration.start();
@@ -264,7 +264,6 @@ public class ArchiTechLauncher extends Application {
                     return 5;
                 }));
 
-                DOWNLOAD_MANAGER = new DownloadManager();
                 activeDownloadManager.set(DOWNLOAD_MANAGER);
 
                 long total = DOWNLOAD_MANAGER.computeTotalBytesToDownload(files);

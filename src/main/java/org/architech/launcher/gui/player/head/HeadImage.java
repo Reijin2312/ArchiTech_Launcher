@@ -16,7 +16,7 @@ public final class HeadImage {
     private HeadImage() {}
 
     public static Image forAccount(Account a, int size) {
-        return ElyHead.fromEly(a.username, size);
+        return ElyHead.fromEly(a.getUsername(), size);
     }
 
     public static Image forElyAccountWithName(String name, int size) {

@@ -29,8 +29,8 @@ import java.util.function.Consumer;
 public class BrowserAuth {
 
     public static void showOfflineDialog(Account currentAccount, TextField usernameField, Consumer<Account> setCurrentAccount) {
-        TextInputDialog d = new TextInputDialog((currentAccount != null && currentAccount.type == AccountType.OFFLINE)
-                ? currentAccount.username
+        TextInputDialog d = new TextInputDialog((currentAccount != null && currentAccount.getType() == AccountType.OFFLINE)
+                ? currentAccount.getUsername()
                 : (usernameField.getText() == null ? "Player" : usernameField.getText()));
         d.setTitle("Оффлайн вход");
         d.setHeaderText("Введите ник для оффлайн-режима");
@@ -66,16 +66,16 @@ public class BrowserAuth {
                 Account silent = AuthService.tryElySilentLogin();
                 if (silent != null) {
                     try {
-                        GameParams params = AuthService.getGameParams(silent.launcherToken);
+                        GameParams params = AuthService.getGameParams(silent.getLauncherToken());
                         if (params != null && params.selectedProfile != null) {
                             if (params.selectedProfile.name != null && !params.selectedProfile.name.isBlank())
-                                silent.username = params.selectedProfile.name;
+                                silent.setUsername(params.selectedProfile.name);
                             if (params.selectedProfile.uuid != null && !params.selectedProfile.uuid.isBlank())
-                                silent.uuid = params.selectedProfile.uuid;
+                                silent.setUuid(params.selectedProfile.uuid);
                             if (params.accessToken != null && !params.accessToken.isBlank())
-                                silent.accessToken = params.accessToken;
+                                silent.setAccessToken(params.accessToken);
                             if (params.selectedProfile.name != null && !params.selectedProfile.name.isBlank())
-                                silent.skinUrl = "http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png";
+                                silent.setSkinUrl("http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png");
                             Auth.set(silent);
                         }
                     } catch (Exception ex) {
@@ -94,18 +94,18 @@ public class BrowserAuth {
                 String code = waitForAuthCodeAndValidateState(state);
                 Account a = AuthService.finishElyLoginWithCode(code);
 
-                if (a.type == AccountType.ELY) {
+                if (a.getType() == AccountType.ELY) {
                     try {
-                        GameParams params = AuthService.getGameParams(a.launcherToken);
+                        GameParams params = AuthService.getGameParams(a.getLauncherToken());
                         if (params != null && params.selectedProfile != null) {
                             if (params.selectedProfile.name != null && !params.selectedProfile.name.isBlank())
-                                a.username = params.selectedProfile.name;
+                                a.setUsername(params.selectedProfile.name);
                             if (params.selectedProfile.uuid != null && !params.selectedProfile.uuid.isBlank())
-                                a.uuid = params.selectedProfile.uuid;
+                                a.setUuid(params.selectedProfile.uuid);
                             if (params.accessToken != null && !params.accessToken.isBlank())
-                                a.accessToken = params.accessToken;
+                                a.setAccessToken(params.accessToken);
                             if (params.selectedProfile.name != null && !params.selectedProfile.name.isBlank())
-                                a.skinUrl = "http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png";
+                                a.setSkinUrl("http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png");
                             Auth.set(a);
                         }
                     } catch (Exception ex) {

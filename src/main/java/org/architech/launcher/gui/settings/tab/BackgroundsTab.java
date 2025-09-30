@@ -223,7 +223,6 @@ public class BackgroundsTab {
             tile.setOnMouseClicked(ev -> {
                 if (ev.getButton() == MouseButton.PRIMARY) {
                     applyAndSaveBackground(p);
-                    // сразу установить локально для мгновенного отклика
                     selectedFileName = p.getFileName().toString().trim();
                     rebuildGrid(items);
                     clearFocus();
@@ -311,7 +310,6 @@ public class BackgroundsTab {
             }
 
             selectedFileName = fileName;
-            // синхронизировать состояние списка из файловой системы
             loadAndShow();
         } catch (Exception ex) {
             LogManager.getLogger().warning("Не удалось записать background в конфиг: " + ex.getMessage());
@@ -319,7 +317,6 @@ public class BackgroundsTab {
     }
 
     private void clearFocus() {
-        // убрать фокус с плиток — вызывает отсутствие визуального "первого" выделения из-за :focused в CSS
         Platform.runLater(() -> {
             try {
                 grid.requestFocus();

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.auth.Auth;
+import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.Utils;
 import org.architech.launcher.utils.logging.LogManager;
@@ -21,6 +22,7 @@ public class MinecraftLauncher {
     public static Process launchMinecraft(Path gameDir, String version) throws IOException {
         if (JAVA_PATH == null) {
             LogManager.getLogger().severe("Java 21 не найдена.");
+            ErrorPanel.showError("Java 21 не найдена. Установите JDK 21.", "");
             throw new IllegalStateException("Java 21 не найдена. Установите JDK 21.");
         }
 
@@ -63,9 +65,9 @@ public class MinecraftLauncher {
         placeholders.put("assets_index_name", assetIndex);
 
         Account acc = Auth.current();
-        placeholders.put("auth_player_name", acc.username);
-        placeholders.put("auth_uuid", acc.uuid.replace("-", ""));
-        placeholders.put("auth_access_token", acc.accessToken);
+        placeholders.put("auth_player_name", acc.getUsername());
+        placeholders.put("auth_uuid", acc.getUuid().replace("-", ""));
+        placeholders.put("auth_access_token", acc.getAccessToken());
 
         //placeholders.put("user_type", acc.userType);
 

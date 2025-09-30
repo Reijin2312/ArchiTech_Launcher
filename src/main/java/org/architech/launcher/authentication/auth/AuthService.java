@@ -28,10 +28,10 @@ public class AuthService {
 
     public static Account tryElySilentLogin() throws Exception {
         Account a = Auth.current();
-        if (a == null || a.type != AccountType.ELY || a.launcherToken == null) return null;
+        if (a == null || a.getType() != AccountType.ELY || a.getLauncherToken() == null) return null;
 
         RefreshRequest reqBody = new RefreshRequest();
-        reqBody.launcherToken = a.launcherToken;
+        reqBody.launcherToken = a.getLauncherToken();
         String json = Jsons.PRETTY.writeValueAsString(reqBody);
 
         HttpRequest req = HttpRequest.newBuilder()
@@ -44,8 +44,8 @@ public class AuthService {
         if (res.statusCode() != 200) return null;
 
         ExchangeResponse resp = Jsons.MAPPER.readValue(res.body(), ExchangeResponse.class);
-        a.launcherToken = resp.launcherToken;
-        a.expiresAtSec = Instant.parse(resp.launcherTokenExpiresAt).getEpochSecond();
+        a.setLauncherToken(resp.launcherToken);
+        a.setExpiresAtSec(Instant.parse(resp.launcherTokenExpiresAt).getEpochSecond());
         updateAccountFromProfile(a, resp.profile);
         Auth.set(a);
         return a;
@@ -68,9 +68,9 @@ public class AuthService {
 
         ExchangeResponse resp = Jsons.MAPPER.readValue(res.body(), ExchangeResponse.class);
         Account a = new Account();
-        a.type = AccountType.ELY;
-        a.launcherToken = resp.launcherToken;
-        a.expiresAtSec = Instant.parse(resp.launcherTokenExpiresAt).getEpochSecond();
+        a.setType(AccountType.ELY);
+        a.setLauncherToken(resp.launcherToken);
+        a.setExpiresAtSec(Instant.parse(resp.launcherTokenExpiresAt).getEpochSecond());
         updateAccountFromProfile(a, resp.profile);
         Auth.set(a);
         return a;
@@ -92,11 +92,11 @@ public class AuthService {
         GameParams params = Jsons.MAPPER.readValue(res.body(), GameParams.class);
 
         Account a = Auth.current();
-        if (a != null && a.type == AccountType.ELY) {
-            a.username = params.selectedProfile.name;
-            a.uuid = params.selectedProfile.uuid;
-            a.accessToken = params.accessToken;
-            a.skinUrl = "http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png";
+        if (a != null && a.getType() == AccountType.ELY) {
+            a.setUsername(params.selectedProfile.name);
+            a.setUuid(params.selectedProfile.uuid);
+            a.setAccessToken(params.accessToken);
+            a.setSkinUrl("http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png");
             Auth.set(a);
         }
 
@@ -104,10 +104,9 @@ public class AuthService {
     }
 
     private static void updateAccountFromProfile(Account a, ElyProfile p) {
-        a.uuid = p.uuid;
-        a.username = p.username;
-        a.skinUrl = "http://skinsystem.ely.by/skins/" + p.username + ".png";
-        a.avatarUrl = "https://ely.by/head/" + p.id;
+        a.setUuid(p.uuid);
+        a.setUsername(p.username);
+        a.setSkinUrl("http://skinsystem.ely.by/skins/" + p.username + ".png");
     }
 
     public static class MsAuthContext {
@@ -122,35 +121,32 @@ public class AuthService {
     }
 
     public static Account finishMicrosoftLogin(String authCode, MsAuthContext ctx) throws Exception {
-        // 1) exchange code -> MSA tokens
         var msa = MicrosoftOAuth.exchangeCode(authCode, ctx.codeVerifier);
         ctx.refreshToken = msa.refreshToken;
 
-        // 2) XBL -> XSTS -> MC, затем профиль/владение
         var session = MinecraftMicrosoftFlow.fullLogin(msa.accessToken);
 
-        // 3) Сохраняем/возвращаем аккаунт
         Account acc = new Account();
-        acc.type = AccountType.MICROSOFT;
-        acc.username = session.username;
-        acc.uuid = session.uuid;
-        acc.mcAccessToken = session.mcAccessToken;
+        acc.setType(AccountType.MICROSOFT);
+        acc.setUsername(session.username);
+        acc.setUuid(session.uuid);
+        //acc.mcAccessToken = session.mcAccessToken;
         //acc.mcAccessTokenExpiresAt = session.mcAccessTokenExp;
-        acc.msaRefreshToken = ctx.refreshToken;
-        acc.ownsMinecraft = session.ownsMinecraft;
+        //acc.msaRefreshToken = ctx.refreshToken;
+        //acc.ownsMinecraft = session.ownsMinecraft;
         return acc;
     }
 
     public static Account tryMicrosoftSilentRefresh(Account acc) throws Exception {
-        if (acc == null || acc.msaRefreshToken == null) return null;
-        var msa = MicrosoftOAuth.refresh(acc.msaRefreshToken);
-        acc.msaRefreshToken = msa.refreshToken; // MS может вернуть новый refresh
-        var session = MinecraftMicrosoftFlow.fullLogin(msa.accessToken);
-        acc.mcAccessToken = session.mcAccessToken;
+        //if (acc == null || acc.msaRefreshToken == null) return null;
+        //var msa = MicrosoftOAuth.refresh(acc.msaRefreshToken);
+        //acc.msaRefreshToken = msa.refreshToken; // MS может вернуть новый refresh
+        //var session = MinecraftMicrosoftFlow.fullLogin(msa.accessToken);
+        //acc.mcAccessToken = session.mcAccessToken;
         //acc.mcAccessTokenExpiresAt = session.mcAccessTokenExp;
-        acc.username = session.username;
-        acc.uuid = session.uuid;
-        acc.ownsMinecraft = session.ownsMinecraft;
+        //acc.username = session.username;
+        //acc.uuid = session.uuid;
+        //acc.ownsMinecraft = session.ownsMinecraft;
         return acc;
     }
 
@@ -163,13 +159,12 @@ public class AuthService {
 
         UUID uuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + nickname).getBytes(StandardCharsets.UTF_8));
 
-        acc.type = AccountType.OFFLINE;
-        acc.userType = "legacy";
-        acc.username = nickname;
-        acc.uuid = uuid.toString();
-        acc.accessToken = "0";
-        acc.expiresAtSec = System.currentTimeMillis() / 1000L + (365L * 24 * 3600); // год вперёд
-        acc.avatarUrl = "https://crafatar.com/avatars/" + uuid.toString().replace("-", "") + "?size=20&overlay";
+        acc.setType(AccountType.OFFLINE);
+        acc.setUserType("legacy");
+        acc.setUsername(nickname);
+        acc.setUuid(uuid.toString());
+        acc.setAccessToken("0");
+        acc.setExpiresAtSec(System.currentTimeMillis() / 1000L + (365L * 24 * 3600));
         return acc;
     }
 }

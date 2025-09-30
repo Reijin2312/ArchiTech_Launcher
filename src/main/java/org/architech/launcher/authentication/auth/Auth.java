@@ -22,13 +22,13 @@ public final class Auth {
     }
 
     public static synchronized boolean isLogged() {
-        return CURRENT!=null && CURRENT.type!= AccountType.OFFLINE;
+        return CURRENT!=null && CURRENT.getType()!= AccountType.OFFLINE;
     }
 
     public static synchronized void updateOfflineName(String name) {
-        if(CURRENT != null && CURRENT.type==AccountType.OFFLINE){
-            CURRENT.username = name;
-            CURRENT.uuid = UUIDs.offlineUuid(name);
+        if(CURRENT != null && CURRENT.getType()==AccountType.OFFLINE){
+            CURRENT.setUsername(name);
+            CURRENT.setUuid(UUIDs.offlineUuid(name));
             CurrentAccountStore.save(CURRENT);
         }
     }
