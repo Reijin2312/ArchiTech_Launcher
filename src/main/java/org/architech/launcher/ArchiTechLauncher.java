@@ -223,7 +223,7 @@ public class ArchiTechLauncher extends Application {
                 activeDownloadManager.set(null);
                 currentGameProcess = null;
                 launchFuture.set(null);
-                if (DOWNLOAD_MANAGER != null) DOWNLOAD_MANAGER.cancelAllDownloads();
+                DOWNLOAD_MANAGER.cancelAllDownloads();
 
                 Platform.runLater(() -> {
                     Timer.stopTimer();
@@ -315,7 +315,7 @@ public class ArchiTechLauncher extends Application {
             } finally {
                 activeDownloadManager.set(null);
                 updateFuture.set(null);
-                if (DOWNLOAD_MANAGER != null) DOWNLOAD_MANAGER.cancelAllDownloads();
+                DOWNLOAD_MANAGER.cancelAllDownloads();
                 Platform.runLater(() -> {
                     Timer.stopTimer();
                     UI.setLaunchingState(false);

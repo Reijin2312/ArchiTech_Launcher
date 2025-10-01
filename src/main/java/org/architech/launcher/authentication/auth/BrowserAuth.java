@@ -2,13 +2,18 @@ package org.architech.launcher.authentication.auth;
 
 import com.sun.net.httpserver.HttpServer;
 import javafx.application.Platform;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TextInputDialog;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountType;
 import org.architech.launcher.authentication.ely_by.ElyOAuth;
 import org.architech.launcher.authentication.requests.GameParams;
+import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.Utils;
 import org.architech.launcher.utils.logging.LogManager;
@@ -18,10 +23,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -29,25 +31,70 @@ import java.util.function.Consumer;
 public class BrowserAuth {
 
     public static void showOfflineDialog(Account currentAccount, TextField usernameField, Consumer<Account> setCurrentAccount) {
-        TextInputDialog d = new TextInputDialog((currentAccount != null && currentAccount.getType() == AccountType.OFFLINE)
-                ? currentAccount.getUsername()
-                : (usernameField.getText() == null ? "Player" : usernameField.getText()));
-        d.setTitle("Оффлайн вход");
-        d.setHeaderText("Введите ник для оффлайн-режима");
-        d.setContentText("Ник:");
+        Alert a = new Alert(Alert.AlertType.CONFIRMATION);
+        a.setTitle("Оффлайн вход");
+        a.setHeaderText("Введите ник для оффлайн-режима");
 
-        d.showAndWait().ifPresent(nick -> {
-            if (nick.isBlank()) return;
-            try {
-                Account a = AuthService.offlineLogin(nick.trim());
-                setCurrentAccount.accept(a);
-                Auth.set(a);
-            } catch (Exception ex) {
-                LogManager.getLogger().severe("Не удалось установить оффлайн ник " + ex.getMessage());
-                ErrorPanel.showError("Упс! Не удалось установить оффлайн ник :(", ex.getMessage());
+        DialogPane pane = a.getDialogPane();
+        pane.setStyle("-fx-background-color: #2b2b2b; -fx-font-size: 14px;");
+        pane.lookup(".header-panel .label").setStyle("-fx-text-fill: white;");
+
+        TextField input = new TextField(
+                (currentAccount != null && currentAccount.getType() == AccountType.OFFLINE)
+                        ? currentAccount.getUsername()
+                        : (usernameField.getText() == null ? "Player" : usernameField.getText())
+        );
+        input.setStyle("-fx-control-inner-background: #1e1e1e; -fx-text-fill: white; -fx-border-color: #555;");
+        input.setPrefWidth(300);
+
+        VBox content = new VBox(10, new Label("Ник:"), input);
+        content.setAlignment(Pos.CENTER_LEFT);
+        content.setStyle("-fx-background-color: #2b2b2b;");
+        content.setPadding(new Insets(10));
+        ((Label) content.getChildren().get(0)).setStyle("-fx-text-fill: white;");
+
+        pane.setContent(content);
+        pane.setPrefWidth(400);
+        pane.setMinWidth(400);
+        pane.setMaxWidth(400);
+
+        // Кнопки
+        ButtonType okBtn = new ButtonType("Войти", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelBtn = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
+        a.getButtonTypes().setAll(okBtn, cancelBtn);
+
+        Node okNode = a.getDialogPane().lookupButton(okBtn);
+        if (okNode instanceof Button) {
+            okNode.setStyle("-fx-font-size: 12px; -fx-padding: 4 12;");
+        }
+        Node cancelNode = a.getDialogPane().lookupButton(cancelBtn);
+        if (cancelNode instanceof Button) {
+            cancelNode.setStyle("-fx-font-size: 12px; -fx-padding: 4 12;");
+        }
+
+        // Иконка окна
+        Stage stage = (Stage) pane.getScene().getWindow();
+        stage.getIcons().add(new Image(
+                Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))
+        ));
+        stage.setResizable(false);
+
+        a.showAndWait().ifPresent(response -> {
+            if (response == okBtn) {
+                String nick = input.getText();
+                if (nick.isBlank()) return;
+                try {
+                    Account acc = AuthService.offlineLogin(nick.trim());
+                    setCurrentAccount.accept(acc);
+                    Auth.set(acc);
+                } catch (Exception ex) {
+                    LogManager.getLogger().severe("Не удалось установить оффлайн ник " + ex.getMessage());
+                    ErrorPanel.showError("Упс! Не удалось установить оффлайн ник :(", ex.getMessage());
+                }
             }
         });
     }
+
 
     public static void loginMicrosoftBrowser() {
         try {
