@@ -1,6 +1,6 @@
 package org.architech.launcher.authentication.requests;
 
-import org.architech.launcher.authentication.ely_by.ElyProfile;
+import org.architech.launcher.authentication.auth.ely_by.ElyProfile;
 
 public class ExchangeResponse {
     public String launcherToken;

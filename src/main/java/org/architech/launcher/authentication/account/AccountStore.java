@@ -14,7 +14,7 @@
     import java.util.Set;
     import java.util.logging.Level;
 
-    public final class CurrentAccountStore {
+    public final class AccountStore {
         private static final Path FILE = ArchiTechLauncher.ACCOUNT_FILE;
         private static final SecretStorage SECRETS = initSecretStorage();
 

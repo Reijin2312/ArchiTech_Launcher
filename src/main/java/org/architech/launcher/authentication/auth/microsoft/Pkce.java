@@ -1,4 +1,4 @@
-package org.architech.launcher.authentication.microsoft;
+package org.architech.launcher.authentication.auth.microsoft;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

@@ -99,7 +99,6 @@ public class ArchiTechLauncher extends Application {
         LIBRARIES_DIR = GAME_DIR.resolve("libraries");
         ASSETS_DIR = GAME_DIR.resolve("assets");
 
-
         UI = new LauncherUI(stage, this::onLaunchClicked, this::onCheckUpdatesClicked);
 
         DiscordIntegration.start();

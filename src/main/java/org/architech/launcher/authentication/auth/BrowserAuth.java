@@ -10,8 +10,9 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.architech.launcher.authentication.account.Account;
+import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.authentication.account.AccountType;
-import org.architech.launcher.authentication.ely_by.ElyOAuth;
+import org.architech.launcher.authentication.auth.ely_by.ElyOAuth;
 import org.architech.launcher.authentication.requests.GameParams;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.gui.error.ErrorPanel;
@@ -30,7 +31,7 @@ import java.util.function.Consumer;
 
 public class BrowserAuth {
 
-    public static void showOfflineDialog(Account currentAccount, TextField usernameField, Consumer<Account> setCurrentAccount) {
+    public static void showOfflineDialog(Account currentAccount, TextField usernameField, Consumer<Account> updateUsernameField) {
         Alert a = new Alert(Alert.AlertType.CONFIRMATION);
         a.setTitle("Оффлайн вход");
         a.setHeaderText("Введите ник для оффлайн-режима");
@@ -51,14 +52,13 @@ public class BrowserAuth {
         content.setAlignment(Pos.CENTER_LEFT);
         content.setStyle("-fx-background-color: #2b2b2b;");
         content.setPadding(new Insets(10));
-        ((Label) content.getChildren().get(0)).setStyle("-fx-text-fill: white;");
+        content.getChildren().getFirst().setStyle("-fx-text-fill: white;");
 
         pane.setContent(content);
         pane.setPrefWidth(400);
         pane.setMinWidth(400);
         pane.setMaxWidth(400);
 
-        // Кнопки
         ButtonType okBtn = new ButtonType("Войти", ButtonBar.ButtonData.OK_DONE);
         ButtonType cancelBtn = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
         a.getButtonTypes().setAll(okBtn, cancelBtn);
@@ -72,7 +72,6 @@ public class BrowserAuth {
             cancelNode.setStyle("-fx-font-size: 12px; -fx-padding: 4 12;");
         }
 
-        // Иконка окна
         Stage stage = (Stage) pane.getScene().getWindow();
         stage.getIcons().add(new Image(
                 Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))
@@ -85,8 +84,8 @@ public class BrowserAuth {
                 if (nick.isBlank()) return;
                 try {
                     Account acc = AuthService.offlineLogin(nick.trim());
-                    setCurrentAccount.accept(acc);
-                    Auth.set(acc);
+                    AccountManager.setCurrentAccount(acc);
+                    updateUsernameField.accept(acc);
                 } catch (Exception ex) {
                     LogManager.getLogger().severe("Не удалось установить оффлайн ник " + ex.getMessage());
                     ErrorPanel.showError("Упс! Не удалось установить оффлайн ник :(", ex.getMessage());
@@ -94,7 +93,6 @@ public class BrowserAuth {
             }
         });
     }
-
 
     public static void loginMicrosoftBrowser() {
         try {
@@ -123,7 +121,7 @@ public class BrowserAuth {
                                 silent.setAccessToken(params.accessToken);
                             if (params.selectedProfile.name != null && !params.selectedProfile.name.isBlank())
                                 silent.setSkinUrl("http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png");
-                            Auth.set(silent);
+                            AccountManager.setCurrentAccount(silent);
                         }
                     } catch (Exception ex) {
                         LogManager.getLogger().severe("Ошибка получения параметров аккаунта: " + ex.getMessage());
@@ -153,7 +151,7 @@ public class BrowserAuth {
                                 a.setAccessToken(params.accessToken);
                             if (params.selectedProfile.name != null && !params.selectedProfile.name.isBlank())
                                 a.setSkinUrl("http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png");
-                            Auth.set(a);
+                            AccountManager.setCurrentAccount(a);
                         }
                     } catch (Exception ex) {
                         LogManager.getLogger().severe("Ошибка получения параметров аккаунта: " + ex.getMessage());

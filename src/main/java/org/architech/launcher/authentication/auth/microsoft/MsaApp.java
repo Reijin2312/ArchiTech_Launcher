@@ -1,4 +1,4 @@
-package org.architech.launcher.authentication.microsoft;
+package org.architech.launcher.authentication.auth.microsoft;
 
 public final class MsaApp {
     public static final String CLIENT_ID     = "YOUR-AZURE-APP-CLIENT-ID";

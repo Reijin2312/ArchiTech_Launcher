@@ -1,4 +1,4 @@
-package org.architech.launcher.authentication.microsoft;
+package org.architech.launcher.authentication.auth.microsoft;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;

@@ -33,7 +33,6 @@ public class Utils {
 
     public static double clamp01(double v)
     {
-
         return v < 0 ? 0 : Math.min(v, 1);
     }
 

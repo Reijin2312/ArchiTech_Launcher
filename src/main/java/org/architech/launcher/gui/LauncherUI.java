@@ -19,7 +19,7 @@ import javafx.stage.Stage;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountType;
-import org.architech.launcher.authentication.auth.Auth;
+import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.authentication.auth.BrowserAuth;
 import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.player.PlayerPopup;
@@ -30,8 +30,6 @@ import org.architech.launcher.gui.timer.Timer;
 import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
 import org.architech.launcher.utils.Utils;
 import javafx.scene.paint.Color;
-import java.awt.*;
-import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -46,7 +44,6 @@ public class LauncherUI {
     private final ProgressBar progressBar;
     private final Label progressLabel;
     private final Label percentLabel;
-    private static Scene mainScene;
     private final Button accountBtn;
     private final ContextMenu accountMenu;
     private final ImageView headView;
@@ -54,7 +51,7 @@ public class LauncherUI {
     private final Label pingLabelField = new Label("Пинг: — ms");
     private final Circle pingDotField = new Circle(6);
 
-    private Account currentAccount;
+    private static Scene mainScene;
 
     public LauncherUI(Stage stage, Consumer<String> launchHandler, Runnable updateHandler) {
         BorderPane root = new BorderPane();
@@ -94,7 +91,7 @@ public class LauncherUI {
             accountMenu.show(accountBtn, Side.BOTTOM, 0, 0);
         });
 
-        setCurrentAccount(Auth.current());
+        updateUsernameField(AccountManager.getCurrentAccount());
 
         Label timerLabel = new Label("Времени прошло: 00:00:00");
         timerLabel.getStyleClass().add("timer-label");
@@ -131,6 +128,7 @@ public class LauncherUI {
 
         Button settingsBtn = new Button("⚙");
         settingsBtn.getStyleClass().add("small-button");
+        settingsBtn.setOnAction(e -> new MainSettingsUI(stage, mainScene).show());
 
         buttons.getChildren().addAll(openFolder, checkUpdates, faqBtn, settingsBtn);
 
@@ -173,6 +171,7 @@ public class LauncherUI {
 
         Label newsTitle = new Label("Новости проекта");
         newsTitle.getStyleClass().add("main-news-title");
+
         HBox titleBox = new HBox(newsTitle);
         titleBox.setAlignment(Pos.CENTER);
 
@@ -248,13 +247,13 @@ public class LauncherUI {
         progressBar = new ProgressBar(0);
         progressBar.setPrefWidth(Double.MAX_VALUE);
         progressBar.getStyleClass().add("progress-bar");
+
         progressLabel = new Label("Ожидание...");
         progressLabel.getStyleClass().add("progress-label");
 
         StackPane barWrapper = new StackPane(progressBar);
         barWrapper.setAlignment(Pos.CENTER);
         barWrapper.getChildren().add(percentLabel);
-
 
         BorderPane bottomLine = new BorderPane();
         bottomLine.setLeft(progressLabel);
@@ -282,8 +281,6 @@ public class LauncherUI {
                 Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()
         );
 
-        settingsBtn.setOnAction(e -> new MainSettingsUI(stage, mainScene).show());
-
         stage.setScene(mainScene);
         stage.show();
         loadBackgroundFromConfig();
@@ -294,19 +291,18 @@ public class LauncherUI {
         accountMenu.getItems().clear();
 
         MenuItem miOffline = new MenuItem("Войти под оффлайн-ником…");
-        miOffline.setOnAction(e -> BrowserAuth.showOfflineDialog(currentAccount, usernameField, this::setCurrentAccount));
+        miOffline.setOnAction(e -> BrowserAuth.showOfflineDialog(AccountManager.getCurrentAccount(), usernameField, this::updateUsernameField));
+
+        MenuItem miEly = new MenuItem("Войти через Ely.by…");
+        miEly.setOnAction(e -> BrowserAuth.loginElyBrowser(accountBtn, this::updateUsernameField));
 
         MenuItem miMs = new MenuItem("Войти через Microsoft…");
         miMs.setOnAction(e -> BrowserAuth.loginMicrosoftBrowser());
 
-        MenuItem miEly = new MenuItem("Войти через Ely.by…");
-        miEly.setOnAction(e -> BrowserAuth.loginElyBrowser(accountBtn, this::setCurrentAccount));
-
         accountMenu.getItems().addAll(miOffline, miEly, miMs);
     }
 
-    private void setCurrentAccount(Account a) {
-        this.currentAccount = a;
+    private void updateUsernameField(Account a) {
         if (a == null || a.getType() == AccountType.OFFLINE) {
             if (a != null) usernameField.setText(a.getUsername());
         } else {

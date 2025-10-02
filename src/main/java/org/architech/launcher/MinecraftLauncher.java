@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.architech.launcher.authentication.account.Account;
-import org.architech.launcher.authentication.auth.Auth;
+import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.Utils;
@@ -64,7 +64,7 @@ public class MinecraftLauncher {
         placeholders.put("assets_root", gameDir.resolve("assets").toString());
         placeholders.put("assets_index_name", assetIndex);
 
-        Account acc = Auth.current();
+        Account acc = AccountManager.getCurrentAccount();
         placeholders.put("auth_player_name", acc.getUsername());
         placeholders.put("auth_uuid", acc.getUuid().replace("-", ""));
         placeholders.put("auth_access_token", acc.getAccessToken());

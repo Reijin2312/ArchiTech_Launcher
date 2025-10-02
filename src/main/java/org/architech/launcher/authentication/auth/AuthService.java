@@ -1,12 +1,13 @@
 package org.architech.launcher.authentication.auth;
 
 import org.architech.launcher.authentication.account.Account;
+import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.authentication.account.AccountType;
-import org.architech.launcher.authentication.ely_by.ElyApp;
-import org.architech.launcher.authentication.ely_by.ElyProfile;
-import org.architech.launcher.authentication.microsoft.MicrosoftOAuth;
-import org.architech.launcher.authentication.microsoft.MinecraftMicrosoftFlow;
-import org.architech.launcher.authentication.microsoft.Pkce;
+import org.architech.launcher.authentication.auth.ely_by.ElyApp;
+import org.architech.launcher.authentication.auth.ely_by.ElyProfile;
+import org.architech.launcher.authentication.auth.microsoft.MicrosoftOAuth;
+import org.architech.launcher.authentication.auth.microsoft.MinecraftMicrosoftFlow;
+import org.architech.launcher.authentication.auth.microsoft.Pkce;
 import org.architech.launcher.authentication.requests.ExchangeRequest;
 import org.architech.launcher.authentication.requests.ExchangeResponse;
 import org.architech.launcher.authentication.requests.GameParams;
@@ -27,7 +28,7 @@ public class AuthService {
     private static final HttpClient HTTP = HttpClient.newHttpClient();
 
     public static Account tryElySilentLogin() throws Exception {
-        Account a = Auth.current();
+        Account a = AccountManager.getCurrentAccount();
         if (a == null || a.getType() != AccountType.ELY || a.getLauncherToken() == null) return null;
 
         RefreshRequest reqBody = new RefreshRequest();
@@ -47,7 +48,7 @@ public class AuthService {
         a.setLauncherToken(resp.launcherToken);
         a.setExpiresAtSec(Instant.parse(resp.launcherTokenExpiresAt).getEpochSecond());
         updateAccountFromProfile(a, resp.profile);
-        Auth.set(a);
+        AccountManager.setCurrentAccount(a);
         return a;
     }
 
@@ -72,7 +73,7 @@ public class AuthService {
         a.setLauncherToken(resp.launcherToken);
         a.setExpiresAtSec(Instant.parse(resp.launcherTokenExpiresAt).getEpochSecond());
         updateAccountFromProfile(a, resp.profile);
-        Auth.set(a);
+        AccountManager.setCurrentAccount(a);
         return a;
     }
 
@@ -91,13 +92,13 @@ public class AuthService {
 
         GameParams params = Jsons.MAPPER.readValue(res.body(), GameParams.class);
 
-        Account a = Auth.current();
+        Account a = AccountManager.getCurrentAccount();
         if (a != null && a.getType() == AccountType.ELY) {
             a.setUsername(params.selectedProfile.name);
             a.setUuid(params.selectedProfile.uuid);
             a.setAccessToken(params.accessToken);
             a.setSkinUrl("http://skinsystem.ely.by/skins/" + params.selectedProfile.name + ".png");
-            Auth.set(a);
+            AccountManager.setCurrentAccount(a);
         }
 
         return params;
