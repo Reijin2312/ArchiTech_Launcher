@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
+import org.architech.launcher.authentication.account.AccountStore;
 import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.Utils;
@@ -65,9 +66,10 @@ public class MinecraftLauncher {
         placeholders.put("assets_index_name", assetIndex);
 
         Account acc = AccountManager.getCurrentAccount();
-        placeholders.put("auth_player_name", acc.getUsername());
-        placeholders.put("auth_uuid", acc.getUuid().replace("-", ""));
-        placeholders.put("auth_access_token", acc.getAccessToken());
+        ensureSecretsLoaded(acc);
+        placeholders.put("auth_player_name", acc == null || acc.getUsername() == null ? "" : acc.getUsername());
+        placeholders.put("auth_uuid",      acc == null || acc.getUuid() == null      ? "" : acc.getUuid().replace("-", ""));
+        placeholders.put("auth_access_token", acc == null || acc.getAccessToken() == null ? "" : acc.getAccessToken());
 
         //placeholders.put("user_type", acc.userType);
 
@@ -315,10 +317,26 @@ public class MinecraftLauncher {
     }
 
     private static String replacePlaceholders(String input, Map<String, String> placeholders) {
+        if (input == null) return null;
+        if (placeholders == null || placeholders.isEmpty()) return input;
         for (Map.Entry<String, String> entry : placeholders.entrySet()) {
-            input = input.replace("${" + entry.getKey() + "}", entry.getValue());
+            String replacement = entry.getValue();
+            if (replacement == null) replacement = "";
+            input = input.replace("${" + entry.getKey() + "}", replacement);
         }
         return input;
+    }
+
+    private static void ensureSecretsLoaded(Account acc) {
+        if (acc == null) return;
+        if (AccountStore.SECRETS == null) return;
+        try {
+            AccountStore.SECRETS.getSecret(AccountStore.secretKeyName(acc, "mcAccessToken")).ifPresent(acc::setAccessToken);
+            AccountStore.SECRETS.getSecret(AccountStore.secretKeyName(acc, "uuid")).ifPresent(acc::setUuid);
+            AccountStore.SECRETS.getSecret(AccountStore.secretKeyName(acc, "username")).ifPresent(acc::setUsername);
+        } catch (Exception e) {
+            LogManager.getLogger().warning("Не удалось загрузить секреты для аккаунта {}: {}" + e.getMessage());
+        }
     }
 
 }

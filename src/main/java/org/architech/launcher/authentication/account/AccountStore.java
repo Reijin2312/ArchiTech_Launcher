@@ -16,7 +16,7 @@
 
     public final class AccountStore {
         private static final Path FILE = ArchiTechLauncher.ACCOUNT_FILE;
-        private static final SecretStorage SECRETS = initSecretStorage();
+        public static final SecretStorage SECRETS = initSecretStorage();
 
         private static SecretStorage initSecretStorage() {
             try {
@@ -32,7 +32,7 @@
             }
         }
 
-        private static String secretKeyName(Account a, String name) {
+        public static String secretKeyName(Account a, String name) {
             String id = a.getUuid() != null ? a.getUuid() : "current";
             return "architech:" + a.getType() + ":" + id + ":" + name;
         }
