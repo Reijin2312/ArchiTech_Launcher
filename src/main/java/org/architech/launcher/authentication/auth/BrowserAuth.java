@@ -9,6 +9,7 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.authentication.account.AccountType;
@@ -27,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public class BrowserAuth {
@@ -106,7 +108,7 @@ public class BrowserAuth {
 
     public static void loginElyBrowser(Button accountBtn, Consumer<Account> setCurrentAccount) {
         accountBtn.setDisable(true);
-        new Thread(() -> {
+        ArchiTechLauncher.backgroundExecutor.submit(() -> {
             try {
                 Account silent = AuthService.tryElySilentLogin();
                 if (silent != null) {
@@ -137,6 +139,9 @@ public class BrowserAuth {
                 Utils.openInBrowser(url);
 
                 String code = waitForAuthCodeAndValidateState(state);
+
+                if (code == null) return;
+
                 Account a = AuthService.finishElyLoginWithCode(code);
 
                 if (a.getType() == AccountType.ELY) {
@@ -174,49 +179,111 @@ public class BrowserAuth {
             } finally {
                 Platform.runLater(() -> accountBtn.setDisable(false));
             }
-        }, "ely-login").start();
+        });
     }
 
     private static String waitForAuthCodeAndValidateState(String expectedState) throws Exception {
-        CountDownLatch latch = new CountDownLatch(1);
-        final String[] codeHolder = new String[1];
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<String> codeRef = new AtomicReference<>();
+        final AtomicReference<String> errorRef = new AtomicReference<>();
+        final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 47833), 0);
+        final String callbackPath = "/callback";
 
-        String callbackPath = "/callback";
-
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 47833), 0);
         server.createContext(callbackPath, exchange -> {
-            String query = exchange.getRequestURI().getRawQuery();
-            Map<String, String> params = parseQuery(query);
-            String code = params.get("code");
-            String state = params.get("state");
+            try {
+                String query = exchange.getRequestURI().getRawQuery();
+                Map<String, String> params = parseQuery(query);
 
-            boolean ok = expectedState != null && expectedState.equals(state) &&
-                    code != null && code.matches("^[A-Za-z0-9\\-_.]+$");
-            if (ok) {
-                codeHolder[0] = code;
-            }
+                if (query != null && !query.isEmpty()) {
+                    for (String pair : query.split("&")) {
+                        int idx = pair.indexOf('=');
+                        if (idx > 0) {
+                            String k = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
+                            String v = URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8);
+                            params.put(k, v);
+                        } else {
+                            params.put(URLDecoder.decode(pair, StandardCharsets.UTF_8), "");
+                        }
+                    }
+                }
 
-            String html = buildCallbackHtml(ok ? "Авторизация успешно завершена" : "Ошибка авторизации");
-            byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
-            exchange.getResponseHeaders().add("Cache-Control", "no-store");
-            exchange.getResponseHeaders().add("X-Content-Type-Options", "nosniff");
-            exchange.getResponseHeaders().add("Content-Security-Policy",
-                    "default-src 'none'; style-src 'unsafe-inline'");
-            exchange.sendResponseHeaders(ok ? 200 : 400, bytes.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(bytes);
+                String code = params.get("code");
+                String state = params.get("state");
+
+                byte[] respBytes;
+                if (state == null || !state.equals(expectedState)) {
+                    errorRef.set("invalid_state");
+                    String html = buildCallbackHtml("Неверный state");
+                    respBytes = html.getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+                    exchange.getResponseHeaders().add("Cache-Control", "no-store");
+                    exchange.getResponseHeaders().add("X-Content-Type-Options", "nosniff");
+                    exchange.getResponseHeaders().add("Content-Security-Policy",
+                            "default-src 'none'; style-src 'unsafe-inline'");
+                    exchange.sendResponseHeaders(400, respBytes.length);
+                } else if (code == null || code.isEmpty()) {
+                    errorRef.set("missing_code");
+                    String html = buildCallbackHtml("Код авторизации не найден");
+                    respBytes = html.getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+                    exchange.getResponseHeaders().add("Cache-Control", "no-store");
+                    exchange.getResponseHeaders().add("X-Content-Type-Options", "nosniff");
+                    exchange.getResponseHeaders().add("Content-Security-Policy",
+                            "default-src 'none'; style-src 'unsafe-inline'");
+                    exchange.sendResponseHeaders(400, respBytes.length);
+                } else {
+                    codeRef.set(code);
+                    String html = buildCallbackHtml("Авторизация успешно завершена");
+                    respBytes = html.getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+                    exchange.getResponseHeaders().add("Cache-Control", "no-store");
+                    exchange.getResponseHeaders().add("X-Content-Type-Options", "nosniff");
+                    exchange.getResponseHeaders().add("Content-Security-Policy",
+                            "default-src 'none'; style-src 'unsafe-inline'");
+                    exchange.sendResponseHeaders(200, respBytes.length);
+                }
+
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(respBytes);
+                }
+            } catch (Exception e) {
+                errorRef.set("handler_exception");
+                try {
+                    String html = "<html><body><h1>Ошибка сервера</h1></body></html>";
+                    byte[] resp = html.getBytes(StandardCharsets.UTF_8);
+                    exchange.sendResponseHeaders(500, resp.length);
+                    try (OutputStream os = exchange.getResponseBody()) {
+                        os.write(resp);
+                    }
+                } catch (IOException ignored) {}
+            } finally {
+                exchange.close();
+                try {
+                    server.stop(0);
+                } finally {
+                    latch.countDown();
+                }
             }
-            server.stop(0);
-            latch.countDown();
         });
+
+        server.setExecutor(ArchiTechLauncher.backgroundExecutor);
         server.start();
 
-        if (!latch.await(180, TimeUnit.SECONDS)) {
+        try {
+            boolean signaled = latch.await(5, TimeUnit.SECONDS);
+            if (!signaled) {
+                server.stop(0);
+                return null;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             server.stop(0);
             return null;
+        } finally {
+            server.stop(0);
         }
-        return codeHolder[0];
+
+        return codeRef.get();
     }
 
     private static String buildCallbackHtml(String title) {
