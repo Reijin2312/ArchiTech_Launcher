@@ -6,35 +6,20 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Account {
-    private AccountType type;
-    private String userType;
     private String username;
     private String uuid;
+    private String email;
+    private String skinUrl;
 
     @JsonProperty
     private String accessToken;
-    private long expiresAtSec;
-    private String skinUrl;
-    private String email;
+    private long accessExpiresAtSec;
 
     @JsonProperty
-    private String mcAccessToken;
-    private long  mcAccessTokenExpiresAt;
-
-    @JsonProperty
-    private String msaRefreshToken;
-    private boolean ownsMinecraft;
-
-    @JsonProperty
-    private String launcherToken;
+    private String refreshToken;
+    private long refreshExpiresAtSec;
 
     public Account() {}
-
-    public AccountType getType() { return type; }
-    public void setType(AccountType type) { this.type = type; }
-
-    public String getUserType() { return userType; }
-    public void setUserType(String userType) { this.userType = userType; }
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
@@ -42,38 +27,33 @@ public class Account {
     public String getUuid() { return uuid; }
     public void setUuid(String uuid) { this.uuid = uuid; }
 
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getSkinUrl() { return skinUrl; }
+    public void setSkinUrl(String skinUrl) { this.skinUrl = skinUrl; }
+
     public String getAccessToken() { return accessToken; }
     public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
+    public long getAccessExpiresAtSec() { return accessExpiresAtSec; }
+    public void setAccessExpiresAtSec(long accessExpiresAtSec) { this.accessExpiresAtSec = accessExpiresAtSec; }
 
-    public void setExpiresAtSec(long expiresAtSec) { this.expiresAtSec = expiresAtSec; }
-    public long getExpiresAtSec() { return expiresAtSec; }
-
-    public void setLauncherToken(String launcherToken) { this.launcherToken = launcherToken; }
-    public String getLauncherToken() { return launcherToken; }
-
-    public void setSkinUrl(String skinUrl) { this.skinUrl = skinUrl; }
-    public String getSkinUrl() { return skinUrl; }
-
-    public void setMsaRefreshToken(String msaRefreshToken) { this.msaRefreshToken = msaRefreshToken; }
-    public String getMsaRefreshToken() { return msaRefreshToken; }
-
-    @Override
-    public String toString() {
-        return "Account{" +
-                "type=" + type +
-                ", userType='" + userType + '\'' +
-                ", username='" + username + '\'' +
-                ", uuid='" + uuid + '\'' +
-                ", expiresAtSec=" + expiresAtSec +
-                ", ownsMinecraft=" + ownsMinecraft +
-                '}';
-    }
+    public String getRefreshToken() { return refreshToken; }
+    public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
+    public long getRefreshExpiresAtSec() { return refreshExpiresAtSec; }
+    public void setRefreshExpiresAtSec(long refreshExpiresAtSec) { this.refreshExpiresAtSec = refreshExpiresAtSec; }
 
     @JsonIgnore
     public void clearSensitive() {
         this.accessToken = null;
-        this.mcAccessToken = null;
-        this.msaRefreshToken = null;
-        this.launcherToken = null;
+        this.refreshToken = null;
+    }
+
+    @Override public String toString() {
+        return "Account{" +
+                "username='" + username + '\'' +
+                ", uuid='" + uuid + '\'' +
+                ", accessExp=" + accessExpiresAtSec +
+                '}';
     }
 }

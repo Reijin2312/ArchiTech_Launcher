@@ -33,8 +33,8 @@
         }
 
         public static String secretKeyName(Account a, String name) {
-            String id = a.getUuid() != null ? a.getUuid() : "current";
-            return "architech:" + a.getType() + ":" + id + ":" + name;
+            String id = a != null && a.getUuid() != null ? a.getUuid() : "current";
+            return "architech:user:" + id + ":" + name;
         }
 
         public static Account load() {
@@ -42,70 +42,51 @@
                 if (Files.exists(FILE)) {
                     String raw = Files.readString(FILE, StandardCharsets.UTF_8);
                     Account a = Jsons.MAPPER.readValue(raw, Account.class);
-
-                    try {
-                        SECRETS.getSecret(secretKeyName(a, "launcherToken")).ifPresent(a::setLauncherToken);
-                        SECRETS.getSecret(secretKeyName(a, "msaRefreshToken")).ifPresent(a::setMsaRefreshToken);
-                        SECRETS.getSecret(secretKeyName(a, "mcAccessToken")).ifPresent(a::setAccessToken);
-                    } catch (Exception e) {
-                        LogManager.getLogger().warning("Не удалось прочитать секреты: " + e.getMessage());
+                    if (SECRETS != null && a != null) {
+                        try {
+                            SECRETS.getSecret(secretKeyName(a, "refreshToken")).ifPresent(a::setRefreshToken);
+                        } catch (Exception e) {
+                            LogManager.getLogger().warning("Не удалось прочитать секреты: " + e.getMessage());
+                        }
                     }
-
-                    boolean migrated = false;
-                    if (a.getLauncherToken() != null) {
-                        try { SECRETS.putSecret(secretKeyName(a, "launcherToken"), a.getLauncherToken()); }
-                        catch (Exception ignore) {}
-                        a.setLauncherToken(null); migrated = true;
-                    }
-                    if (a.getMsaRefreshToken() != null) {
-                        try { SECRETS.putSecret(secretKeyName(a, "msaRefreshToken"), a.getMsaRefreshToken()); }
-                        catch (Exception ignore) {}
-                        a.setMsaRefreshToken(null); migrated = true;
-                    }
-                    if (a.getAccessToken() != null) {
-                        try { SECRETS.putSecret(secretKeyName(a, "mcAccessToken"), a.getAccessToken()); }
-                        catch (Exception ignore) {}
-                        a.setAccessToken(null); migrated = true;
-                    }
-                    if (migrated) save(a);
                     return a;
                 }
-
             } catch (Exception ex) {
                 LogManager.getLogger().severe("Ошибка загрузки файла аккаунта: " + ex.getMessage());
             }
 
             Account a = new Account();
-            a.setType(AccountType.OFFLINE);
-            a.setUserType("legacy");
             a.setUsername("Player");
             a.setUuid(UUIDs.offlineUuid(a.getUsername()));
-            a.setAccessToken("0");
-            a.setExpiresAtSec(System.currentTimeMillis() / 1000 + 31536000L);
+            a.setRefreshToken("0");
+            a.setRefreshExpiresAtSec(System.currentTimeMillis() / 1000 + 31536000L);
             return a;
         }
 
         public static void save(Account a){
             try {
-                if(a == null){
+                if(a == null) {
                     Files.deleteIfExists(FILE);
-                    try {
-                        SECRETS.deleteSecret("architech:current:launcherToken");
-                    } catch (Exception ignored) {}
+                    if (SECRETS != null) {
+                        try { SECRETS.deleteSecret("architech:current:launcherToken"); } catch (Exception ignored) {}
+                        try { SECRETS.deleteSecret("architech:user:current:refreshToken"); } catch (Exception ignored) {}
+                    }
                     return;
                 }
 
                 try {
-                    if (a.getLauncherToken() != null) SECRETS.putSecret(secretKeyName(a, "launcherToken"), a.getLauncherToken());
-                    if (a.getMsaRefreshToken() != null) SECRETS.putSecret(secretKeyName(a, "msaRefreshToken"), a.getMsaRefreshToken());
-                    if (a.getAccessToken() != null) SECRETS.putSecret(secretKeyName(a, "mcAccessToken"), a.getAccessToken());
+                    if (SECRETS != null) {
+                        if (a.getRefreshToken() != null) SECRETS.putSecret(secretKeyName(a, "refreshToken"), a.getRefreshToken());
+                        try { SECRETS.deleteSecret(secretKeyName(a, "launcherToken")); } catch (Exception ignored) {}
+                        try { SECRETS.deleteSecret(secretKeyName(a, "msaRefreshToken")); } catch (Exception ignored) {}
+                        try { SECRETS.deleteSecret(secretKeyName(a, "mcAccessToken")); } catch (Exception ignored) {}
+                    }
                 } catch (Exception e) {
                     LogManager.getLogger().warning("Не удалось сохранить секреты: " + e.getMessage());
                 }
 
                 Account copy = Jsons.MAPPER.readValue(Jsons.MAPPER.writeValueAsString(a), Account.class);
-                copy.setLauncherToken(null);
-                copy.setMsaRefreshToken(null);
+                copy.setRefreshToken(null);
                 copy.setAccessToken(null);
 
                 Files.createDirectories(FILE.getParent());

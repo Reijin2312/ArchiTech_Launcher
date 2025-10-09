@@ -2,7 +2,6 @@ package org.architech.launcher.authentication.auth;
 
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
-import org.architech.launcher.authentication.account.AccountType;
 import org.architech.launcher.authentication.auth.ely_by.ElyApp;
 import org.architech.launcher.authentication.auth.ely_by.ElyProfile;
 import org.architech.launcher.authentication.auth.microsoft.MicrosoftOAuth;

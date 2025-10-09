@@ -18,7 +18,6 @@ import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
-import org.architech.launcher.authentication.account.AccountType;
 import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.authentication.auth.BrowserAuth;
 import org.architech.launcher.discord.DiscordIntegration;
@@ -290,21 +289,18 @@ public class LauncherUI {
     private void rebuildAccountMenu() {
         accountMenu.getItems().clear();
 
-        MenuItem miOffline = new MenuItem("Войти под оффлайн-ником…");
-        miOffline.setOnAction(e -> BrowserAuth.showOfflineDialog(AccountManager.getCurrentAccount(), usernameField, this::updateUsernameField));
+        MenuItem signIn = new MenuItem("Войти…");
+        signIn.setOnAction(e -> BrowserAuth.showOfflineDialog(AccountManager.getCurrentAccount(), usernameField, this::updateUsernameField));
 
-        MenuItem miEly = new MenuItem("Войти через Ely.by…");
-        miEly.setOnAction(e -> BrowserAuth.loginElyBrowser(accountBtn, this::updateUsernameField));
+        MenuItem signUp = new MenuItem("Регистрация…");
+        signUp.setOnAction(e -> BrowserAuth.loginElyBrowser(accountBtn, this::updateUsernameField));
 
-        MenuItem miMs = new MenuItem("Войти через Microsoft…");
-        miMs.setOnAction(e -> BrowserAuth.loginMicrosoftBrowser());
-
-        accountMenu.getItems().addAll(miOffline, miEly, miMs);
+        accountMenu.getItems().addAll(signIn, signUp);
     }
 
     private void updateUsernameField(Account a) {
-        if (a == null || a.getType() == AccountType.OFFLINE) {
-            if (a != null) usernameField.setText(a.getUsername());
+        if (a == null) {
+            usernameField.setText("Player");
         } else {
             usernameField.setText(a.getUsername() != null ? a.getUsername() : "");
             Image img = HeadImage.forAccount(a, 20);

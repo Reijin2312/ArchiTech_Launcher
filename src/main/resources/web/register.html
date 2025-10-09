@@ -1,0 +1,76 @@
+<!doctype html>
+};
+const data = await postJSON('/api/auth/register', body);
+
+
+const access = data.accessToken || data.access || (data.tokens && data.tokens.access);
+const refresh = data.refreshToken || data.refresh || (data.tokens && data.tokens.refresh);
+const user = data.user || { id: data.userId, username: body.username, email: body.email };
+
+
+if (redirectUri) {
+await fetch(redirectUri, {
+method:'POST',
+headers:{ 'Content-Type':'application/json' },
+body: JSON.stringify({ accessToken: access, refreshToken: refresh, user })
+});
+}
+
+
+document.getElementById('card').innerHTML = `
+<div class="success">
+    <h1>Готово</h1>
+    <p class="meta">Аккаунт создан. Это окно можно закрыть.</p>
+</div>`;
+} catch(e){
+alert(e.message || 'Ошибка регистрации');
+submitBtn.disabled = false; submitBtn.textContent = 'Зарегистрироваться';
+}
+}
+
+
+// Импорт из Ely.by — идем на серверный редирект, он создаст callback и затем вернет нас с ?ely_ticket=...
+function beginEly(){
+const ret = new URL(location.href);
+ret.searchParams.delete('ely_ticket');
+const url = `/api/ely/begin?return=${encodeURIComponent(ret.toString())}`;
+location.assign(url);
+}
+
+
+// Если вернулись с тикетом — подтягиваем профиль и показываем плашку
+async function maybePrefillFromEly(){
+const t = qs.get('ely_ticket');
+if (!t) return;
+try {
+const data = await getJSON(`/api/ely/ticket?ticket=${encodeURIComponent(t)}`);
+if (data && data.nickname) {
+currentElyTicket = t;
+elyPrefill.style.display = 'flex';
+elyNick.textContent = `Ник: ${data.nickname}${data.email? ' · '+data.email: ''}`;
+if (data.skinUrl) { elySkin.src = data.skinUrl; }
+if (data.email && !email.value) email.value = data.email;
+if (data.nickname && !username.value) username.value = data.nickname;
+validateEmail();
+validateUser();
+}
+} catch(e){ console.warn('ely ticket fetch failed', e); }
+}
+
+
+// Слушатели
+email.addEventListener('input', validateEmail);
+username.addEventListener('input', validateUser);
+pw.addEventListener('input', checkPw);
+pw2.addEventListener('input', ()=>{ checkPw2(); upd(); });
+submitBtn.addEventListener('click', onSubmit);
+elyBtn.addEventListener('click', beginEly);
+
+
+// Старт
+maybePrefillFromEly();
+upd();
+})();
+</script>
+</body>
+</html>

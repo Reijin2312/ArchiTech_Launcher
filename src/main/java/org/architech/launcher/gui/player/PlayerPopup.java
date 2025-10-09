@@ -12,15 +12,21 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Popup;
 import javafx.stage.Window;
 import javafx.util.Duration;
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.player.head.HeadImage;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayerPopup {
 
     private static final Popup playersPopup = new Popup();
     public static List<String> latestOnlinePlayers = Collections.emptyList();
+    private static final ConcurrentHashMap<String, CompletableFuture<Image>> inflight = new ConcurrentHashMap<>();
 
     private static boolean popupHovered = false;
 
@@ -31,6 +37,7 @@ public class PlayerPopup {
 
         leftInfo.setOnMouseEntered(e -> {
             if (!latestOnlinePlayers.isEmpty()) {
+                warmupHeads(latestOnlinePlayers);
                 PlayerPopup.showPlayersPopup(e.getScreenX(), e.getScreenY(), onlineLabelField);
             }
         });
@@ -65,10 +72,10 @@ public class PlayerPopup {
                     HBox row = new HBox(8);
                     row.setAlignment(Pos.CENTER_LEFT);
 
-                    Image head = HeadImage.fromName(name, 20);
-                    ImageView iv = new ImageView(head);
-                    iv.setFitWidth(20);
-                    iv.setFitHeight(20);
+                    ImageView iv = new ImageView();
+                    Image placeholder = null;
+                    Image fallback = null;
+                    setHeadAsync(iv, name, 20, placeholder, fallback);
 
                     Label nameLbl = new Label(name);
                     nameLbl.setStyle("-fx-text-fill: white;");
@@ -89,6 +96,46 @@ public class PlayerPopup {
 
             Window win = onlineLabelField.getScene().getWindow();
             playersPopup.show(win, screenX + 12, screenY + 12);
+        });
+    }
+
+    private static CompletableFuture<Image> loadHead(String name, int size) {
+        final String key = name.toLowerCase(Locale.ROOT) + ":" + size;
+        return inflight.computeIfAbsent(key, k -> {
+            CompletableFuture<Image> cf = new CompletableFuture<>();
+            ArchiTechLauncher.submitBackground(() -> {
+                try {
+                    Image img = HeadImage.fromName(name, size);
+                    cf.complete(img);
+                } catch (Throwable t) {
+                    cf.completeExceptionally(t);
+                } finally {
+                    inflight.remove(k);
+                }
+            });
+            return cf;
+        });
+    }
+
+    private static void setHeadAsync(ImageView iv, String name, int size, Image placeholder, Image fallback) {
+        iv.setFitWidth(size);
+        iv.setFitHeight(size);
+        if (placeholder != null) iv.setImage(placeholder);
+
+        final Object guard = new Object();
+        iv.getProperties().put("head.guard", guard);
+
+        loadHead(name, size).whenComplete((img, err) -> Platform.runLater(() -> {
+            if (iv.getProperties().get("head.guard") != guard) return;
+            if (err == null && img != null) iv.setImage(img);
+            else if (fallback != null) iv.setImage(fallback);
+        }));
+    }
+
+    private static void warmupHeads(Collection<String> names) {
+        if (names == null || names.isEmpty()) return;
+        ArchiTechLauncher.submitBackground(() -> {
+            for (String n : names) loadHead(n, 20);
         });
     }
 

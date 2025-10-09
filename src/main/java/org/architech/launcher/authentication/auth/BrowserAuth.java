@@ -12,7 +12,6 @@ import javafx.stage.Stage;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
-import org.architech.launcher.authentication.account.AccountType;
 import org.architech.launcher.authentication.auth.ely_by.ElyOAuth;
 import org.architech.launcher.authentication.requests.GameParams;
 import org.architech.launcher.gui.LauncherUI;
