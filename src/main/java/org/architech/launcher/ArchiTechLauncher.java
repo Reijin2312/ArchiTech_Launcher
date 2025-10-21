@@ -66,7 +66,8 @@ public class ArchiTechLauncher extends Application {
     public void start(Stage stage) throws IOException, URISyntaxException {
         LogManager.setupLogger();
 
-        BACKEND_URL = "http://95.105.113.224:51789";
+        //BACKEND_URL = "http://95.105.113.224:51789";
+        BACKEND_URL = "http://26.183.155.25:51789";
         LAUNCHER_DIR = Paths.get(SettingsTab.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
         CONFIG_PATH = LAUNCHER_DIR.resolve("launcher_config.json");
         ACCOUNT_FILE = LAUNCHER_DIR.resolve(".account.json");
