@@ -288,17 +288,12 @@ public class LauncherUI {
 
     private void rebuildAccountMenu() {
         accountMenu.getItems().clear();
-
-        // Вход через браузер (login.html)
         MenuItem signIn = new MenuItem("Войти…");
         signIn.setOnAction(e -> BrowserAuth.openLogin(accountBtn, this::updateUsernameField)
         );
-
-        // Регистрация через браузер (register.html)
         MenuItem signUp = new MenuItem("Регистрация…");
-        signUp.setOnAction(e -> BrowserAuth.openRegistration(accountBtn, this::updateUsernameField)
+        signUp.setOnAction(e -> BrowserAuth.openRegister(accountBtn, this::updateUsernameField)
         );
-
         accountMenu.getItems().addAll(signIn, signUp);
     }
 

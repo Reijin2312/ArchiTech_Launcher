@@ -1,5 +1,6 @@
 package org.architech.launcher.managment;
 
+import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
@@ -10,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -19,11 +21,11 @@ import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
 import static org.architech.launcher.ArchiTechLauncher.UI;
 
 public class ModsManager {
-    private static final HttpClient HTTP = HttpClient.newHttpClient();
+    private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT)).build();
 
     public static void syncMods(Path modsDir) throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(BACKEND_URL + "/api/files/manifest")).GET().build();
+                .uri(URI.create(BACKEND_URL + "/api/files/manifest")).timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT)).GET().build();
         HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (res.statusCode() != 200) {
             LogManager.getLogger().severe("manifest HTTP " + res.statusCode() + ": " + res.body());

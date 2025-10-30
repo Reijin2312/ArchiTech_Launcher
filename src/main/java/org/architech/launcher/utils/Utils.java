@@ -1,7 +1,6 @@
 package org.architech.launcher.utils;
 
 import com.sun.management.OperatingSystemMXBean;
-import javafx.scene.control.Alert;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.logging.LogManager;
@@ -11,6 +10,7 @@ import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -31,8 +31,7 @@ import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 
 public class Utils {
 
-    public static double clamp01(double v)
-    {
+    public static double clamp01(double v) {
         return v < 0 ? 0 : Math.min(v, 1);
     }
 
@@ -41,14 +40,45 @@ public class Utils {
     }
 
     public static long tryHeadSize(String url) {
+        HttpURLConnection c = null;
         try {
-            URI uri = URI.create(url);
-            HttpURLConnection c = (HttpURLConnection) uri.toURL().openConnection();
+            URL u = URI.create(url).toURL();
+            c = (HttpURLConnection) u.openConnection();
             c.setRequestMethod("HEAD");
-            c.connect();
-            return c.getContentLengthLong();
-        } catch (Exception ignored) {}
-        return 0;
+            c.setInstanceFollowRedirects(true);
+            c.setConnectTimeout(5000);
+            c.setReadTimeout(5000);
+            c.setRequestProperty("Accept-Encoding", "identity");
+            int code = c.getResponseCode();
+            long len = c.getContentLengthLong();
+            if (code == 200 && len >= 0) return len;
+
+            if (code == 405 || len < 0) {
+                try { c.disconnect(); } catch (Exception ignored) {}
+                c = (HttpURLConnection) u.openConnection();
+                c.setRequestMethod("GET");
+                c.setInstanceFollowRedirects(true);
+                c.setConnectTimeout(5000);
+                c.setReadTimeout(5000);
+                c.setRequestProperty("Range", "bytes=0-0");
+                c.setRequestProperty("Accept-Encoding", "identity");
+                int code2 = c.getResponseCode();
+                if (code2 == 206) {
+                    String cr = c.getHeaderField("Content-Range");
+                    if (cr != null) {
+                        int slash = cr.lastIndexOf('/');
+                        if (slash >= 0) {
+                            try { return Long.parseLong(cr.substring(slash + 1).trim()); }
+                            catch (NumberFormatException ignored) {}
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (c != null) try { c.disconnect(); } catch (Exception ignored) {}
+        }
+        return 0L;
     }
 
     public static String sha1Hex(Path path) throws Exception {
@@ -193,11 +223,6 @@ public class Utils {
             LogManager.getLogger().severe("Не удалось открыть папку игры: " + ex.getMessage());
             ErrorPanel.showError("Упс! Не удалось открыть папку игры :(", ex.getMessage());
         }
-    }
-
-    public void showInfo(String msg) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION, msg);
-        a.showAndWait();
     }
 
     public static Path findJava21() {

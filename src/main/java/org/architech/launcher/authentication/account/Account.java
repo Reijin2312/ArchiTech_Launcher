@@ -10,6 +10,7 @@ public class Account {
     private String uuid;
     private String email;
     private String skinUrl;
+    private String avatarUrl;
 
     @JsonProperty
     private String accessToken;
@@ -32,6 +33,9 @@ public class Account {
 
     public String getSkinUrl() { return skinUrl; }
     public void setSkinUrl(String skinUrl) { this.skinUrl = skinUrl; }
+
+    public String getAvatarUrl(){ return avatarUrl; }
+    public void setAvatarUrl(String v){ avatarUrl = v; }
 
     public String getAccessToken() { return accessToken; }
     public void setAccessToken(String accessToken) { this.accessToken = accessToken; }

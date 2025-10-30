@@ -1,148 +1,187 @@
 package org.architech.launcher.authentication.auth;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.*;
 import javafx.application.Platform;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.gui.error.ErrorPanel;
-import org.architech.launcher.utils.Jsons;
-import org.architech.launcher.utils.Utils;
-import org.architech.launcher.utils.logging.LogManager;
+import java.awt.Desktop;
+import java.io.IOException;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.*;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
 
 public final class BrowserAuth {
 
+    private static final ObjectMapper M = new ObjectMapper();
+    private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT)).build();
+
     private BrowserAuth() {}
 
     public static void openLogin(Button triggerBtn, Consumer<Account> onSuccess) {
-        startWebFlow(triggerBtn, "/web/login.html", onSuccess);
+        startWebFlow("/auth/login", triggerBtn, onSuccess);
     }
 
-    public static void openRegistration(Button triggerBtn, Consumer<Account> onSuccess) {
-        startWebFlow(triggerBtn, "/web/register.html", onSuccess);
+    public static void openRegister(Button triggerBtn, Consumer<Account> onSuccess) {
+        startWebFlow("/auth/register", triggerBtn, onSuccess);
     }
 
-    private static void startWebFlow(Button triggerBtn, String pagePath, Consumer<Account> onSuccess) {
+    private static void startWebFlow(String route, Button triggerBtn, Consumer<Account> onSuccess) {
         if (triggerBtn != null) Platform.runLater(() -> triggerBtn.setDisable(true));
 
         ArchiTechLauncher.backgroundExecutor.submit(() -> {
-            HttpServer server = null;
-            final AtomicBoolean gotPayload = new AtomicBoolean(false);
+            HttpServer srv = null;
             try {
-                // 1) поднимаем локальный колбэк
-                server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-                final int port = server.getAddress().getPort();
-                final String callbackPath = "/cb";
-                final CompletableFuture<String> payload = new CompletableFuture<>();
+                var bind = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0);
+                srv = HttpServer.create(bind, 0);
+                String cbPath = "/cb";
+                var latch = new CountDownLatch(1);
 
-                // /cb с CORS и OPTIONS
-                HttpServer finalServer = server;
-                server.createContext(callbackPath, ex -> handleCallback(ex, payload, gotPayload, finalServer));
+                final String[] tokens = new String[2];
+                final JsonNode[] userBox = new JsonNode[1];
 
-                server.setExecutor(ArchiTechLauncher.backgroundExecutor);
-                server.start();
+                srv.createContext(cbPath, exchange -> {
+                    try {
+                        addCors(exchange);
+                        String method = exchange.getRequestMethod();
+                        if ("OPTIONS".equalsIgnoreCase(method)) {
+                            exchange.sendResponseHeaders(204, -1);
+                            return;
+                        }
+                        if (!"POST".equalsIgnoreCase(method)) {
+                            write(exchange, 405, "{\"error\":\"method\"}");
+                            return;
+                        }
+                        byte[] body = exchange.getRequestBody().readAllBytes();
+                        JsonNode n = M.readTree(new String(body, UTF_8));
+                        tokens[0] = textOrNull(n, "accessToken");
+                        tokens[1] = textOrNull(n, "refreshToken");
+                        userBox[0] = n.path("user").isMissingNode() ? null : n.path("user");
 
-                // 2) открываем страницу на бэке, передаём redirect_uri
-                String redirect = "http://127.0.0.1:" + port + callbackPath;
-                String url = BACKEND_URL + pagePath + "?redirect_uri=" + URLEncoder.encode(redirect, StandardCharsets.UTF_8);
-                Utils.openInBrowser(url);
+                        if (tokens[0] == null || tokens[1] == null) {
+                            write(exchange, 400, "{\"ok\":false,\"msg\":\"missing tokens\"}");
+                            return;
+                        }
+                        write(exchange, 200, "{\"ok\":true}");
+                    } catch (Exception e) {
+                        writeSafe(exchange, 500, "{\"ok\":false}");
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+                srv.setExecutor(ArchiTechLauncher.backgroundExecutor);
+                srv.start();
 
-                // 3) ждём JSON с токенами
-                String json = payload.get(180, TimeUnit.SECONDS);
-                JsonNode n = Jsons.MAPPER.readTree(json);
+                int port = srv.getAddress().getPort();
+                String cb = "http://127.0.0.1:" + port + cbPath;
 
-                String access  = n.path("accessToken").asText(null);
-                String refresh = n.path("refreshToken").asText(null);
-                JsonNode user  = n.path("user");
+                URI loginUrl = buildFrontendUri(route, cb);
+                openInBrowser(loginUrl);
 
-                if (access == null || refresh == null) {
-                    throw new IllegalStateException("Страница не вернула токены");
-                }
+                boolean ok = latch.await(180, TimeUnit.SECONDS);
+                if (!ok) throw new TimeoutException("no callback");
+
+                String access = tokens[0], refresh = tokens[1];
+                JsonNode user = userBox[0];
 
                 Account a = new Account();
                 a.setAccessToken(access);
                 a.setRefreshToken(refresh);
                 if (user != null) {
-                    a.setUuid(user.path("id").asText(null));
-                    a.setUsername(user.path("username").asText(null));
-                    a.setEmail(user.path("email").asText(null));
+                    a.setUuid(textOrNull(user, "id"));
+                    a.setUsername(textOrNull(user, "username"));
+                    a.setEmail(textOrNull(user, "email"));
                 }
+
+                try {
+                    HttpRequest meReq = HttpRequest.newBuilder(URI.create(BACKEND_URL + "/api/v1/profile"))
+                            .header("Authorization", "Bearer " + access)
+                            .GET().timeout(Duration.ofSeconds(10)).build();
+                    HttpResponse<String> r = HTTP.send(meReq, HttpResponse.BodyHandlers.ofString(UTF_8));
+                    if (r.statusCode() / 100 == 2) {
+                        JsonNode me = M.readTree(r.body());
+                        if (me.hasNonNull("username")) a.setUsername(me.get("username").asText());
+                        if (me.hasNonNull("avatarUrl")) a.setAvatarUrl(me.get("avatarUrl").asText());
+                        if (me.hasNonNull("skinUrl"))   a.setSkinUrl(me.get("skinUrl").asText());
+                    }
+                } catch (Exception ignored) {}
+
                 AccountManager.setCurrentAccount(a);
-
                 if (onSuccess != null) {
-                    Platform.runLater(() -> {
-                        try { onSuccess.accept(a); }
-                        catch (Exception e) { LogManager.getLogger().warning("onSuccess failed: " + e); }
-                    });
+                    Platform.runLater(() -> onSuccess.accept(a));
                 }
 
-            } catch (Exception ex) {
-                LogManager.getLogger().severe("Web auth failed: " + ex);
-                final String details = safeStack(ex);
-                Platform.runLater(() -> ErrorPanel.showError("Вход в браузере не удался", details));
+            } catch (Exception e) {
+                Platform.runLater(() -> ErrorPanel.showError("Авторизация не выполнена", stack(e)));
             } finally {
+                if (srv != null) srv.stop(0);
                 if (triggerBtn != null) Platform.runLater(() -> triggerBtn.setDisable(false));
-                try { if (server != null && !gotPayload.get()) server.stop(0); } catch (Exception ignore) {}
             }
         });
     }
 
-    private static void handleCallback(HttpExchange ex, CompletableFuture<String> payload, AtomicBoolean gotPayload, HttpServer server) {
-        try {
-            ex.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
-            ex.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
-
-            String method = ex.getRequestMethod();
-            if ("OPTIONS".equalsIgnoreCase(method)) {
-                ex.sendResponseHeaders(204, -1);
-                return;
-            }
-            if (!"POST".equalsIgnoreCase(method)) {
-                ex.sendResponseHeaders(405, -1);
-                return;
-            }
-
-            String json = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            payload.complete(json);
-            gotPayload.set(true);
-
-            byte[] ok = "OK".getBytes(StandardCharsets.UTF_8);
-            ex.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
-            ex.getResponseHeaders().set("Cache-Control", "no-store");
-            ex.sendResponseHeaders(200, ok.length);
-            try (OutputStream os = ex.getResponseBody()) { os.write(ok); }
-
-        } catch (Exception e) {
-            try { ex.sendResponseHeaders(500, -1); } catch (Exception ignore) {}
-        } finally {
-            try { ex.close(); } catch (Exception ignore) {}
-            if (gotPayload.get()) {
-                try { server.stop(0); } catch (Exception ignore) {}
-            }
-        }
+    private static URI buildFrontendUri(String route, String redirectUri) throws URISyntaxException {
+        Objects.requireNonNull(route);
+        URI api = URI.create(BACKEND_URL);
+        URI base = new URI(api.getScheme(), api.getUserInfo(), api.getHost(), api.getPort(), "/", null, null);
+        String q = "redirect_uri=" + URLEncoder.encode(redirectUri, UTF_8);
+        String p = route.startsWith("/") ? route : ("/" + route);
+        return new URI(base.getScheme(), base.getUserInfo(), base.getHost(), base.getPort(), p, q, null);
     }
 
-    private static String safeStack(Throwable t) {
-        try (var sw = new java.io.StringWriter(); var pw = new java.io.PrintWriter(sw)) {
-            t.printStackTrace(pw);
-            return sw.toString();
-        } catch (Exception e) {
-            return Objects.requireNonNullElse(t.getMessage(), t.toString());
+    private static void openInBrowser(URI uri) throws Exception {
+        if (Desktop.isDesktopSupported()) {
+            Desktop.getDesktop().browse(uri);
+            return;
         }
+        String u = uri.toString();
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (os.contains("win")) new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", u).start();
+        else if (os.contains("mac")) new ProcessBuilder("open", u).start();
+        else new ProcessBuilder("xdg-open", u).start();
+    }
+
+    private static void addCors(HttpExchange ex){
+        Headers h = ex.getResponseHeaders();
+        h.set("Access-Control-Allow-Origin", "*");
+        h.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+        h.set("Access-Control-Allow-Headers", "Content-Type");
+    }
+
+    private static void write(HttpExchange ex, int code, String body) throws IOException {
+        byte[] b = body.getBytes(UTF_8);
+        ex.getResponseHeaders().set("Content-Type","application/json; charset=utf-8");
+        ex.sendResponseHeaders(code, b.length);
+        try (OutputStream os = ex.getResponseBody()) { os.write(b); }
+    }
+    private static void writeSafe(HttpExchange ex, int code, String body){
+        try { write(ex, code, body); } catch (Exception ignored) {}
+    }
+
+    private static String textOrNull(JsonNode n, String f){
+        if (n == null) return null;
+        JsonNode x = n.path(f);
+        return x.isMissingNode() || x.isNull() ? null : x.asText();
+    }
+
+    private static String stack(Throwable t){
+        try (var sw = new StringWriter(); var pw = new PrintWriter(sw)) { t.printStackTrace(pw); return sw.toString(); }
+        catch (Exception e){ return t.getMessage(); }
     }
 }
