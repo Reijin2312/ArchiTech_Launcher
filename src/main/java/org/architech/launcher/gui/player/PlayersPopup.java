@@ -13,7 +13,6 @@ import javafx.stage.Popup;
 import javafx.stage.Window;
 import javafx.util.Duration;
 import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.gui.player.head.HeadImage;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -22,7 +21,7 @@ import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PlayerPopup {
+public class PlayersPopup {
 
     private static final Popup playersPopup = new Popup();
     public static List<String> latestOnlinePlayers = Collections.emptyList();
@@ -38,7 +37,7 @@ public class PlayerPopup {
         leftInfo.setOnMouseEntered(e -> {
             if (!latestOnlinePlayers.isEmpty()) {
                 warmupHeads(latestOnlinePlayers);
-                PlayerPopup.showPlayersPopup(e.getScreenX(), e.getScreenY(), onlineLabelField);
+                PlayersPopup.showPlayersPopup(e.getScreenX(), e.getScreenY(), onlineLabelField);
             }
         });
         leftInfo.setOnMouseMoved(e -> {
@@ -105,7 +104,7 @@ public class PlayerPopup {
             CompletableFuture<Image> cf = new CompletableFuture<>();
             ArchiTechLauncher.submitBackground(() -> {
                 try {
-                    Image img = HeadImage.fromName(name, size);
+                    Image img = AvatarImage.fromName(name, size);
                     cf.complete(img);
                 } catch (Throwable t) {
                     cf.completeExceptionally(t);

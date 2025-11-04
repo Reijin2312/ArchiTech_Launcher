@@ -1,6 +1,7 @@
 package org.architech.launcher.managment;
 
 import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
@@ -97,6 +98,7 @@ public class NeoForgeManager {
         String latest = fetchPinnedServerVersionAndSave(gameDir);
 
         if (latest == null) {
+            UI.updateProgress("Ожидание...", 1);
             LogManager.getLogger().severe("Не удалось получить актуальную версию NeoForge!");
             throw new IOException("Не удалось получить актуальную версию NeoForge!");
         }

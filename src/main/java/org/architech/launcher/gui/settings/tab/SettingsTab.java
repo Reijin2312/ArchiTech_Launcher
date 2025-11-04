@@ -273,6 +273,10 @@ public class SettingsTab {
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {
                 Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValue(w, cfg);
             }
+            GAME_DIR = Path.of(gameDirField.getText());
+            JAVA_PATH = Path.of(javaField.getText());
+            HTTP_TIMEOUT = netTimeoutSpinner.getValue();
+            AUTO_UPDATE_CLIENT = autoUpdate.isSelected();
         } catch (IOException e) {
             new Alert(Alert.AlertType.ERROR, "Ошибка сохранения файла настроек: " + e.getMessage()).showAndWait();
         }
@@ -352,6 +356,8 @@ public class SettingsTab {
                 def.put("winWidth", "854");
                 def.put("winHeight", "480");
             }
+
+            def.put("netTimeout", "30");
 
             def.put("background", "СherryAndRiver.png");
 

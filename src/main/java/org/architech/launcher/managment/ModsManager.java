@@ -25,7 +25,9 @@ public class ModsManager {
 
     public static void syncMods(Path modsDir) throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(BACKEND_URL + "/api/files/manifest")).timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT)).GET().build();
+                .uri(URI.create(BACKEND_URL + "/api/files/manifest")).
+                timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT)).
+                GET().build();
         HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (res.statusCode() != 200) {
             LogManager.getLogger().severe("manifest HTTP " + res.statusCode() + ": " + res.body());
@@ -124,6 +126,7 @@ public class ModsManager {
                 String encodedPath = encodePathForUri(pathForUrl);
                 HttpRequest dlReq = HttpRequest.newBuilder()
                         .uri(URI.create(BACKEND_URL + "/api/files/file/" + encodedPath))
+                        .timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT))
                         .GET()
                         .build();
 

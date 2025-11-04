@@ -21,9 +21,10 @@ import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.authentication.auth.BrowserAuth;
 import org.architech.launcher.discord.DiscordIntegration;
-import org.architech.launcher.gui.player.PlayerPopup;
-import org.architech.launcher.gui.player.head.HeadImage;
+import org.architech.launcher.gui.player.PlayersPopup;
+import org.architech.launcher.gui.player.AvatarImage;
 import org.architech.launcher.gui.news.NewsList;
+import org.architech.launcher.gui.player.skin.MinecraftSkinView;
 import org.architech.launcher.gui.settings.MainSettingsUI;
 import org.architech.launcher.gui.timer.Timer;
 import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
@@ -35,6 +36,8 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
+import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
 import static org.architech.launcher.ArchiTechLauncher.LAUNCHER_DIR;
 
 public class LauncherUI {
@@ -137,6 +140,23 @@ public class LauncherUI {
         VBox controls = new VBox(15, userRow, launchBtn, buttons);
         controls.setAlignment(Pos.CENTER);
         BorderPane left = new BorderPane();
+
+        MinecraftSkinView view = new MinecraftSkinView();
+        view.setPrefHeight(300);
+        view.setMaxWidth(Double.MAX_VALUE);
+        BorderPane.setMargin(view, new Insets(0, 0, 16, 0));
+        left.setTop(view);
+
+        var acc = AccountManager.getCurrentAccount();
+        if (acc != null && acc.getUsername() != null) {
+            view.setSkinUrl(BACKEND_URL + acc.getSkinUrl());
+        } else {
+            view.setSkinUrl("Steve");
+        }
+
+        assert acc != null;
+        System.out.println(acc.getSkinUrl());
+
         left.setBottom(controls);
         root.setLeft(left);
 
@@ -154,7 +174,7 @@ public class LauncherUI {
                 Platform.runLater(() -> {
                     onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
                     pingLabelField.setText("Пинг: " + s.pingMs() + " ms");
-                    PlayerPopup.latestOnlinePlayers = (s.sample() == null) ? Collections.emptyList() : List.copyOf(s.sample());
+                    PlayersPopup.latestOnlinePlayers = (s.sample() == null) ? Collections.emptyList() : List.copyOf(s.sample());
                     if (s.pingMs() <= 100) pingDotField.setFill(Color.GREEN);
                     else if (s.pingMs() <= 250) pingDotField.setFill(Color.GOLD);
                     else pingDotField.setFill(Color.ORANGERED);
@@ -249,6 +269,7 @@ public class LauncherUI {
 
         progressLabel = new Label("Ожидание...");
         progressLabel.getStyleClass().add("progress-label");
+        updateProgress("Ожидание...", 1);
 
         StackPane barWrapper = new StackPane(progressBar);
         barWrapper.setAlignment(Pos.CENTER);
@@ -258,7 +279,7 @@ public class LauncherUI {
         bottomLine.setLeft(progressLabel);
         bottomLine.setRight(timerLabel);
 
-        PlayerPopup.setup(leftInfo, onlineLabelField);
+        PlayersPopup.setup(leftInfo, onlineLabelField);
 
         VBox bottom = new VBox(8, bottomLine, barWrapper);
         bottom.setPadding(new Insets(10, 0, 0, 0));
@@ -302,7 +323,7 @@ public class LauncherUI {
             usernameField.setText("Player");
         } else {
             usernameField.setText(a.getUsername() != null ? a.getUsername() : "");
-            Image img = HeadImage.forAccount(a, 20);
+            Image img = AvatarImage.forAccount(a, 20);
             headView.setImage(img);
         }
     }

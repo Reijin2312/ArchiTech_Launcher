@@ -59,6 +59,7 @@ public class DownloadManager {
     public void ensureFilePresentAndValid(FileEntry f, boolean updateUI) throws Exception {
         boolean ok = downloadWithRoundsSingleFile(f, 3, 2000, updateUI);
         if (!ok) {
+            ArchiTechLauncher.UI.updateProgress("Ожидание...", 1);
             LogManager.getLogger().warning("Файл не удалось корректно скачать: " + f.name);
             throw new IOException("Файл не удалось корректно скачать: " + f.name);
         }

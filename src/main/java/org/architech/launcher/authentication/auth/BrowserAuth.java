@@ -26,6 +26,7 @@ import java.util.function.Consumer;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
+import static org.architech.launcher.ArchiTechLauncher.FRONTEND_URL;
 
 public final class BrowserAuth {
 
@@ -57,17 +58,20 @@ public final class BrowserAuth {
                 final JsonNode[] userBox = new JsonNode[1];
 
                 srv.createContext(cbPath, exchange -> {
+                    boolean delivered = false;
                     try {
                         addCors(exchange);
                         String method = exchange.getRequestMethod();
+
                         if ("OPTIONS".equalsIgnoreCase(method)) {
                             exchange.sendResponseHeaders(204, -1);
-                            return;
+                            return; // ← без снятия latch
                         }
                         if (!"POST".equalsIgnoreCase(method)) {
                             write(exchange, 405, "{\"error\":\"method\"}");
-                            return;
+                            return; // ← без latch
                         }
+
                         byte[] body = exchange.getRequestBody().readAllBytes();
                         JsonNode n = M.readTree(new String(body, UTF_8));
                         tokens[0] = textOrNull(n, "accessToken");
@@ -76,15 +80,18 @@ public final class BrowserAuth {
 
                         if (tokens[0] == null || tokens[1] == null) {
                             write(exchange, 400, "{\"ok\":false,\"msg\":\"missing tokens\"}");
-                            return;
+                            return; // ← без latch
                         }
+
                         write(exchange, 200, "{\"ok\":true}");
+                        delivered = true; // ← только здесь
                     } catch (Exception e) {
                         writeSafe(exchange, 500, "{\"ok\":false}");
                     } finally {
-                        latch.countDown();
+                        if (delivered) latch.countDown();
                     }
                 });
+
                 srv.setExecutor(ArchiTechLauncher.backgroundExecutor);
                 srv.start();
 
@@ -112,7 +119,10 @@ public final class BrowserAuth {
                 try {
                     HttpRequest meReq = HttpRequest.newBuilder(URI.create(BACKEND_URL + "/api/v1/profile"))
                             .header("Authorization", "Bearer " + access)
-                            .GET().timeout(Duration.ofSeconds(10)).build();
+                            .GET().
+                            timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT)).
+                            build();
+
                     HttpResponse<String> r = HTTP.send(meReq, HttpResponse.BodyHandlers.ofString(UTF_8));
                     if (r.statusCode() / 100 == 2) {
                         JsonNode me = M.readTree(r.body());
@@ -138,7 +148,7 @@ public final class BrowserAuth {
 
     private static URI buildFrontendUri(String route, String redirectUri) throws URISyntaxException {
         Objects.requireNonNull(route);
-        URI api = URI.create(BACKEND_URL);
+        URI api = URI.create(FRONTEND_URL);
         URI base = new URI(api.getScheme(), api.getUserInfo(), api.getHost(), api.getPort(), "/", null, null);
         String q = "redirect_uri=" + URLEncoder.encode(redirectUri, UTF_8);
         String p = route.startsWith("/") ? route : ("/" + route);
@@ -162,6 +172,7 @@ public final class BrowserAuth {
         h.set("Access-Control-Allow-Origin", "*");
         h.set("Access-Control-Allow-Methods", "POST, OPTIONS");
         h.set("Access-Control-Allow-Headers", "Content-Type");
+        h.set("Access-Control-Allow-Private-Network", "true");
     }
 
     private static void write(HttpExchange ex, int code, String body) throws IOException {

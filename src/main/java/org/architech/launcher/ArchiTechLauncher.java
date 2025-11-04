@@ -38,6 +38,8 @@ public class ArchiTechLauncher extends Application {
     public static final String MINECRAFT_VERSION = "1.21.1";
 
     public static Path GAME_DIR = Paths.get(System.getProperty("user.home"), ".architech");
+    public static String FRONTEND_URL = "https://architech-mc.ru/";
+    public static String BACKEND_URL = "https://launcher.architech-mc.ru";
     public static Path CONFIG_PATH;
     public static Path LAUNCHER_DIR;
     public static Path VERSIONS_DIR;
@@ -45,7 +47,6 @@ public class ArchiTechLauncher extends Application {
     public static Path ASSETS_DIR;
     public static Path JAVA_PATH;
     public static Path ACCOUNT_FILE;
-    public static String BACKEND_URL;
     public static String LAUNCHER_BACKGROUND;
     public static int HTTP_TIMEOUT;
     public static boolean CLOSE_ON_LAUNCH = false;
@@ -66,8 +67,6 @@ public class ArchiTechLauncher extends Application {
     public void start(Stage stage) throws IOException, URISyntaxException {
         LogManager.setupLogger();
 
-        //BACKEND_URL = "http://95.105.113.224:51789";
-        BACKEND_URL = "http://127.0.0.1:51789";
         LAUNCHER_DIR = Paths.get(SettingsTab.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
         CONFIG_PATH = LAUNCHER_DIR.resolve("launcher_config.json");
         ACCOUNT_FILE = LAUNCHER_DIR.resolve(".account.json");
@@ -108,7 +107,8 @@ public class ArchiTechLauncher extends Application {
     @Override
     public void stop() throws Exception {
         super.stop();
-        cancelLaunch();
+        DownloadManager dm = activeDownloadManager.getAndSet(null);
+        if (dm != null) dm.cancelAllDownloads();
         backgroundExecutor.shutdownNow();
         scheduledExecutor.shutdownNow();
         DiscordIntegration.stop();
