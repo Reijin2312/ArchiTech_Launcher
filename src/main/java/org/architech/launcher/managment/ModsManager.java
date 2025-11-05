@@ -1,6 +1,7 @@
 package org.architech.launcher.managment;
 
 import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.Utils;
@@ -90,17 +91,15 @@ public class ModsManager {
             }
         }
 
-        long totalBytes = newManifest.files.stream().mapToLong(f -> Math.max(0, f.size)).sum();
+        List<FileEntry> toDownload = new java.util.ArrayList<>();
 
-        long downloaded = 0;
-        boolean allOk = true;
-
+        assert newManifest.files != null;
         for (FileInfo f : newManifest.files) {
             String relPath = normalizePath(f.path);
-            Path enabled = modsDir.resolve(relPath);
+            Path enabled  = modsDir.resolve(relPath);
             Path disabled = modsDir.resolve(relPath + ".disabled");
 
-            boolean enabledExists = Files.exists(enabled);
+            boolean enabledExists  = Files.exists(enabled);
             boolean disabledExists = Files.exists(disabled);
 
             boolean validPresent = false;
@@ -113,46 +112,32 @@ public class ModsManager {
             } catch (Exception ignored) {}
 
             if (validPresent) {
-                try {
-                    if (enabledExists && disabledExists) Files.deleteIfExists(disabled);
-                } catch (Exception ignored) {}
+                try { if (enabledExists && disabledExists) Files.deleteIfExists(disabled); } catch (Exception ignored) {}
                 continue;
             }
 
-            if (UI != null) UI.updateProgress("Скачивание файла: " + relPath, totalBytes > 0 ? (double) downloaded / totalBytes : -1);
+            Path target = disabledExists ? disabled : enabled;
+            String url = BACKEND_URL + "/api/files/file/" + encodePathForUri(f.path.replace("\\","/"));
 
-            try {
-                String pathForUrl = f.path.replace("\\", "/");
-                String encodedPath = encodePathForUri(pathForUrl);
-                HttpRequest dlReq = HttpRequest.newBuilder()
-                        .uri(URI.create(BACKEND_URL + "/api/files/file/" + encodedPath))
-                        .timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT))
-                        .GET()
-                        .build();
+            toDownload.add(new FileEntry("mod", relPath, url, target, Math.max(0, f.size), (f.sha1 != null && !f.sha1.isBlank()) ? f.sha1 : null
+            ));
+        }
 
-                HttpResponse<byte[]> dlRes = HTTP.send(dlReq, HttpResponse.BodyHandlers.ofByteArray());
-                if (dlRes.statusCode() != 200) {
-                    throw new IOException("HTTP " + dlRes.statusCode() + " при скачивании " + relPath);
-                }
-                byte[] data = dlRes.body();
+        try {
+            ArchiTechLauncher.DOWNLOAD_MANAGER.resetTotals();
+        } catch (Throwable ignored) {}
 
-                Path target = disabledExists ? disabled : enabled;
-                Files.createDirectories(target.getParent());
-                Files.write(target, data, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        long planned = ArchiTechLauncher.DOWNLOAD_MANAGER.computeTotalBytesToDownload(toDownload);
+        ArchiTechLauncher.DOWNLOAD_MANAGER.setTotalBytesPlanned(planned);
 
-                if (!matchesFile(target, f)) {
-                    allOk = false;
-                    if (UI != null) UI.updateProgress("Скачанный файл не прошёл проверку: " + relPath, -1);
-                    break;
-                }
+        int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
+        java.util.List<FileEntry> failed =
+                ArchiTechLauncher.DOWNLOAD_MANAGER.downloadFilesInParallel(toDownload, threads, 3, true);
 
-                downloaded += Math.max(0, f.size);
-
-            } catch (Exception ex) {
-                allOk = false;
-                if (UI != null) UI.updateProgress("Ошибка при скачивании: " + relPath + " — " + ex.getMessage(), -1);
-                break;
-            }
+        boolean allOk = failed.isEmpty();
+        if (!allOk && UI != null) {
+            UI.updateProgress("Не удалось скачать: " +
+                    failed.stream().map(fe -> fe.name).collect(java.util.stream.Collectors.joining(", ")), -1);
         }
 
         if (allOk) {
@@ -178,9 +163,10 @@ public class ModsManager {
 
     private static boolean matchesFile(Path file, FileInfo expected) throws Exception {
         if (!Files.exists(file)) return false;
-        if (expected.sha1 != null && !expected.sha1.isBlank()) {
-            String actual = Utils.sha1Hex(file);
-            return expected.sha1.equalsIgnoreCase(actual);
+        if (expected.sha256 != null && !expected.sha256.isBlank()) {
+            return expected.sha256.equalsIgnoreCase(Utils.sha256Hex(file));
+        } else if (expected.sha1 != null && !expected.sha1.isBlank()) {
+            return expected.sha1.equalsIgnoreCase(Utils.sha1Hex(file));
         } else if (expected.size > 0) {
             return Files.size(file) == expected.size;
         } else {
@@ -228,5 +214,6 @@ public class ModsManager {
         public String path;
         public long size;
         public String sha1;
+        public String sha256;
     }
 }

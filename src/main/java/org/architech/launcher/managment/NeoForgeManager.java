@@ -1,7 +1,6 @@
 package org.architech.launcher.managment;
 
 import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
@@ -70,7 +69,7 @@ public class NeoForgeManager {
                 return false;
             }
             for (InstalledManifest.Entry e : im.files) {
-                if (e == null || e.path == null || e.sha1 == null) {
+                if (e == null || e.path == null || e.sha256 == null) {
                     LogManager.getLogger().warning("Найдена некорректная запись в installed.json, считаю установку невалидной.");
                     return false;
                 }
@@ -79,9 +78,11 @@ public class NeoForgeManager {
                     LogManager.getLogger().severe("Neoforge установлен неправильно ;( отсутствует " + p);
                     return false;
                 }
-                String actual = Utils.sha1Hex(p);
-                if (!actual.equalsIgnoreCase(e.sha1)) {
-                    LogManager.getLogger().severe("Neoforge установлен неправильно ;( sha1 не совпадает для " + p);
+                String actual = (e.sha256 != null && !e.sha256.isBlank())
+                        ? Utils.sha256Hex(p)
+                        : Utils.sha1Hex(p);
+                if (!actual.equalsIgnoreCase(e.sha256)) {
+                    LogManager.getLogger().severe("Neoforge установлен неправильно ;( sha256 не совпадает для " + p);
                     return false;
                 }
             }
@@ -136,7 +137,12 @@ public class NeoForgeManager {
         String encoded = encodePathForUri(serverInstallerPath);
         String url = ArchiTechLauncher.BACKEND_URL + "/api/files/file/" + encoded;
         Path installer = gameDir.resolve("neoforge-installer.jar");
-        FileEntry entry = new FileEntry("neoforge", "NeoForge installer", url, installer, 0, null);
+
+        long size = Utils.tryHeadSize(url);
+        ArchiTechLauncher.DOWNLOAD_MANAGER.resetTotals();
+        ArchiTechLauncher.DOWNLOAD_MANAGER.setTotalBytesPlanned(size);
+
+        FileEntry entry = new FileEntry("neoforge", "NeoForge installer", url, installer, size, null);
 
         ArchiTechLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(entry, true);
 
@@ -352,11 +358,12 @@ public class NeoForgeManager {
 
         java.util.function.Consumer<Path> add = p -> {
             try {
-                String sha = Utils.sha1Hex(p);
+                String sha = Utils.sha256Hex(p);
                 Path rel = gameDir.relativize(p);
                 InstalledManifest.Entry e = new InstalledManifest.Entry();
                 e.path = rel.toString().replace('\\','/');
-                e.sha1 = sha;
+                e.sha256 = sha;
+                e.sha1 = null;
                 im.files.add(e);
             } catch (Exception ex) {
                 LogManager.getLogger().warning("Пропускаю проблемный файл " + p.getFileName() + " " + ex.getMessage());
@@ -396,6 +403,6 @@ public class NeoForgeManager {
         public String installedAt;
         public String version;
         public List<Entry> files;
-        public static class Entry { public String path; public String sha1; }
+        public static class Entry { public String path; public String sha1; public String sha256; }
     }
 }

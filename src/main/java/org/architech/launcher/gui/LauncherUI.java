@@ -24,7 +24,6 @@ import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.player.PlayersPopup;
 import org.architech.launcher.gui.player.AvatarImage;
 import org.architech.launcher.gui.news.NewsList;
-import org.architech.launcher.gui.player.skin.MinecraftSkinView;
 import org.architech.launcher.gui.settings.MainSettingsUI;
 import org.architech.launcher.gui.timer.Timer;
 import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
@@ -37,7 +36,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
 import static org.architech.launcher.ArchiTechLauncher.LAUNCHER_DIR;
 
 public class LauncherUI {
@@ -54,9 +52,11 @@ public class LauncherUI {
     private final Circle pingDotField = new Circle(6);
 
     private static Scene mainScene;
+    private static Region MAIN_ROOT;
 
     public LauncherUI(Stage stage, Consumer<String> launchHandler, Runnable updateHandler) {
         BorderPane root = new BorderPane();
+        MAIN_ROOT = root;
         root.setPadding(new Insets(20));
 
         usernameField = new TextField("Имя пользователя");
@@ -141,21 +141,21 @@ public class LauncherUI {
         controls.setAlignment(Pos.CENTER);
         BorderPane left = new BorderPane();
 
-        MinecraftSkinView view = new MinecraftSkinView();
-        view.setPrefHeight(300);
-        view.setMaxWidth(Double.MAX_VALUE);
-        BorderPane.setMargin(view, new Insets(0, 0, 16, 0));
-        left.setTop(view);
+        //MinecraftSkinView view = new MinecraftSkinView();
+        //view.setPrefHeight(300);
+        //view.setMaxWidth(Double.MAX_VALUE);
+        //BorderPane.setMargin(view, new Insets(0, 0, 16, 0));
+        //left.setTop(view);
 
-        var acc = AccountManager.getCurrentAccount();
-        if (acc != null && acc.getUsername() != null) {
-            view.setSkinUrl(BACKEND_URL + acc.getSkinUrl());
-        } else {
-            view.setSkinUrl("Steve");
-        }
+        //var acc = AccountManager.getCurrentAccount();
+        //if (acc != null && acc.getUsername() != null) {
+        //    view.setSkinUrl(BACKEND_URL + acc.getSkinUrl());
+        //} else {
+        //    view.setSkinUrl("Steve");
+        //}
 
-        assert acc != null;
-        System.out.println(acc.getSkinUrl());
+       // assert acc != null;
+       // System.out.println(acc.getSkinUrl());
 
         left.setBottom(controls);
         root.setLeft(left);
@@ -352,9 +352,10 @@ public class LauncherUI {
     }
 
     public static void applyBackground(Path imgPath) {
-        if (mainScene != null && mainScene.getRoot() instanceof Region region) {
-            BackgroundCache.apply(imgPath, region);
-        }
+        if (mainScene == null) return;
+        var current = mainScene.getRoot();
+        if (current instanceof Region r1) BackgroundCache.apply(imgPath, r1);
+        if (MAIN_ROOT != null && current != MAIN_ROOT) BackgroundCache.apply(imgPath, MAIN_ROOT);
     }
 
     private void loadBackgroundFromConfig() {

@@ -81,19 +81,6 @@ public class Utils {
         return 0L;
     }
 
-    public static String sha1Hex(Path path) throws Exception {
-        MessageDigest md = MessageDigest.getInstance("SHA-1");
-        try (InputStream fis = Files.newInputStream(path);
-             DigestInputStream dis = new DigestInputStream(fis, md)) {
-             byte[] buf = new byte[8192];
-             while (dis.read(buf) != -1) {}
-        }
-        byte[] digest = md.digest();
-        StringBuilder sb = new StringBuilder();
-        for (byte b : digest) sb.append(String.format("%02x", b));
-        return sb.toString();
-    }
-
     public static void deleteDirectory(Path path) throws IOException {
         if (Files.notExists(path)) {
             return;
@@ -127,25 +114,6 @@ public class Utils {
         }
         if (resp.statusCode() >= 400) throw new IOException("HTTP error " + resp.statusCode() + " for " + urlStr);
         return resp.body();
-    }
-
-    public static String sha1(Path file) {
-        try (InputStream in = Files.newInputStream(file)) {
-            MessageDigest digest = MessageDigest.getInstance("SHA-1");
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = in.read(buffer)) > 0) {
-                digest.update(buffer, 0, read);
-            }
-            byte[] hash = digest.digest();
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     public static void openInBrowser(String url) {
@@ -335,6 +303,65 @@ public class Utils {
         }
     }
 
+    public static String sha1Hex(Path path) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
+        try (InputStream fis = Files.newInputStream(path);
+             DigestInputStream dis = new DigestInputStream(fis, md)) {
+            byte[] buf = new byte[8192];
+            while (dis.read(buf) != -1) {}
+        }
+        byte[] digest = md.digest();
+        StringBuilder sb = new StringBuilder();
+        for (byte b : digest) sb.append(String.format("%02x", b));
+        return sb.toString();
+    }
+
+    public static String sha1(Path file) {
+        try (InputStream in = Files.newInputStream(file)) {
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) > 0) {
+                digest.update(buffer, 0, read);
+            }
+            byte[] hash = digest.digest();
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static String sha256Hex(Path path) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        try (InputStream fis = Files.newInputStream(path);
+             DigestInputStream dis = new DigestInputStream(fis, md)) {
+            byte[] buf = new byte[8192];
+            while (dis.read(buf) != -1) {}
+        }
+        byte[] digest = md.digest();
+        StringBuilder sb = new StringBuilder();
+        for (byte b : digest) sb.append(String.format("%02x", b));
+        return sb.toString();
+    }
+
+    public static String sha256(Path file) {
+        try (InputStream in = Files.newInputStream(file)) {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) > 0) digest.update(buffer, 0, read);
+            byte[] hash = digest.digest();
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
 }
 

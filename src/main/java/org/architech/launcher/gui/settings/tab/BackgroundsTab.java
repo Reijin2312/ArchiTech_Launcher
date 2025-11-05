@@ -119,7 +119,6 @@ public class BackgroundsTab {
                     if (match != null) {
                         try {
                             LauncherUI.applyBackground(match);
-                            MainSettingsUI.applyBackground(match);
                             ArchiTechLauncher.LAUNCHER_BACKGROUND = match.getFileName().toString().trim();
                             selectedFileName = match.getFileName().toString().trim();
                         } catch (Exception ex) {
@@ -263,7 +262,6 @@ public class BackgroundsTab {
                             } catch (Exception ignored) {}
                             selectedFileName = null;
                             Platform.runLater(() -> {
-                                try { MainSettingsUI.applyBackground(null); } catch (Exception ignored) {}
                                 try { LauncherUI.applyBackground(null); } catch (Exception ignored) {}
                             });
                         }
@@ -286,11 +284,6 @@ public class BackgroundsTab {
             LauncherUI.applyBackground(p);
         } catch (Exception ex) {
             LogManager.getLogger().warning("LauncherUI.applyBackground failed: " + ex.getMessage());
-        }
-        try {
-            MainSettingsUI.applyBackground(p);
-        } catch (Exception ex) {
-            LogManager.getLogger().warning("MainSettingsUI.applyBackground failed: " + ex.getMessage());
         }
 
         try {

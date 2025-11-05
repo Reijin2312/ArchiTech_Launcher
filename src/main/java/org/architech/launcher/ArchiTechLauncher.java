@@ -38,7 +38,7 @@ public class ArchiTechLauncher extends Application {
     public static final String MINECRAFT_VERSION = "1.21.1";
 
     public static Path GAME_DIR = Paths.get(System.getProperty("user.home"), ".architech");
-    public static String FRONTEND_URL = "https://architech-mc.ru/";
+    public static String FRONTEND_URL = "https://architech-mc.ru";
     public static String BACKEND_URL = "https://launcher.architech-mc.ru";
     public static Path CONFIG_PATH;
     public static Path LAUNCHER_DIR;

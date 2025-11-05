@@ -42,11 +42,12 @@ public class DownloadManager {
                 if (f.size > 0) sum += f.size;
                 else sum += Utils.tryHeadSize(f.url);
             } else {
-                if (f.sha1 != null) {
+                if (f.sha256 != null) {
+                    String local = Utils.sha256Hex(f.path);
+                    if (!f.sha256.equalsIgnoreCase(local)) sum += (f.size > 0 ? f.size : Utils.tryHeadSize(f.url));
+                } else if (f.sha1 != null) {
                     String local = Utils.sha1Hex(f.path);
-                    if (!f.sha1.equalsIgnoreCase(local)) {
-                        sum += (f.size > 0 ? f.size : Utils.tryHeadSize(f.url));
-                    }
+                    if (!f.sha1.equalsIgnoreCase(local)) sum += (f.size > 0 ? f.size : Utils.tryHeadSize(f.url));
                 } else if (f.size > 0) {
                     long local = Files.size(f.path);
                     if (local != f.size) sum += f.size;
@@ -218,7 +219,7 @@ public class DownloadManager {
 
                     String text = f.name + " (" + (downloadedFile / 1024) +
                             (f.size > 0 ? (" / " + (f.size / 1024)) : "") + " КБ)";
-                    if (updateUI) ArchiTechLauncher.UI.updateProgress(text + (percent >= 0 ? " | Всего: " + percent + "%" : ""), globalProgress);
+                    if (updateUI) ArchiTechLauncher.UI.updateProgress(text, globalProgress);
                 }
                 out.flush();
             }  finally {
@@ -231,7 +232,17 @@ public class DownloadManager {
                 LogManager.getLogger().info(f.name + " -> скачано: " + downloadedFile + " байт (ожидаемый размер неизвестен)");
             }
 
-            if (f.sha1 != null) {
+            String want256 = f.sha256;
+            String want1   = f.sha1;
+            if (want256 != null && !want256.isBlank()) {
+                String hex = Utils.sha256Hex(tmp);
+                if (!f.sha256.equalsIgnoreCase(hex)) {
+                    if (addedToGlobal > 0) totalBytesDone.addAndGet(-addedToGlobal);
+                    Files.deleteIfExists(tmp);
+                    LogManager.getLogger().warning("Хэш не совпал для файла " + f.name);
+                    throw new IOException("Хэш не совпал для файла " + f.name);
+                }
+            } else if (want1 != null && !want1.isBlank()) {
                 String hex = Utils.sha1Hex(tmp);
                 if (!f.sha1.equalsIgnoreCase(hex)) {
                     if (addedToGlobal > 0) totalBytesDone.addAndGet(-addedToGlobal);
@@ -259,9 +270,10 @@ public class DownloadManager {
     private boolean isFileValid(FileEntry f) {
         try {
             if (!Files.exists(f.path)) return false;
-            if (f.sha1 != null) {
-                String actual = Utils.sha1Hex(f.path);
-                return f.sha1.equalsIgnoreCase(actual);
+            if (f.sha256 != null) {
+                return f.sha256.equalsIgnoreCase(Utils.sha256Hex(f.path));
+            } else if (f.sha1 != null) {
+                return f.sha1.equalsIgnoreCase(Utils.sha1Hex(f.path));
             } else if (f.size > 0) {
                 return Files.size(f.path) == f.size;
             } else {
@@ -273,10 +285,16 @@ public class DownloadManager {
         }
     }
 
+    public void resetTotals() {
+        totalBytesPlanned.set(0);
+        totalBytesDone.set(0);
+    }
+
     public void cancelAllDownloads() {
         for (Closeable c : activeDownloads.values()) {
             try { c.close(); } catch (Exception ignored) {}
         }
+        resetTotals();
         activeDownloads.clear();
     }
 }

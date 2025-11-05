@@ -17,9 +17,10 @@ public final class AvatarImage {
 
     public static Image forAccount(Account a, int size) {
         if (a == null) return FALLBACK;
+
         String av = a.getAvatarUrl();
         if (av != null && !av.isBlank()) {
-            String url = av.startsWith("http") ? av : (ArchiTechLauncher.BACKEND_URL + av);
+            String url = ArchiTechLauncher.FRONTEND_URL + av;
             return loadUrlCached(url, size);
         }
         return FALLBACK;
@@ -29,7 +30,7 @@ public final class AvatarImage {
         if (username == null || username.isBlank()) return FALLBACK;
 
         try {
-            String api = ArchiTechLauncher.BACKEND_URL
+            String api = ArchiTechLauncher.FRONTEND_URL
                     + "/api/v1/users/by-name?username="
                     + URLEncoder.encode(username, StandardCharsets.UTF_8);
 
@@ -44,7 +45,7 @@ public final class AvatarImage {
                 String av = findField(json, "avatarUrl");
                 if (av != null && !av.isBlank()) {
                     String url = av.startsWith("http") ? av
-                            : (ArchiTechLauncher.BACKEND_URL + av);
+                            : (ArchiTechLauncher.FRONTEND_URL + av);
                     return loadUrlCached(url, size);
                 }
             }

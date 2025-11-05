@@ -274,6 +274,9 @@ public class SettingsTab {
                 Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValue(w, cfg);
             }
             GAME_DIR = Path.of(gameDirField.getText());
+            VERSIONS_DIR = GAME_DIR.resolve("versions");
+            LIBRARIES_DIR = GAME_DIR.resolve("libraries");
+            ASSETS_DIR = GAME_DIR.resolve("assets");
             JAVA_PATH = Path.of(javaField.getText());
             HTTP_TIMEOUT = netTimeoutSpinner.getValue();
             AUTO_UPDATE_CLIENT = autoUpdate.isSelected();
