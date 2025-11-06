@@ -353,16 +353,16 @@ public class SettingsTab {
                 java.awt.Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
                 int width = Math.max(854, Math.min(screen.width - 200, 1920));
                 int height = Math.max(480, Math.min(screen.height - 200, 1080));
-                def.put("winWidth", String.valueOf(width));
-                def.put("winHeight", String.valueOf(height));
+                def.put("winWidth", width);
+                def.put("winHeight", height);
             } catch (Throwable t) {
-                def.put("winWidth", "854");
-                def.put("winHeight", "480");
+                def.put("winWidth", 854);
+                def.put("winHeight", 480);
             }
 
-            def.put("netTimeout", "30");
+            def.put("netTimeout", 30);
 
-            def.put("background", "СherryAndRiver.png");
+            def.put("background", "CherryAndRiver.png");
 
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {
