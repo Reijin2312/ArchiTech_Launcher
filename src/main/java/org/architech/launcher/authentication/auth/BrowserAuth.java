@@ -9,7 +9,7 @@ import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.gui.error.ErrorPanel;
-import java.awt.Desktop;
+import org.architech.launcher.utils.Utils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -19,7 +19,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
@@ -65,11 +64,11 @@ public final class BrowserAuth {
 
                         if ("OPTIONS".equalsIgnoreCase(method)) {
                             exchange.sendResponseHeaders(204, -1);
-                            return; // ← без снятия latch
+                            return;
                         }
                         if (!"POST".equalsIgnoreCase(method)) {
                             write(exchange, 405, "{\"error\":\"method\"}");
-                            return; // ← без latch
+                            return;
                         }
 
                         byte[] body = exchange.getRequestBody().readAllBytes();
@@ -99,7 +98,7 @@ public final class BrowserAuth {
                 String cb = "http://127.0.0.1:" + port + cbPath;
 
                 URI loginUrl = buildFrontendUri(route, cb);
-                openInBrowser(loginUrl);
+                Utils.openInBrowser(String.valueOf(loginUrl));
 
                 boolean ok = latch.await(180, TimeUnit.SECONDS);
                 if (!ok) throw new TimeoutException("no callback");
@@ -155,18 +154,6 @@ public final class BrowserAuth {
         return new URI(base.getScheme(), base.getUserInfo(), base.getHost(), base.getPort(), p, q, null);
     }
 
-    private static void openInBrowser(URI uri) throws Exception {
-        if (Desktop.isDesktopSupported()) {
-            Desktop.getDesktop().browse(uri);
-            return;
-        }
-        String u = uri.toString();
-        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        if (os.contains("win")) new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", u).start();
-        else if (os.contains("mac")) new ProcessBuilder("open", u).start();
-        else new ProcessBuilder("xdg-open", u).start();
-    }
-
     private static void addCors(HttpExchange ex){
         Headers h = ex.getResponseHeaders();
         h.set("Access-Control-Allow-Origin", "*");
@@ -181,6 +168,7 @@ public final class BrowserAuth {
         ex.sendResponseHeaders(code, b.length);
         try (OutputStream os = ex.getResponseBody()) { os.write(b); }
     }
+
     private static void writeSafe(HttpExchange ex, int code, String body){
         try { write(ex, code, body); } catch (Exception ignored) {}
     }

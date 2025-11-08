@@ -14,7 +14,6 @@ import javafx.stage.Stage;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.gui.error.ErrorPanel;
-import org.architech.launcher.gui.settings.MainSettingsUI;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import java.io.*;
@@ -50,8 +49,9 @@ public class BackgroundsTab {
         TextField search = new TextField();
         search.setPromptText("Поиск по имени файла");
         Button searchBtn = new Button("Поиск");
+        searchBtn.setPrefHeight(28);
         Button addBtn = new Button("+");
-        addBtn.setPrefSize(36,28);
+        addBtn.setPrefSize(28,28);
         HBox.setHgrow(search, Priority.ALWAYS);
         top.getChildren().addAll(search, searchBtn, addBtn);
         root.setTop(top);
@@ -68,7 +68,6 @@ public class BackgroundsTab {
         sp.setFitToWidth(true);
         sp.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        sp.setFitToWidth(true);
         root.setCenter(sp);
 
         searchBtn.setOnAction(e -> applyFilter(search.getText()));
@@ -96,31 +95,41 @@ public class BackgroundsTab {
 
     private void loadAndShow() {
         ArchiTechLauncher.submitBackground(() -> {
-            items.clear();
+            List<Path> newItems;
             try (Stream<Path> s = Files.list(backgroundsDir)) {
-                items.addAll(s.filter(p -> {
-                    String n = p.getFileName().toString().toLowerCase();
-                    return n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg");
-                }).sorted().toList());
-            } catch (Exception ignored) {}
+                newItems = s
+                        .filter(p -> {
+                            String n = p.getFileName().toString().toLowerCase();
+                            return n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg");
+                        })
+                        .sorted(Comparator.comparing((Path x) -> x.getFileName().toString(),
+                                String.CASE_INSENSITIVE_ORDER).reversed())
+                        .toList();
+            } catch (Exception ex) {
+                LogManager.getLogger().warning("list backgrounds failed: " + ex.getMessage());
+                newItems = List.of();
+            }
 
             readSelectedFromConfig();
 
+            List<Path> finalNewItems = newItems;
             Platform.runLater(() -> {
+                items.clear();
+                items.addAll(finalNewItems);
+
                 if (selectedFileName != null && !selectedFileName.isBlank()) {
                     String cfg = selectedFileName.trim();
                     Path match = null;
                     for (Path p : items) {
                         if (cfg.equalsIgnoreCase(p.getFileName().toString().trim())) {
-                            match = p;
-                            break;
+                            match = p; break;
                         }
                     }
                     if (match != null) {
                         try {
                             LauncherUI.applyBackground(match);
                             ArchiTechLauncher.LAUNCHER_BACKGROUND = match.getFileName().toString().trim();
-                            selectedFileName = match.getFileName().toString().trim();
+                            selectedFileName = ArchiTechLauncher.LAUNCHER_BACKGROUND;
                         } catch (Exception ex) {
                             LogManager.getLogger().warning("apply background on load failed: " + ex.getMessage());
                         }
@@ -128,6 +137,7 @@ public class BackgroundsTab {
                         selectedFileName = selectedFileName.trim();
                     }
                 }
+
                 rebuildGrid(items);
                 clearFocus();
             });
@@ -175,8 +185,6 @@ public class BackgroundsTab {
             tile.setAlignment(Pos.TOP_CENTER);
             tile.getStyleClass().add("background-tile");
             tile.setPadding(new Insets(6));
-
-            // запретить плитке получать фокус (чтобы CSS :focused не подкрашивал первый)
             tile.setFocusTraversable(false);
 
             ImageView iv = new ImageView();
@@ -188,7 +196,7 @@ public class BackgroundsTab {
             iv.setFocusTraversable(false);
 
             try {
-                Image img = new Image(p.toUri().toString(), true);
+                Image img = new Image(p.toUri().toString(), 0, 120, true, true, true);
                 iv.setImage(img);
             } catch (Exception ignored) {}
 
@@ -222,9 +230,6 @@ public class BackgroundsTab {
             tile.setOnMouseClicked(ev -> {
                 if (ev.getButton() == MouseButton.PRIMARY) {
                     applyAndSaveBackground(p);
-                    selectedFileName = p.getFileName().toString().trim();
-                    rebuildGrid(items);
-                    clearFocus();
                 } else if (ev.getButton() == MouseButton.SECONDARY) {
                     menu.show(tile, ev.getScreenX(), ev.getScreenY());
                 }

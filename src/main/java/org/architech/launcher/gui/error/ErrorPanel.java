@@ -72,7 +72,7 @@ public class ErrorPanel {
         a.showAndWait().ifPresent(response -> {
             if (response == reportBtn) {
                 String encoded = URLEncoder.encode(msg + "\n\n" + details, StandardCharsets.UTF_8);
-                Utils.openWebpage("https://t.me/Raijin2312?text=" + encoded);
+                Utils.openInBrowser("https://t.me/Raijin2312?text=" + encoded);
             }
         });
     }
