@@ -327,16 +327,14 @@ public class MinecraftLauncher {
         return input;
     }
 
-    private static void ensureSecretsLoaded(Account acc) {
+        private static void ensureSecretsLoaded(Account acc) {
         if (acc == null) return;
-        if (AccountStore.SECRETS == null) return;
         try {
-            AccountStore.SECRETS.getSecret(AccountStore.secretKeyName(acc, "mcAccessToken")).ifPresent(acc::setAccessToken);
-            AccountStore.SECRETS.getSecret(AccountStore.secretKeyName(acc, "uuid")).ifPresent(acc::setUuid);
-            AccountStore.SECRETS.getSecret(AccountStore.secretKeyName(acc, "username")).ifPresent(acc::setUsername);
+            AccountStore.getSecret(acc, "mcAccessToken").ifPresent(acc::setAccessToken);
+            AccountStore.getSecret(acc, "uuid").ifPresent(acc::setUuid);
+            AccountStore.getSecret(acc, "username").ifPresent(acc::setUsername);
         } catch (Exception e) {
-            LogManager.getLogger().warning("Не удалось загрузить секреты для аккаунта {}: {}" + e.getMessage());
+            LogManager.getLogger().warning("Failed to load secrets from storage: " + e.getMessage());
         }
     }
-
 }

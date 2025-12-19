@@ -215,7 +215,6 @@ public class DownloadManager {
                     long planned = totalBytesPlanned.get();
                     long done = totalBytesDone.get();
                     double globalProgress = (planned > 0) ? (double) done / planned : -1;
-                    int percent = globalProgress >= 0 ? (int) (globalProgress * 100) : -1;
 
                     String text = f.name + " (" + (downloadedFile / 1024) +
                             (f.size > 0 ? (" / " + (f.size / 1024)) : "") + " КБ)";

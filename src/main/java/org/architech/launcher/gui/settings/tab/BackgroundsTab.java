@@ -14,7 +14,6 @@ import javafx.stage.Stage;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.gui.error.ErrorPanel;
-import org.architech.launcher.gui.settings.MainSettingsUI;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
 import java.io.*;
@@ -247,8 +246,9 @@ public class BackgroundsTab {
                         Map<String,Object> cfg = new LinkedHashMap<>();
                         if (Files.exists(ArchiTechLauncher.CONFIG_PATH)) {
                             try (Reader r = Files.newBufferedReader(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
-                                Map<?,?> old = Jsons.MAPPER.readValue(r, Map.class);
-                                if (old != null) cfg.putAll((Map) old);
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> old = (Map<String, Object>) Jsons.MAPPER.readValue(r, Map.class);
+                                if (old != null) cfg.putAll(old);
                             } catch (Exception ignored) {}
                         }
 
@@ -290,8 +290,9 @@ public class BackgroundsTab {
             Map<String,Object> cfg = new LinkedHashMap<>();
             if (Files.exists(ArchiTechLauncher.CONFIG_PATH)) {
                 try (Reader r = Files.newBufferedReader(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
-                    Map<?,?> old = Jsons.MAPPER.readValue(r, Map.class);
-                    if (old != null) cfg.putAll((Map) old);
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> old = (Map<String, Object>) Jsons.MAPPER.readValue(r, Map.class);
+                    if (old != null) cfg.putAll(old);
                 } catch (Exception ignored) {}
             }
 

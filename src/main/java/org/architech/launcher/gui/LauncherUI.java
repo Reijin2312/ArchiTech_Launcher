@@ -328,6 +328,10 @@ public class LauncherUI {
         }
     }
 
+    public void refreshAccountDisplay() {
+        updateUsernameField(AccountManager.getCurrentAccount());
+    }
+
     public void updateProgress(String text, double progress01) {
         Platform.runLater(() -> {
             progressLabel.setText(text);

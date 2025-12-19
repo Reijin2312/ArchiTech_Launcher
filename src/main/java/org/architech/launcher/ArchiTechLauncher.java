@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
+import org.architech.launcher.authentication.auth.AuthService;
 import org.architech.launcher.discord.DiscordIntegration;
 import org.architech.launcher.gui.BackgroundCache;
 import org.architech.launcher.gui.error.ErrorPanel;
@@ -91,6 +92,7 @@ public class ArchiTechLauncher extends Application {
                 }
             }
         }
+        Files.createDirectories(ACCOUNT_FILE.getParent());
 
         Path initialBg = LAUNCHER_DIR.resolve("backgrounds").resolve(LAUNCHER_BACKGROUND);
         BackgroundCache.preload(initialBg);
@@ -98,6 +100,22 @@ public class ArchiTechLauncher extends Application {
         VERSIONS_DIR = GAME_DIR.resolve("versions");
         LIBRARIES_DIR = GAME_DIR.resolve("libraries");
         ASSETS_DIR = GAME_DIR.resolve("assets");
+
+        // Проверяем и обновляем токены при старте лаунчера
+        backgroundExecutor.submit(() -> {
+            try {
+                if (AuthService.ensureValidTokens()) {
+                    AuthService.updateProfile();
+                    Platform.runLater(() -> {
+                        if (UI != null) {
+                            UI.refreshAccountDisplay();
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                LogManager.getLogger().warning("Ошибка обновления токенов/профиля: " + e.getMessage());
+            }
+        });
 
         UI = new LauncherUI(stage, this::onLaunchClicked, this::onCheckUpdatesClicked);
 
@@ -123,6 +141,14 @@ public class ArchiTechLauncher extends Application {
 
         Future<?> f = launcherExecutor.submit(() -> {
             try {
+                // Проверяем токены перед запуском с показом диалога при необходимости
+                if (!AuthService.ensureValidTokens(true)) {
+                    Platform.runLater(() -> {
+                        UI.updateProgress("Требуется авторизация", 1.0);
+                    });
+                    return; // Прерываем запуск если токены невалидны
+                }
+
                 Platform.runLater(() -> {
                     UI.setLaunchingState(true);
                     Timer.startTimer();

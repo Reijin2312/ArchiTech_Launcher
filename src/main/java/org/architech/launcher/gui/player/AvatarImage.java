@@ -5,7 +5,7 @@ import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -34,7 +34,7 @@ public final class AvatarImage {
                     + "/api/v1/users/by-name?username="
                     + URLEncoder.encode(username, StandardCharsets.UTF_8);
 
-            HttpURLConnection c = (HttpURLConnection) new URL(api).openConnection();
+            HttpURLConnection c = (HttpURLConnection) URI.create(api).toURL().openConnection();
             c.setConnectTimeout(3000);
             c.setReadTimeout(3000);
             c.setRequestMethod("GET");

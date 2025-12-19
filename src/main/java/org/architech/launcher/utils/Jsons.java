@@ -12,7 +12,9 @@ public final class Jsons {
         MAPPER.registerModule(new JavaTimeModule());
         MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        MAPPER.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
+        // MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES включен по умолчанию с Jackson 2.12+
+        // Если требуется явное включение для старых версий, используйте:
+        // MAPPER.setPropertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE);
 
         PRETTY = MAPPER.writerWithDefaultPrettyPrinter();
     }

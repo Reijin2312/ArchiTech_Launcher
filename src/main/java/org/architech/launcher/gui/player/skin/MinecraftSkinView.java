@@ -1,6 +1,5 @@
 package org.architech.launcher.gui.player.skin;
 
-import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.concurrent.Task;
 import javafx.geometry.Point2D;

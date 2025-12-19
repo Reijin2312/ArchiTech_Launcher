@@ -109,10 +109,10 @@ public final class ArchiTechServerInfo {
             readFully(in, data2);
             ByteArrayInputStream bais2 = new ByteArrayInputStream(data2);
             int pid2 = readVarInt(bais2);
-            long pong = -1;
+            // Проверяем корректность pong packet (pid == 0x01)
             if (pid2 == 0x01) {
                 DataInputStream dis = new DataInputStream(bais2);
-                pong = dis.readLong();
+                dis.readLong(); // читаем timestamp но не используем
             }
 
             int pingMs = (int) (System.currentTimeMillis() - ts);
