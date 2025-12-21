@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.io.*;
 import java.util.*;
+import java.util.Locale;
 import java.util.zip.*;
 import static org.architech.launcher.ArchiTechLauncher.CONFIG_PATH;
 import static org.architech.launcher.ArchiTechLauncher.JAVA_PATH;
@@ -79,6 +80,9 @@ public class MinecraftLauncher {
         placeholders.put("classpath", String.join(File.pathSeparator, classpathEntries));
         placeholders.put("clientid", "");
         placeholders.put("auth_xuid", "");
+        Locale locale = Locale.forLanguageTag(ArchiTechLauncher.GAME_LANGUAGE_TAG == null ? "en-US" : ArchiTechLauncher.GAME_LANGUAGE_TAG);
+        args.add("-Duser.language=" + locale.getLanguage());
+        if (!locale.getCountry().isEmpty()) args.add("-Duser.country=" + locale.getCountry());
 
         if (Files.exists(CONFIG_PATH)) {
             Map<?, ?> cfg;

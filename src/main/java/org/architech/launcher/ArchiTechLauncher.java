@@ -10,6 +10,9 @@ import org.architech.launcher.gui.BackgroundCache;
 import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.gui.settings.tab.SettingsTab;
 import org.architech.launcher.gui.LauncherUI;
+import org.architech.launcher.authentication.account.Account;
+import org.architech.launcher.authentication.account.AccountManager;
+import org.architech.launcher.authentication.auth.JoinTicketService;
 import org.architech.launcher.gui.timer.Timer;
 import org.architech.launcher.managment.DownloadManager;
 import org.architech.launcher.managment.ModsManager;
@@ -22,6 +25,7 @@ import org.architech.launcher.utils.serverinfo.ServersDatGenerator;
 import org.architech.launcher.utils.serverinfo.ServersDatWriter;
 import java.io.*;
 import java.net.URISyntaxException;
+import java.time.Instant;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,6 +35,9 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.lang.ProcessHandle;
+import java.util.Locale;
 import static org.architech.launcher.managment.NeoForgeManager.getInstalledVersion;
 import static org.architech.launcher.utils.serverinfo.ServersDatWriter.writeServersDat;
 
@@ -48,6 +55,9 @@ public class ArchiTechLauncher extends Application {
     public static Path ASSETS_DIR;
     public static Path JAVA_PATH;
     public static Path ACCOUNT_FILE;
+    public static Path LEGACY_GAME_LOCK_FILE;
+    public static Path GAME_LOCK_FILE;
+    public static String GAME_LANGUAGE_TAG = "ru-RU";
     public static String LAUNCHER_BACKGROUND;
     public static int HTTP_TIMEOUT;
     public static boolean CLOSE_ON_LAUNCH = false;
@@ -63,6 +73,9 @@ public class ArchiTechLauncher extends Application {
     private static final AtomicReference<Future<?>> updateFuture = new AtomicReference<>();
     private static final AtomicReference<DownloadManager> activeDownloadManager = new AtomicReference<>();
     private static volatile Process currentGameProcess = null;
+    private static volatile String lastJoinId = null;
+    private static volatile ProcessHandle trackedProcessHandle = null;
+    private static final AtomicBoolean launchCancelled = new AtomicBoolean(false);
 
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
@@ -71,6 +84,7 @@ public class ArchiTechLauncher extends Application {
         LAUNCHER_DIR = Paths.get(SettingsTab.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
         CONFIG_PATH = LAUNCHER_DIR.resolve("launcher_config.json");
         ACCOUNT_FILE = LAUNCHER_DIR.resolve(".account.json");
+        LEGACY_GAME_LOCK_FILE = LAUNCHER_DIR.resolve(".game.lock.json");
 
         SettingsTab.createDefaultConfigIfMissing();
 
@@ -84,6 +98,7 @@ public class ArchiTechLauncher extends Application {
                 if (cfg.containsKey("closeOnLaunch")) CLOSE_ON_LAUNCH = (boolean) cfg.get("closeOnLaunch");
                 if (cfg.containsKey("netTimeout")) HTTP_TIMEOUT = (int) cfg.get("netTimeout");
                 if (cfg.containsKey("autoUpdate")) AUTO_UPDATE_CLIENT = (boolean) cfg.get("autoUpdate");
+                if (cfg.containsKey("language")) GAME_LANGUAGE_TAG = mapLanguageTag(String.valueOf(cfg.get("language")));
                 if (cfg.containsKey("background")) {
                     Object bg = cfg.get("background");
                     LAUNCHER_BACKGROUND = (bg instanceof String) ? ((String) bg).trim() : "CherryAndRiver.png";
@@ -92,6 +107,8 @@ public class ArchiTechLauncher extends Application {
                 }
             }
         }
+        GAME_LOCK_FILE = GAME_DIR.resolve(".game.lock.json");
+        loadExistingGameLock();
         Files.createDirectories(ACCOUNT_FILE.getParent());
 
         Path initialBg = LAUNCHER_DIR.resolve("backgrounds").resolve(LAUNCHER_BACKGROUND);
@@ -101,7 +118,7 @@ public class ArchiTechLauncher extends Application {
         LIBRARIES_DIR = GAME_DIR.resolve("libraries");
         ASSETS_DIR = GAME_DIR.resolve("assets");
 
-        // Проверяем и обновляем токены при старте лаунчера
+        // РџСЂРѕРІРµСЂСЏРµРј Рё РѕР±РЅРѕРІР»СЏРµРј С‚РѕРєРµРЅС‹ РїСЂРё СЃС‚Р°СЂС‚Рµ Р»Р°СѓРЅС‡РµСЂР°
         backgroundExecutor.submit(() -> {
             try {
                 if (AuthService.ensureValidTokens()) {
@@ -113,7 +130,7 @@ public class ArchiTechLauncher extends Application {
                     });
                 }
             } catch (Exception e) {
-                LogManager.getLogger().warning("Ошибка обновления токенов/профиля: " + e.getMessage());
+                LogManager.getLogger().warning("РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ С‚РѕРєРµРЅРѕРІ/РїСЂРѕС„РёР»СЏ: " + e.getMessage());
             }
         });
 
@@ -138,16 +155,21 @@ public class ArchiTechLauncher extends Application {
             cancelLaunch();
             return;
         }
+        if (isGameProcessRunning()) {
+            Platform.runLater(() -> ErrorPanel.showError("Игра уже запущена", "Закройте текущий клиент перед новым запуском."));
+            return;
+        }
 
         Future<?> f = launcherExecutor.submit(() -> {
             try {
-                // Проверяем токены перед запуском с показом диалога при необходимости
+                launchCancelled.set(false);
+                checkCancelled();
+
                 if (!AuthService.ensureValidTokens(true)) {
-                    Platform.runLater(() -> {
-                        UI.updateProgress("Требуется авторизация", 1.0);
-                    });
-                    return; // Прерываем запуск если токены невалидны
+                    Platform.runLater(() -> UI.updateProgress("Требуется авторизация", 1.0));
+                    return;
                 }
+                checkCancelled();
 
                 Platform.runLater(() -> {
                     UI.setLaunchingState(true);
@@ -155,12 +177,12 @@ public class ArchiTechLauncher extends Application {
                 });
 
                 UI.updateProgress("Подготовка к запуску...", 0);
+                checkCancelled();
 
                 int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
                 int rounds = 3;
 
                 activeDownloadManager.set(DOWNLOAD_MANAGER);
-
                 UI.updateProgress("Запускаю параллельную загрузку (" + threads + " потоков)...", 0);
 
                 if (AUTO_UPDATE_CLIENT) {
@@ -181,19 +203,21 @@ public class ArchiTechLauncher extends Application {
 
                     List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds, true);
 
-                    if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+                    checkCancelled();
 
                     if (!failed.isEmpty()) {
                         String names = failed.stream().map(x -> x.name).collect(Collectors.joining(", "));
-                        LogManager.getLogger().severe("Не удалось скачать некоторые файлы: " + names);
-                        throw new IOException("Не удалось скачать некоторые файлы: " + names);
+                        LogManager.getLogger().severe("Не удалось скачать следующие файлы: " + names);
+                        throw new IOException("Не удалось скачать следующие файлы: " + names);
                     }
 
                     NativesManager nativesManager = new NativesManager(GAME_DIR, MINECRAFT_VERSION);
                     nativesManager.prepareNatives(files);
                 }
 
+                checkCancelled();
                 NeoForgeManager.ensureInstalledAndReady(GAME_DIR, MINECRAFT_VERSION);
+                checkCancelled();
 
                 try {
                     ModsManager.syncMods(GAME_DIR);
@@ -202,17 +226,29 @@ public class ArchiTechLauncher extends Application {
                     Platform.runLater(() -> ErrorPanel.showError("Ошибка синхронизации модов", ex.getMessage()));
                 }
 
+                checkCancelled();
+
                 Path serversDat = GAME_DIR.resolve("servers.dat");
                 if (!Files.exists(serversDat)) ServersDatGenerator.createServersDat(serversDat);
 
-                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("Сервер Minecraft", "architech.mc-world.xyz").withHidden(false);
+                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("Наш Minecraft", "architech.mc-world.xyz").withHidden(false);
                 List<ServersDatWriter.ServerEntry> list = Collections.singletonList(mySrv);
 
                 Files.createDirectories(serversDat.getParent());
                 writeServersDat(serversDat, list);
 
+                Account account = AccountManager.getCurrentAccount();
+                if (account == null) {
+                    throw new IllegalStateException("Please login in the launcher before starting the game.");
+                }
+                UI.updateProgress("Запрашиваем доступ к серверу...", 0.9);
+                var jt = JoinTicketService.request(account, mySrv.ip);
+                lastJoinId = jt != null ? jt.joinId() : null;
+
                 Process p = MinecraftLauncher.launchMinecraft(GAME_DIR, "neoforge-" + getInstalledVersion(GAME_DIR));
                 currentGameProcess = p;
+                trackedProcessHandle = p.toHandle();
+                persistGameLock(p);
 
                 UI.updateProgress("Клиент запущен...", 1);
 
@@ -223,7 +259,7 @@ public class ArchiTechLauncher extends Application {
 
                 try {
                     while (true) {
-                        if (Thread.currentThread().isInterrupted()) {
+                        if (launchCancelled.get() || Thread.currentThread().isInterrupted()) {
                             try { p.destroyForcibly(); } catch (Exception ignored) {}
                             throw new InterruptedException();
                         }
@@ -241,19 +277,28 @@ public class ArchiTechLauncher extends Application {
 
                 Platform.runLater(() -> UI.updateProgress("Готово. Клиент завершил работу.", 1));
             } catch (InterruptedException ie) {
-                Platform.runLater(() -> UI.updateProgress("Ожидание...", 1.0));
+                Platform.runLater(() -> UI.updateProgress("Отмена...", 1.0));
             } catch (Exception e) {
-                LogManager.getLogger().severe("Ошибка запуска: " + e.getMessage());
-                Platform.runLater(() -> ErrorPanel.showError("Ошибка запуска", e.getMessage()));
+                LogManager.getLogger().severe("Ошибка при запуске игры: " + e.getMessage());
+                Platform.runLater(() -> ErrorPanel.showError("Ошибка при запуске игры", e.getMessage()));
             } finally {
                 activeDownloadManager.set(null);
                 currentGameProcess = null;
+                trackedProcessHandle = null;
                 launchFuture.set(null);
+                clearGameLock();
                 DOWNLOAD_MANAGER.cancelAllDownloads();
 
                 Platform.runLater(() -> {
                     Timer.stopTimer();
                     UI.setLaunchingState(false);
+                });
+                String joinIdToConsume = lastJoinId;
+                lastJoinId = null;
+                Account acc = AccountManager.getCurrentAccount();
+                backgroundExecutor.submit(() -> {
+                    try { JoinTicketService.consume(acc, joinIdToConsume); }
+                    catch (Exception ignored) {}
                 });
             }
         });
@@ -275,7 +320,7 @@ public class ArchiTechLauncher extends Application {
                     Timer.startTimer();
                 });
 
-                UI.updateProgress("Проверка/подготовка обновлений...", 0);
+                UI.updateProgress("РџСЂРѕРІРµСЂРєР°/РїРѕРґРіРѕС‚РѕРІРєР° РѕР±РЅРѕРІР»РµРЅРёР№...", 0);
 
                 VersionManager versionManager = new VersionManager();
                 JsonNode versionJson = versionManager.loadVersionJson(MINECRAFT_VERSION);
@@ -297,7 +342,7 @@ public class ArchiTechLauncher extends Application {
 
                 int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
                 int rounds = 3;
-                UI.updateProgress("Запускаю параллельную загрузку (" + threads + " потоков)...", 0);
+                UI.updateProgress("Р—Р°РїСѓСЃРєР°СЋ РїР°СЂР°Р»Р»РµР»СЊРЅСѓСЋ Р·Р°РіСЂСѓР·РєСѓ (" + threads + " РїРѕС‚РѕРєРѕРІ)...", 0);
 
                 List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds, true);
 
@@ -305,8 +350,8 @@ public class ArchiTechLauncher extends Application {
 
                 if (!failed.isEmpty()) {
                     String names = failed.stream().map(x -> x.name).collect(Collectors.joining(", "));
-                    LogManager.getLogger().severe("Не удалось скачать некоторые файлы: " + names);
-                    throw new IOException("Не удалось скачать некоторые файлы: " + names);
+                    LogManager.getLogger().severe("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРєР°С‡Р°С‚СЊ РЅРµРєРѕС‚РѕСЂС‹Рµ С„Р°Р№Р»С‹: " + names);
+                    throw new IOException("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРєР°С‡Р°С‚СЊ РЅРµРєРѕС‚РѕСЂС‹Рµ С„Р°Р№Р»С‹: " + names);
                 }
 
                 NativesManager nativesManager = new NativesManager(GAME_DIR, MINECRAFT_VERSION);
@@ -317,27 +362,27 @@ public class ArchiTechLauncher extends Application {
                 try {
                     ModsManager.syncMods(GAME_DIR);
                 } catch (Exception ex) {
-                    LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
-                    Platform.runLater(() -> ErrorPanel.showError("Ошибка синхронизации модов", ex.getMessage()));
+                    LogManager.getLogger().severe("РћС€РёР±РєР° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё РјРѕРґРѕРІ: " + ex.getMessage());
+                    Platform.runLater(() -> ErrorPanel.showError("РћС€РёР±РєР° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё РјРѕРґРѕРІ", ex.getMessage()));
                 }
 
                 Path serversDat = GAME_DIR.resolve("servers.dat");
                 if (!Files.exists(serversDat)) ServersDatGenerator.createServersDat(serversDat);
 
-                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("Сервер Minecraft", "architech.mc-world.xyz").withHidden(false);
+                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("РЎРµСЂРІРµСЂ Minecraft", "architech.mc-world.xyz").withHidden(false);
                 List<ServersDatWriter.ServerEntry> list = Collections.singletonList(mySrv);
 
                 Files.createDirectories(serversDat.getParent());
                 writeServersDat(serversDat, list);
 
-                Platform.runLater(() -> UI.updateProgress("Обновления применены — всё готово.", 1.0));
+                Platform.runLater(() -> UI.updateProgress("РћР±РЅРѕРІР»РµРЅРёСЏ РїСЂРёРјРµРЅРµРЅС‹ вЂ” РІСЃС‘ РіРѕС‚РѕРІРѕ.", 1.0));
 
             } catch (InterruptedException ie) {
-                Platform.runLater(() -> UI.updateProgress("Операция отменена.", 1.0));
+                Platform.runLater(() -> UI.updateProgress("РћРїРµСЂР°С†РёСЏ РѕС‚РјРµРЅРµРЅР°.", 1.0));
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
-                LogManager.getLogger().severe("Ошибка при проверке/обновлении: " + e.getMessage());
-                Platform.runLater(() -> ErrorPanel.showError("Ошибка обновления", e.getMessage()));
+                LogManager.getLogger().severe("РћС€РёР±РєР° РїСЂРё РїСЂРѕРІРµСЂРєРµ/РѕР±РЅРѕРІР»РµРЅРёРё: " + e.getMessage());
+                Platform.runLater(() -> ErrorPanel.showError("РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ", e.getMessage()));
             } finally {
                 activeDownloadManager.set(null);
                 updateFuture.set(null);
@@ -353,6 +398,7 @@ public class ArchiTechLauncher extends Application {
     }
 
     public static void cancelLaunch() {
+        launchCancelled.set(true);
         Future<?> f = launchFuture.getAndSet(null);
         if (f != null && !f.isDone()) f.cancel(true);
 
@@ -362,6 +408,9 @@ public class ArchiTechLauncher extends Application {
         if (currentGameProcess != null) {
             try { currentGameProcess.destroyForcibly(); } catch (Exception ignored) {}
         }
+        clearGameLock();
+        trackedProcessHandle = null;
+        lastJoinId = null;
 
         Platform.runLater(() -> {
             if (UI != null) {
@@ -371,6 +420,80 @@ public class ArchiTechLauncher extends Application {
         });
     }
 
+    private static void checkCancelled() throws InterruptedException {
+        if (launchCancelled.get() || Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException("cancelled");
+        }
+    }
+
+    public static String mapLanguageTag(String value) {
+        if (value == null) return GAME_LANGUAGE_TAG;
+        String v = value.toLowerCase(Locale.ROOT);
+        if (v.contains("ru")) return "ru-RU";
+        if (v.contains("en")) return "en-US";
+        return GAME_LANGUAGE_TAG == null ? "ru-RU" : GAME_LANGUAGE_TAG;
+    }
+
+    private static void loadExistingGameLock() {
+        try {
+            Path lockPath = GAME_LOCK_FILE;
+            if (lockPath == null || !Files.exists(lockPath)) {
+                if (LEGACY_GAME_LOCK_FILE != null && Files.exists(LEGACY_GAME_LOCK_FILE)) {
+                    lockPath = LEGACY_GAME_LOCK_FILE;
+                } else {
+                    return;
+                }
+            }
+            Map<?,?> lock = Jsons.MAPPER.readValue(Files.readString(lockPath), Map.class);
+            Object pidObj = lock.get("pid");
+            if (pidObj instanceof Number num) {
+                long pid = num.longValue();
+                final Path lp = lockPath;
+                ProcessHandle.of(pid).ifPresent(ph -> {
+                    if (ph.isAlive()) {
+                        trackedProcessHandle = ph;
+                        // migrate legacy lock forward for consistency
+                        if (!lp.equals(GAME_LOCK_FILE) && GAME_LOCK_FILE != null) {
+                            try {
+                                Files.createDirectories(GAME_LOCK_FILE.getParent());
+                                Files.copy(lp, GAME_LOCK_FILE);
+                            } catch (Exception ignored) {}
+                        }
+                    } else {
+                        clearGameLock();
+                    }
+                });
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static boolean isGameProcessRunning() {
+        try {
+            if (currentGameProcess != null && currentGameProcess.isAlive()) return true;
+        } catch (Exception ignored) {}
+        if (trackedProcessHandle != null && trackedProcessHandle.isAlive()) return true;
+        loadExistingGameLock();
+        return trackedProcessHandle != null && trackedProcessHandle.isAlive();
+    }
+
+    private static void persistGameLock(Process p) {
+        if (GAME_LOCK_FILE == null || p == null) return;
+        try {
+            Map<String, Object> lock = new LinkedHashMap<>();
+            lock.put("pid", p.pid());
+            lock.put("ts", Instant.now().toString());
+            Files.createDirectories(GAME_LOCK_FILE.getParent());
+            Files.writeString(GAME_LOCK_FILE, Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(lock), StandardCharsets.UTF_8);
+        } catch (Exception ignored) {}
+    }
+
+    private static void clearGameLock() {
+        try {
+            if (GAME_LOCK_FILE != null) Files.deleteIfExists(GAME_LOCK_FILE);
+            if (LEGACY_GAME_LOCK_FILE != null) Files.deleteIfExists(LEGACY_GAME_LOCK_FILE);
+        } catch (Exception ignored) {}
+    }
     private static ThreadFactory daemonFactory(String prefix) {
         final AtomicInteger id = new AtomicInteger(1);
         return r -> {
@@ -384,3 +507,13 @@ public class ArchiTechLauncher extends Application {
         backgroundExecutor.submit(r);
     }
 }
+
+
+
+
+
+
+
+
+
+

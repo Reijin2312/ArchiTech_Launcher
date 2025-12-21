@@ -26,6 +26,8 @@
     -fx-border-color: #6b6b6b;
     -fx-padding: 0 36 0 8;
     -fx-pref-height: 30px;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
 }
 
  .launch-btn {
@@ -63,7 +65,7 @@
 
 .news-wrapper {
     -fx-background-color: rgba(30,30,30,0.55);
-    -fx-background-radius: 8;
+    -fx-background-radius: 6;
 }
 
 .timer-label {
@@ -88,4 +90,41 @@
     -fx-text-fill: white; -fx-font-size: 14px;
     -fx-pref-width: 40;
     -fx-pref-height: 30;
+}
+.launch-btn {
+    -fx-background-color: #4caf50;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+    -fx-transition: all 120ms ease-in-out;
+}
+
+.launch-btn:hover {
+    -fx-background-color: #59c35c;
+    -fx-translate-y: -1px;
+}
+
+.launch-btn:pressed {
+    -fx-background-color: #3d8f41;
+    -fx-translate-y: 0;
+}
+
+.small-button, .account-btn, .username-field {
+    -fx-transition: all 120ms ease-in-out;
+}
+
+.small-button:hover, .account-btn:hover {
+    -fx-background-color: #4a4d4f;
+    -fx-translate-y: -1px;
+}
+
+/* Subtle rounding for cards */
+.info-bar, .news-wrapper {
+    -fx-border-radius: 6;
+}
+
+.ping-label-field {
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
 }

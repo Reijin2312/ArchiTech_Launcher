@@ -16,6 +16,12 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import javafx.animation.ScaleTransition;
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
+import javafx.animation.TranslateTransition;
+import javafx.animation.Animation;
+import javafx.util.Duration;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
@@ -44,8 +50,10 @@ public class LauncherUI {
     private final ProgressBar progressBar;
     private final Label progressLabel;
     private final Label percentLabel;
+    private TranslateTransition shineAnim;
     private final Button accountBtn;
     private final ContextMenu accountMenu;
+    private boolean accountMenuHiding = false;
     private final ImageView headView;
     private final Label onlineLabelField = new Label("Онлайн: —");
     private final Label pingLabelField = new Label("Пинг: — ms");
@@ -78,6 +86,30 @@ public class LauncherUI {
         StackPane.setMargin(headView, new Insets(0, 8, 0, 0));
 
         accountMenu = new ContextMenu();
+        accountMenu.setOnShowing(e -> {
+            accountMenuHiding = false;
+            Platform.runLater(() -> {
+                if (accountMenu.getSkin() == null || accountMenu.getSkin().getNode() == null) return;
+                var node = accountMenu.getSkin().getNode();
+                node.setOpacity(0);
+                node.setScaleX(0.96);
+                node.setScaleY(0.96);
+                ScaleTransition st = new ScaleTransition(Duration.millis(140), node);
+                st.setFromX(0.96);
+                st.setFromY(0.96);
+                st.setToX(1.0);
+                st.setToY(1.0);
+                FadeTransition ft = new FadeTransition(Duration.millis(140), node);
+                ft.setFromValue(0);
+                ft.setToValue(1);
+                new ParallelTransition(st, ft).play();
+            });
+        });
+        accountMenu.setOnAutoHide(e -> {
+            if (accountMenuHiding) return;
+            e.consume();
+            animateAccountMenuHide();
+        });
 
         Label chevron = new Label("⌄");
         chevron.getStyleClass().add("chevron");
@@ -89,8 +121,12 @@ public class LauncherUI {
         accountBtn.setGraphic(chevron);
         accountBtn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
         accountBtn.setOnAction(e -> {
-            rebuildAccountMenu();
-            accountMenu.show(accountBtn, Side.BOTTOM, 0, 0);
+            if (accountMenu.isShowing()) {
+                animateAccountMenuHide();
+            } else {
+                rebuildAccountMenu();
+                accountMenu.show(accountBtn, Side.BOTTOM, 0, 0);
+            }
         });
 
         updateUsernameField(AccountManager.getCurrentAccount());
@@ -233,6 +269,7 @@ public class LauncherUI {
         rightInfo.setAlignment(Pos.CENTER);
         pingLabelField.getStyleClass().add("ping-label-field");
         rightInfo.getChildren().addAll(pingDotField, pingLabelField);
+        startPingAnimation();
 
         infoBar.getChildren().addAll(leftInfo, new Label("|"), rightInfo);
         newsContainer.getChildren().add(infoBar);
@@ -273,7 +310,16 @@ public class LauncherUI {
 
         StackPane barWrapper = new StackPane(progressBar);
         barWrapper.setAlignment(Pos.CENTER);
-        barWrapper.getChildren().add(percentLabel);
+        Pane shine = new Pane();
+        shine.getStyleClass().add("progress-shine");
+        shine.setMouseTransparent(true);
+        shine.setPrefWidth(90);
+        shine.setPrefHeight(12);
+        shine.setMinHeight(12);
+        shine.setMaxHeight(12);
+        barWrapper.getChildren().addAll(shine, percentLabel);
+        shine.toFront();
+        startShineAnimation(shine, barWrapper);
 
         BorderPane bottomLine = new BorderPane();
         bottomLine.setLeft(progressLabel);
@@ -332,6 +378,68 @@ public class LauncherUI {
         updateUsernameField(AccountManager.getCurrentAccount());
     }
 
+    private void startPingAnimation() {
+        try {
+            ScaleTransition st = new ScaleTransition(Duration.millis(1400), pingDotField);
+            st.setFromX(1.0); st.setFromY(1.0);
+            st.setToX(1.25);  st.setToY(1.25);
+            st.setAutoReverse(true);
+            st.setCycleCount(ScaleTransition.INDEFINITE);
+            st.play();
+        } catch (Exception ignored) {}
+    }
+
+    private void startShineAnimation(Pane shine, Region wrapper) {
+        try {
+            shineAnim = new TranslateTransition(Duration.millis(1600), shine);
+            shineAnim.setCycleCount(Animation.INDEFINITE);
+            shineAnim.setAutoReverse(false);
+
+            Runnable refresh = () -> {
+                double w = wrapper.getWidth();
+                double span = Math.max(180, w + 40);
+                double from = -span / 2;
+                double to = span / 2;
+                shineAnim.stop();
+                shineAnim.setFromX(from);
+                shineAnim.setToX(to);
+                shine.setTranslateX(from);
+                shineAnim.playFromStart();
+            };
+
+            wrapper.widthProperty().addListener((obs, o, n) -> refresh.run());
+            Platform.runLater(refresh);
+        } catch (Exception ignored) {}
+    }
+
+    private void animateAccountMenuHide() {
+        var skin = accountMenu.getSkin();
+        if (skin == null || skin.getNode() == null) {
+            accountMenu.hide();
+            return;
+        }
+        if (accountMenuHiding) return;
+        accountMenuHiding = true;
+        var node = skin.getNode();
+        FadeTransition ft = new FadeTransition(Duration.millis(140), node);
+        ft.setFromValue(1.0);
+        ft.setToValue(0.0);
+        ScaleTransition st = new ScaleTransition(Duration.millis(140), node);
+        st.setFromX(node.getScaleX());
+        st.setFromY(node.getScaleY());
+        st.setToX(0.96);
+        st.setToY(0.96);
+        ParallelTransition pt = new ParallelTransition(ft, st);
+        pt.setOnFinished(ev -> {
+            accountMenu.hide();
+            node.setOpacity(1);
+            node.setScaleX(1);
+            node.setScaleY(1);
+            accountMenuHiding = false;
+        });
+        pt.play();
+    }
+
     public void updateProgress(String text, double progress01) {
         Platform.runLater(() -> {
             progressLabel.setText(text);
@@ -368,3 +476,4 @@ public class LauncherUI {
     }
 
 }
+

@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.function.UnaryOperator;
+import org.architech.launcher.ArchiTechLauncher;
 
 import static org.architech.launcher.ArchiTechLauncher.*;
 
@@ -268,6 +269,7 @@ public class SettingsTab {
         cfg.put("soundVolume", (int) soundVolumeSlider.getValue());
         cfg.put("uiScale", (int) scaleSlider.getValue());
         cfg.put("background", LAUNCHER_BACKGROUND);
+        GAME_LANGUAGE_TAG = ArchiTechLauncher.mapLanguageTag(languageCombo.getValue());
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {
@@ -297,7 +299,10 @@ public class SettingsTab {
             if (cfg.containsKey("closeOnLaunch")) closeOnLaunch.setSelected((Boolean)cfg.get("closeOnLaunch"));
             if (cfg.containsKey("winWidth")) widthField.setText(String.valueOf(cfg.get("winWidth")));
             if (cfg.containsKey("winHeight")) heightField.setText(String.valueOf(cfg.get("winHeight")));
-            if (cfg.containsKey("language")) languageCombo.setValue(String.valueOf(cfg.get("language")));
+            if (cfg.containsKey("language")) {
+                languageCombo.setValue(String.valueOf(cfg.get("language")));
+                GAME_LANGUAGE_TAG = ArchiTechLauncher.mapLanguageTag(languageCombo.getValue());
+            }
             if (cfg.containsKey("theme")) themeCombo.setValue(String.valueOf(cfg.get("theme")));
             if (cfg.containsKey("fullscreen")) fullscreenCheck.setSelected((Boolean)cfg.get("fullscreen"));
             if (cfg.containsKey("fpsLimit")) fpsSpinner.getValueFactory().setValue(((Number)cfg.get("fpsLimit")).intValue());

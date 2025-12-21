@@ -142,31 +142,6 @@ public class Utils {
         }
     }
 
-    public static void openWebpage(String url) {
-        try {
-            URI uri = new URI(url);
-
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(uri);
-            } else {
-                String os = System.getProperty("os.name").toLowerCase();
-                Runtime rt = Runtime.getRuntime();
-
-                if (os.contains("win")) {
-                    rt.exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
-                } else if (os.contains("mac")) {
-                    rt.exec(new String[]{"open", uri.toString()});
-                } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                    rt.exec(new String[]{"xdg-open", uri.toString()});
-                } else {
-                    throw new UnsupportedOperationException("Неизвестная ОС: " + os);
-                }
-            }
-        } catch (Exception e) {
-            LogManager.getLogger().severe("Ошибка открытия веб-страницы: " + e.getMessage());
-        }
-    }
-
     public static void openGameDir() {
         try {
             File dir = GAME_DIR.toFile();
