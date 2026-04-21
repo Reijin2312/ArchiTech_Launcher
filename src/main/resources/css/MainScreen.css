@@ -21,13 +21,15 @@
  }
 
 .username-field {
-    -fx-background-color: #3c3f41;
-    -fx-text-fill: white;
-    -fx-border-color: #6b6b6b;
-    -fx-padding: 0 36 0 8;
+    -fx-background-color: linear-gradient(to bottom, rgba(255,255,255,0.09), rgba(255,255,255,0.04)), rgba(30,30,30,0.66);
+    -fx-text-fill: #f4f4f4;
+    -fx-border-color: rgba(255,255,255,0.2);
+    -fx-border-width: 1;
+    -fx-padding: 0 36 0 10;
     -fx-pref-height: 30px;
-    -fx-background-radius: 4;
-    -fx-border-radius: 4;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.28), 5, 0, 0, 1);
 }
 
  .launch-btn {
@@ -38,13 +40,17 @@
  }
 
  .account-btn {
-    -fx-background-color: #3c3f41;
-    -fx-text-fill: white;
+    -fx-background-color: linear-gradient(to bottom, rgba(255,255,255,0.09), rgba(255,255,255,0.04)), rgba(30,30,30,0.66);
+    -fx-text-fill: #f4f4f4;
     -fx-font-size: 14px;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255,255,255,0.2);
+    -fx-border-width: 1;
  }
 
  .chevron {
-    -fx-text-fill: black;
+    -fx-text-fill: #f0f0f0;
     -fx-font-size: 14px;
  }
 
@@ -85,11 +91,32 @@
     -fx-text-fill: white;
 }
 
+.progress-shine {
+    -fx-background-color: linear-gradient(to right, rgba(255,255,255,0.0), rgba(255,255,255,0.45), rgba(255,255,255,0.0));
+    -fx-background-radius: 999;
+    -fx-opacity: 0.62;
+}
+
+.launch-shine {
+    -fx-background-color: linear-gradient(to right, rgba(255,255,255,0.0), rgba(255,255,255,0.52), rgba(255,255,255,0.0));
+    -fx-background-radius: 8;
+    -fx-opacity: 0.7;
+}
+
 .small-button {
-    -fx-background-color: #3c3f41;
-    -fx-text-fill: white; -fx-font-size: 14px;
-    -fx-pref-width: 40;
-    -fx-pref-height: 30;
+    -fx-background-color: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.04)), rgba(30,30,30,0.7);
+    -fx-text-fill: #f2f2f2;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-pref-width: 42;
+    -fx-pref-height: 32;
+    -fx-padding: 0;
+    -fx-alignment: center;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255,255,255,0.16);
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 6, 0, 0, 1);
 }
 .launch-btn {
     -fx-background-color: #4caf50;
@@ -114,9 +141,40 @@
     -fx-transition: all 120ms ease-in-out;
 }
 
-.small-button:hover, .account-btn:hover {
-    -fx-background-color: #4a4d4f;
+.small-button:hover {
+    -fx-background-color: linear-gradient(to bottom, rgba(255,255,255,0.14), rgba(255,255,255,0.06)), rgba(38,38,38,0.74);
+    -fx-border-color: rgba(255,255,255,0.28);
     -fx-translate-y: -1px;
+}
+
+.small-button:pressed {
+    -fx-background-color: linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.03)), rgba(24,24,24,0.72);
+    -fx-border-color: rgba(255,255,255,0.18);
+    -fx-translate-y: 0;
+}
+
+.small-button:focused {
+    -fx-border-color: #4caf50;
+}
+
+.small-button .image-view {
+    -fx-opacity: 0.92;
+}
+
+.small-button:hover .image-view {
+    -fx-opacity: 1.0;
+}
+
+.account-btn:hover {
+    -fx-background-color: linear-gradient(to bottom, rgba(255,255,255,0.14), rgba(255,255,255,0.06)), rgba(38,38,38,0.74);
+    -fx-border-color: rgba(255,255,255,0.28);
+    -fx-translate-y: -1px;
+}
+
+.account-btn:pressed {
+    -fx-background-color: linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.03)), rgba(24,24,24,0.72);
+    -fx-border-color: rgba(255,255,255,0.18);
+    -fx-translate-y: 0;
 }
 
 /* Subtle rounding for cards */

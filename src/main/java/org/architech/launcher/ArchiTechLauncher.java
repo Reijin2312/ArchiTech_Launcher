@@ -142,8 +142,13 @@ public class ArchiTechLauncher extends Application {
     @Override
     public void stop() throws Exception {
         super.stop();
+        Future<?> updating = updateFuture.getAndSet(null);
+        if (updating != null && !updating.isDone()) {
+            updating.cancel(true);
+        }
         DownloadManager dm = activeDownloadManager.getAndSet(null);
         if (dm != null) dm.cancelAllDownloads();
+        DOWNLOAD_MANAGER.cancelAllDownloads();
         backgroundExecutor.shutdownNow();
         scheduledExecutor.shutdownNow();
         DiscordIntegration.stop();
@@ -320,7 +325,7 @@ public class ArchiTechLauncher extends Application {
                     Timer.startTimer();
                 });
 
-                UI.updateProgress("РџСЂРѕРІРµСЂРєР°/РїРѕРґРіРѕС‚РѕРІРєР° РѕР±РЅРѕРІР»РµРЅРёР№...", 0);
+                UI.updateProgress("Проверка/подготовка обновлений...", 0);
 
                 VersionManager versionManager = new VersionManager();
                 JsonNode versionJson = versionManager.loadVersionJson(MINECRAFT_VERSION);
@@ -342,7 +347,7 @@ public class ArchiTechLauncher extends Application {
 
                 int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
                 int rounds = 3;
-                UI.updateProgress("Р—Р°РїСѓСЃРєР°СЋ РїР°СЂР°Р»Р»РµР»СЊРЅСѓСЋ Р·Р°РіСЂСѓР·РєСѓ (" + threads + " РїРѕС‚РѕРєРѕРІ)...", 0);
+                UI.updateProgress("Запускаю параллельную загрузку (" + threads + " потоков)...", 0);
 
                 List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds, true);
 
@@ -350,8 +355,8 @@ public class ArchiTechLauncher extends Application {
 
                 if (!failed.isEmpty()) {
                     String names = failed.stream().map(x -> x.name).collect(Collectors.joining(", "));
-                    LogManager.getLogger().severe("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРєР°С‡Р°С‚СЊ РЅРµРєРѕС‚РѕСЂС‹Рµ С„Р°Р№Р»С‹: " + names);
-                    throw new IOException("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРєР°С‡Р°С‚СЊ РЅРµРєРѕС‚РѕСЂС‹Рµ С„Р°Р№Р»С‹: " + names);
+                    LogManager.getLogger().severe("Не удалось скачать следующие файлы: " + names);
+                    throw new IOException("Не удалось скачать следующие файлы: " + names);
                 }
 
                 NativesManager nativesManager = new NativesManager(GAME_DIR, MINECRAFT_VERSION);
@@ -362,27 +367,27 @@ public class ArchiTechLauncher extends Application {
                 try {
                     ModsManager.syncMods(GAME_DIR);
                 } catch (Exception ex) {
-                    LogManager.getLogger().severe("РћС€РёР±РєР° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё РјРѕРґРѕРІ: " + ex.getMessage());
-                    Platform.runLater(() -> ErrorPanel.showError("РћС€РёР±РєР° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё РјРѕРґРѕРІ", ex.getMessage()));
+                    LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
+                    Platform.runLater(() -> ErrorPanel.showError("Ошибка синхронизации модов", ex.getMessage()));
                 }
 
                 Path serversDat = GAME_DIR.resolve("servers.dat");
                 if (!Files.exists(serversDat)) ServersDatGenerator.createServersDat(serversDat);
 
-                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("РЎРµСЂРІРµСЂ Minecraft", "architech.mc-world.xyz").withHidden(false);
+                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("Наш Minecraft", "architech.mc-world.xyz").withHidden(false);
                 List<ServersDatWriter.ServerEntry> list = Collections.singletonList(mySrv);
 
                 Files.createDirectories(serversDat.getParent());
                 writeServersDat(serversDat, list);
 
-                Platform.runLater(() -> UI.updateProgress("РћР±РЅРѕРІР»РµРЅРёСЏ РїСЂРёРјРµРЅРµРЅС‹ вЂ” РІСЃС‘ РіРѕС‚РѕРІРѕ.", 1.0));
+                Platform.runLater(() -> UI.updateProgress("Обновления применены — всё готово.", 1.0));
 
             } catch (InterruptedException ie) {
-                Platform.runLater(() -> UI.updateProgress("РћРїРµСЂР°С†РёСЏ РѕС‚РјРµРЅРµРЅР°.", 1.0));
+                Platform.runLater(() -> UI.updateProgress("Операция отменена.", 1.0));
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
-                LogManager.getLogger().severe("РћС€РёР±РєР° РїСЂРё РїСЂРѕРІРµСЂРєРµ/РѕР±РЅРѕРІР»РµРЅРёРё: " + e.getMessage());
-                Platform.runLater(() -> ErrorPanel.showError("РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ", e.getMessage()));
+                LogManager.getLogger().severe("Ошибка при проверке/обновлении: " + e.getMessage());
+                Platform.runLater(() -> ErrorPanel.showError("Ошибка обновления", e.getMessage()));
             } finally {
                 activeDownloadManager.set(null);
                 updateFuture.set(null);
@@ -396,7 +401,6 @@ public class ArchiTechLauncher extends Application {
 
         updateFuture.set(f);
     }
-
     public static void cancelLaunch() {
         launchCancelled.set(true);
         Future<?> f = launchFuture.getAndSet(null);

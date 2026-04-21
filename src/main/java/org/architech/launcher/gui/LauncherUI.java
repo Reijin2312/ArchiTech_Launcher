@@ -15,12 +15,14 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.animation.ScaleTransition;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.TranslateTransition;
 import javafx.animation.Animation;
+import javafx.animation.Interpolator;
 import javafx.util.Duration;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
@@ -142,6 +144,24 @@ public class LauncherUI {
             Timer.startTimer();
             launchHandler.accept(usernameField.getText());
         });
+        Pane launchShine = new Pane();
+        launchShine.getStyleClass().add("launch-shine");
+        launchShine.setMouseTransparent(true);
+        launchShine.setPrefWidth(96);
+        launchShine.setPrefHeight(30);
+        launchShine.setMinHeight(30);
+        launchShine.setMaxHeight(30);
+
+        StackPane launchBtnWrap = new StackPane(launchBtn, launchShine);
+        launchBtnWrap.setMaxWidth(Double.MAX_VALUE);
+        launchBtnWrap.setAlignment(Pos.CENTER);
+        Rectangle launchClip = new Rectangle();
+        launchClip.setArcWidth(12);
+        launchClip.setArcHeight(12);
+        launchClip.widthProperty().bind(launchBtnWrap.widthProperty());
+        launchClip.heightProperty().bind(launchBtnWrap.heightProperty());
+        launchBtnWrap.setClip(launchClip);
+        startLaunchShineAnimation(launchShine, launchBtnWrap);
 
         HBox buttons = new HBox(12);
         buttons.setAlignment(Pos.CENTER);
@@ -173,7 +193,7 @@ public class LauncherUI {
         HBox userRow = new HBox(8, usernameStack, accountBtn);
         userRow.setAlignment(Pos.CENTER_LEFT);
 
-        VBox controls = new VBox(15, userRow, launchBtn, buttons);
+        VBox controls = new VBox(15, userRow, launchBtnWrap, buttons);
         controls.setAlignment(Pos.CENTER);
         BorderPane left = new BorderPane();
 
@@ -224,10 +244,13 @@ public class LauncherUI {
             }
         }, 0, 10, TimeUnit.SECONDS);
 
-        Label newsTitle = new Label("Новости проекта");
-        newsTitle.getStyleClass().add("main-news-title");
+        Image newsLogo = new Image(Objects.requireNonNull(getClass().getResource("/images/logo.png")).toExternalForm());
+        ImageView newsLogoView = new ImageView(newsLogo);
+        newsLogoView.setPreserveRatio(true);
+        newsLogoView.setFitHeight(100);
+        newsLogoView.setSmooth(true);
 
-        HBox titleBox = new HBox(newsTitle);
+        HBox titleBox = new HBox(newsLogoView);
         titleBox.setAlignment(Pos.CENTER);
 
         ScrollPane newsScroll = NewsList.buildNewsList();
@@ -310,6 +333,12 @@ public class LauncherUI {
 
         StackPane barWrapper = new StackPane(progressBar);
         barWrapper.setAlignment(Pos.CENTER);
+        Rectangle barClip = new Rectangle();
+        barClip.setArcWidth(12);
+        barClip.setArcHeight(12);
+        barClip.widthProperty().bind(barWrapper.widthProperty());
+        barClip.heightProperty().bind(barWrapper.heightProperty());
+        barWrapper.setClip(barClip);
         Pane shine = new Pane();
         shine.getStyleClass().add("progress-shine");
         shine.setMouseTransparent(true);
@@ -391,20 +420,55 @@ public class LauncherUI {
 
     private void startShineAnimation(Pane shine, Region wrapper) {
         try {
-            shineAnim = new TranslateTransition(Duration.millis(1600), shine);
+            shineAnim = new TranslateTransition(Duration.millis(2600), shine);
             shineAnim.setCycleCount(Animation.INDEFINITE);
             shineAnim.setAutoReverse(false);
+            shineAnim.setInterpolator(Interpolator.LINEAR);
 
             Runnable refresh = () -> {
                 double w = wrapper.getWidth();
-                double span = Math.max(180, w + 40);
-                double from = -span / 2;
-                double to = span / 2;
+                double shineWidth = shine.getLayoutBounds().getWidth();
+                if (shineWidth <= 1) shineWidth = shine.prefWidth(-1);
+                if (shineWidth <= 1) shineWidth = 90;
+
+                // Start/end fully outside clip so cycle restart is invisible.
+                double overshoot = shineWidth + 12;
+                double from = -w / 2 - overshoot;
+                double to = w / 2 + overshoot;
                 shineAnim.stop();
                 shineAnim.setFromX(from);
                 shineAnim.setToX(to);
                 shine.setTranslateX(from);
                 shineAnim.playFromStart();
+            };
+
+            wrapper.widthProperty().addListener((obs, o, n) -> refresh.run());
+            Platform.runLater(refresh);
+        } catch (Exception ignored) {}
+    }
+
+    private void startLaunchShineAnimation(Pane shine, Region wrapper) {
+        try {
+            TranslateTransition launchShineAnim = new TranslateTransition(Duration.millis(3600), shine);
+            launchShineAnim.setCycleCount(Animation.INDEFINITE);
+            launchShineAnim.setAutoReverse(false);
+            launchShineAnim.setInterpolator(Interpolator.LINEAR);
+
+            Runnable refresh = () -> {
+                double w = wrapper.getWidth();
+                double shineWidth = shine.getLayoutBounds().getWidth();
+                if (shineWidth <= 1) shineWidth = shine.prefWidth(-1);
+                if (shineWidth <= 1) shineWidth = 96;
+
+                // Start/end fully outside clip so cycle restart is invisible.
+                double overshoot = shineWidth + 16;
+                double from = -w / 2 - overshoot;
+                double to = w / 2 + overshoot;
+                launchShineAnim.stop();
+                launchShineAnim.setFromX(from);
+                launchShineAnim.setToX(to);
+                shine.setTranslateX(from);
+                launchShineAnim.playFromStart();
             };
 
             wrapper.widthProperty().addListener((obs, o, n) -> refresh.run());

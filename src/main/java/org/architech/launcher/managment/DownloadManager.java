@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -28,10 +29,12 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 public class DownloadManager {
     private final AtomicLong totalBytesPlanned = new AtomicLong(0);
     private final AtomicLong totalBytesDone = new AtomicLong(0);
+    private static final AtomicInteger downloadThreadSeq = new AtomicInteger(1);
 
     private static final ConcurrentHashMap<Path, Object> fileLocks = new ConcurrentHashMap<>();
 
     private final ConcurrentMap<Path, Closeable> activeDownloads = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ExecutorService, Boolean> activePools = new ConcurrentHashMap<>();
 
     public void setTotalBytesPlanned(long total) { this.totalBytesPlanned.set(total); }
 
@@ -79,7 +82,13 @@ public class DownloadManager {
 
         for (int round = 1; round <= Math.max(1, rounds) && !remaining.isEmpty(); round++) {
             ConcurrentLinkedQueue<FileEntry> failedThisRound;
-            try (ExecutorService pool = Executors.newFixedThreadPool(threads)) {
+            ExecutorService pool = Executors.newFixedThreadPool(Math.max(1, threads), r -> {
+                Thread t = new Thread(r, "download-worker-" + downloadThreadSeq.getAndIncrement());
+                t.setDaemon(true);
+                return t;
+            });
+            activePools.put(pool, Boolean.TRUE);
+            try {
                 failedThisRound = new java.util.concurrent.ConcurrentLinkedQueue<>();
 
                 for (FileEntry f : remaining) {
@@ -101,6 +110,11 @@ public class DownloadManager {
                 if (!finished) {
                     pool.shutdownNow();
                 }
+            } catch (InterruptedException ie) {
+                pool.shutdownNow();
+                throw ie;
+            } finally {
+                activePools.remove(pool);
             }
 
             List<FileEntry> next = new ArrayList<>(failedThisRound);
@@ -293,7 +307,11 @@ public class DownloadManager {
         for (Closeable c : activeDownloads.values()) {
             try { c.close(); } catch (Exception ignored) {}
         }
+        for (ExecutorService pool : activePools.keySet()) {
+            try { pool.shutdownNow(); } catch (Exception ignored) {}
+        }
         resetTotals();
         activeDownloads.clear();
+        activePools.clear();
     }
 }
