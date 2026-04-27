@@ -8,6 +8,7 @@ import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.gui.error.ErrorPanel;
+import org.architech.launcher.utils.Utils;
 
 import java.awt.Desktop;
 import java.io.PrintWriter;
@@ -168,15 +169,17 @@ public final class BrowserAuth {
     }
 
     private static void openInBrowser(URI uri) throws Exception {
-        if (Desktop.isDesktopSupported()) {
-            Desktop.getDesktop().browse(uri);
-            return;
-        }
-        String u = uri.toString();
-        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        if (os.contains("win")) new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", u).start();
-        else if (os.contains("mac")) new ProcessBuilder("open", u).start();
-        else new ProcessBuilder("xdg-open", u).start();
+//        if (Desktop.isDesktopSupported()) {
+//            Desktop.getDesktop().browse(uri);
+//            return;
+//        }
+//        String u = uri.toString();
+//        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+//        if (os.contains("win")) new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", u).start();
+//        else if (os.contains("mac")) new ProcessBuilder("open", u).start();
+//        else new ProcessBuilder("xdg-open", u).start();
+
+        Utils.openInBrowser(uri.toString());
     }
 
     private static String textOrNull(JsonNode n, String f){
