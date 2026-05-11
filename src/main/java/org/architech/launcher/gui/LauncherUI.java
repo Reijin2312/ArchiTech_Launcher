@@ -6,11 +6,6 @@ import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -40,7 +35,6 @@ import javafx.scene.paint.Color;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -226,7 +220,7 @@ public class LauncherUI {
 
         ArchiTechLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
             try {
-                ArchiTechServerInfo.ServerStatus s = ArchiTechServerInfo.fetchStatus("architech.mc-world.xyz", 25565, 3000);
+                ArchiTechServerInfo.ServerStatus s = ArchiTechServerInfo.fetchStatus(ArchiTechLauncher.MINESERVER_URL, 25565, 3000);
                 Platform.runLater(() -> {
                     onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
                     pingLabelField.setText("Пинг: " + s.pingMs() + " ms");

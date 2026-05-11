@@ -5,6 +5,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 
+import org.architech.launcher.ArchiTechLauncher;
+
 public class ServersDatGenerator {
 
     public static void createServersDat(Path file) throws IOException {
@@ -28,7 +30,7 @@ public class ServersDatGenerator {
             dos.writeShort(2);
             dos.writeBytes("ip");
             dos.writeShort(21);
-            dos.writeBytes("architech.mc-world.xyz");
+            dos.writeBytes(ArchiTechLauncher.MINESERVER_URL);
             dos.writeByte(1);
             dos.writeShort(6);
             dos.writeBytes("hidden");

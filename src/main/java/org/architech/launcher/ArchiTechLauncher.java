@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.lang.ProcessHandle;
-import java.util.Locale;
+
 import static org.architech.launcher.managment.NeoForgeManager.getInstalledVersion;
 import static org.architech.launcher.utils.serverinfo.ServersDatWriter.writeServersDat;
 
@@ -47,6 +47,7 @@ public class ArchiTechLauncher extends Application {
 
     public static Path GAME_DIR = Paths.get(System.getProperty("user.home"), ".architech");
     public static String FRONTEND_URL = "https://architech-mc.ru";
+    public static String MINESERVER_URL = "architech-mc.online";
     public static String BACKEND_URL = "https://launcher.architech-mc.ru";
     public static Path CONFIG_PATH;
     public static Path LAUNCHER_DIR;
@@ -118,7 +119,6 @@ public class ArchiTechLauncher extends Application {
         LIBRARIES_DIR = GAME_DIR.resolve("libraries");
         ASSETS_DIR = GAME_DIR.resolve("assets");
 
-        // РџСЂРѕРІРµСЂСЏРµРј Рё РѕР±РЅРѕРІР»СЏРµРј С‚РѕРєРµРЅС‹ РїСЂРё СЃС‚Р°СЂС‚Рµ Р»Р°СѓРЅС‡РµСЂР°
         backgroundExecutor.submit(() -> {
             try {
                 if (AuthService.ensureValidTokens()) {
@@ -236,7 +236,7 @@ public class ArchiTechLauncher extends Application {
                 Path serversDat = GAME_DIR.resolve("servers.dat");
                 if (!Files.exists(serversDat)) ServersDatGenerator.createServersDat(serversDat);
 
-                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("Наш Minecraft", "architech.mc-world.xyz").withHidden(false);
+                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("ArchiTech MC", MINESERVER_URL).withHidden(false);
                 List<ServersDatWriter.ServerEntry> list = Collections.singletonList(mySrv);
 
                 Files.createDirectories(serversDat.getParent());
@@ -374,7 +374,7 @@ public class ArchiTechLauncher extends Application {
                 Path serversDat = GAME_DIR.resolve("servers.dat");
                 if (!Files.exists(serversDat)) ServersDatGenerator.createServersDat(serversDat);
 
-                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("Наш Minecraft", "architech.mc-world.xyz").withHidden(false);
+                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("ArchiTech MC", MINESERVER_URL).withHidden(false);
                 List<ServersDatWriter.ServerEntry> list = Collections.singletonList(mySrv);
 
                 Files.createDirectories(serversDat.getParent());
