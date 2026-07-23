@@ -3,42 +3,106 @@
 
 package org.architech.launcher.gui.player.skin;
 
-import javafx.beans.property.*;
-import javafx.concurrent.Task;
+import javafx.animation.AnimationTimer;
+import javafx.animation.PauseTransition;
+import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.geometry.Point2D;
-import javafx.scene.*;
-import javafx.scene.image.*;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.AmbientLight;
+import javafx.scene.DepthTest;
+import javafx.scene.Group;
+import javafx.scene.PerspectiveCamera;
+import javafx.scene.SceneAntialiasing;
+import javafx.scene.SubScene;
+import javafx.scene.image.Image;
+import javafx.scene.image.PixelReader;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.CullFace;
-import javafx.scene.shape.DrawMode;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.TriangleMesh;
 import javafx.scene.transform.Rotate;
+import org.architech.launcher.gui.player.skin.animation.AnimationPose;
+import org.architech.launcher.gui.player.skin.animation.BoneTransform;
+import org.architech.launcher.gui.player.skin.animation.SkinAnimationDirector;
+import org.architech.launcher.gui.player.skin.animation.SkinBone;
+import org.architech.launcher.utils.logging.LogManager;
 
+/**
+ * Native JavaFX Minecraft skin viewer with a transparent background.
+ *
+ * <p>The model proportions, UV atlas layout, joint placement, classic/slim
+ * detection, and base animation curves are adapted from
+ * bs-community/skinview3d and skinview-utils (MIT). Rendering remains entirely
+ * native JavaFX; no browser or WebGL runtime is embedded.
+ */
 public final class MinecraftSkinView extends StackPane {
+    private static final double MIN_ZOOM = 48.0;
+    private static final double MAX_ZOOM = 115.0;
+
     private final Group world = new Group();
-    private final Group model = new Group();
-    private final PerspectiveCamera cam = new PerspectiveCamera(true);
-    private SubScene subScene;
-
-    private final DoubleProperty angleX = new SimpleDoubleProperty(-15);
-    private final DoubleProperty angleY = new SimpleDoubleProperty(30);
-    private final DoubleProperty zoom = new SimpleDoubleProperty(80);
-
-    // API
+    private final Group player = new Group();
+    private final PerspectiveCamera camera = new PerspectiveCamera(true);
+    private final Rotate worldRotateX = new Rotate(0.0, Rotate.X_AXIS);
+    private final Rotate worldRotateY = new Rotate(-25.0, Rotate.Y_AXIS);
     private final StringProperty skinUrl = new SimpleStringProperty();
+    private final SkinAnimationDirector animationDirector = new SkinAnimationDirector();
+    private final PauseTransition interactionClickDelay = new PauseTransition(javafx.util.Duration.millis(220));
+
+    private final AnimationTimer animationTimer;
+    private SkinRig rig;
+    private double zoom = 72.0;
+    private Point2D dragAnchor;
+    private double dragStartX;
+    private double dragStartY;
+    private boolean dragged;
+    private long previousFrame;
+    private long loadGeneration;
 
     public MinecraftSkinView() {
         setStyle("-fx-background-color: transparent;");
-        buildSubScene();
-        world.getChildren().add(model);
-        bindCamera();
-        enableMouseControls();
-        skinUrl.addListener((obs, o, n) -> {
-            if (n != null && !n.isBlank()) loadSkin(n);
+        setMinSize(120, 150);
+        setPrefSize(250, 290);
+        setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        setDepthTest(DepthTest.ENABLE);
+
+        SubScene subScene = createSubScene();
+        getChildren().add(subScene);
+        subScene.widthProperty().bind(widthProperty());
+        subScene.heightProperty().bind(heightProperty());
+
+        world.getTransforms().addAll(worldRotateY, worldRotateX);
+        world.getChildren().add(player);
+        rebuildModel(new SkinTextureProcessor.ProcessedSkin(
+                SkinTextureProcessor.createFallbackSkin(), false, 1));
+
+        installMouseControls();
+        interactionClickDelay.setOnFinished(event -> animationDirector.triggerInteraction());
+        skinUrl.addListener((observable, oldValue, newValue) -> loadSkin(newValue));
+
+        animationTimer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                if (previousFrame == 0L) {
+                    previousFrame = now;
+                    return;
+                }
+                double deltaSeconds = Math.min(0.05, (now - previousFrame) / 1_000_000_000.0);
+                previousFrame = now;
+                applyAnimation(animationDirector.update(deltaSeconds));
+            }
+        };
+
+        sceneProperty().addListener((observable, oldScene, newScene) -> {
+            previousFrame = 0L;
+            if (newScene == null) {
+                animationTimer.stop();
+            } else {
+                animationTimer.start();
+            }
         });
     }
 
@@ -52,399 +116,585 @@ public final class MinecraftSkinView extends StackPane {
     }
 
     public void setSkinUrl(String url) {
-        skinUrl.set(url);
+        if (Platform.isFxApplicationThread()) {
+            skinUrl.set(url);
+        } else {
+            Platform.runLater(() -> skinUrl.set(url));
+        }
     }
 
     public StringProperty skinUrlProperty() {
         return skinUrl;
     }
 
-    // ---------- scene ----------
-    private void buildSubScene() {
-        cam.setNearClip(0.1);
-        cam.setFarClip(10000);
-        cam.setVerticalFieldOfView(false);
-        subScene = new SubScene(world, 100, 100, true, SceneAntialiasing.BALANCED);
-        subScene.setCamera(cam);
-        subScene.setFill(Color.TRANSPARENT);
-        getChildren().add(subScene);
-        widthProperty().addListener((__, ___, w) -> subScene.setWidth(w.doubleValue()));
-        heightProperty().addListener((__, ___, h) -> subScene.setHeight(h.doubleValue()));
+    public void wave() {
+        animationDirector.triggerGreeting();
     }
 
-    private void bindCamera() {
-        cam.translateZProperty().bind(zoom.multiply(-1));
-        Rotate rx = new Rotate(0, Rotate.X_AXIS);
-        Rotate ry = new Rotate(0, Rotate.Y_AXIS);
-        rx.angleProperty().bind(angleX);
-        ry.angleProperty().bind(angleY);
-        world.getTransforms().setAll(ry, rx);
+    public void resetView() {
+        worldRotateX.setAngle(0.0);
+        worldRotateY.setAngle(-25.0);
+        zoom = 72.0;
+        camera.setTranslateZ(-zoom);
     }
 
-    private void enableMouseControls() {
-        final ObjectProperty<Point2D> anchor = new SimpleObjectProperty<>();
-        final DoubleProperty startX = new SimpleDoubleProperty();
-        final DoubleProperty startY = new SimpleDoubleProperty();
-        addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
-            anchor.set(new Point2D(e.getSceneX(), e.getSceneY()));
-            startX.set(angleX.get());
-            startY.set(angleY.get());
+    private SubScene createSubScene() {
+        camera.setNearClip(0.1);
+        camera.setFarClip(1_000.0);
+        camera.setFieldOfView(30.0);
+        camera.setTranslateZ(-zoom);
+
+        AmbientLight light = new AmbientLight(Color.rgb(245, 245, 245));
+        world.getChildren().add(light);
+
+        SubScene result = new SubScene(world, 250, 290, true, SceneAntialiasing.BALANCED);
+        result.setFill(Color.TRANSPARENT);
+        result.setCamera(camera);
+        result.setDepthTest(DepthTest.ENABLE);
+        return result;
+    }
+
+    private void installMouseControls() {
+        setOnMousePressed(event -> {
+            if (event.getButton() != MouseButton.PRIMARY) {
+                return;
+            }
+            dragAnchor = new Point2D(event.getSceneX(), event.getSceneY());
+            dragStartX = worldRotateX.getAngle();
+            dragStartY = worldRotateY.getAngle();
+            dragged = false;
+            setCursor(javafx.scene.Cursor.CLOSED_HAND);
+            event.consume();
         });
-        addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
-            Point2D a = anchor.get();
-            angleY.set(startY.get() + (e.getSceneX() - a.getX()) * 0.5);
-            angleX.set(startX.get() - (e.getSceneY() - a.getY()) * 0.5);
+
+        setOnMouseDragged(event -> {
+            if (dragAnchor == null || !event.isPrimaryButtonDown()) {
+                return;
+            }
+            if (dragAnchor.distance(event.getSceneX(), event.getSceneY()) > 3.0) {
+                dragged = true;
+            }
+            worldRotateY.setAngle(dragStartY + (event.getSceneX() - dragAnchor.getX()) * 0.55);
+            worldRotateX.setAngle(clamp(
+                    dragStartX - (event.getSceneY() - dragAnchor.getY()) * 0.38,
+                    -35.0,
+                    30.0));
+            event.consume();
         });
-        setOnScroll(e -> zoom.set(Math.max(30, Math.min(300, zoom.get() + e.getDeltaY() * -0.1))));
+
+        setOnMouseReleased(event -> {
+            dragAnchor = null;
+            setCursor(javafx.scene.Cursor.OPEN_HAND);
+        });
+        setOnMouseEntered(event -> setCursor(javafx.scene.Cursor.OPEN_HAND));
+        setOnMouseExited(event -> {
+            dragAnchor = null;
+            setCursor(javafx.scene.Cursor.DEFAULT);
+        });
+        setOnMouseClicked(event -> {
+            if (event.getButton() != MouseButton.PRIMARY || dragged) {
+                return;
+            }
+            if (event.getClickCount() == 2) {
+                interactionClickDelay.stop();
+                resetView();
+            } else if (event.getClickCount() == 1) {
+                interactionClickDelay.playFromStart();
+            }
+        });
+        setOnScroll(event -> {
+            zoom = clamp(zoom - event.getDeltaY() * 0.06, MIN_ZOOM, MAX_ZOOM);
+            camera.setTranslateZ(-zoom);
+            event.consume();
+        });
     }
 
-    // ---------- load + normalize ----------
     private void loadSkin(String url) {
-        Task<Image> task = new Task<>() {
-            @Override
-            protected Image call() {
-                // backgroundLoading = false
-                Image raw = new Image(url, 0, 0, true, false, false);
-                return normalizeTo64x64(raw);
+        long generation = ++loadGeneration;
+        if (url == null || url.isBlank()) {
+            rebuildModel(new SkinTextureProcessor.ProcessedSkin(
+                    SkinTextureProcessor.createFallbackSkin(), false, 1));
+            return;
+        }
+
+        try {
+            Image image = new Image(url, true);
+            image.progressProperty().addListener((observable, oldValue, newValue) -> {
+                if (generation != loadGeneration || newValue.doubleValue() < 1.0) {
+                    return;
+                }
+                if (image.isError()) {
+                    logLoadFailure(url, image.getException());
+                    return;
+                }
+                applyLoadedSkin(image, url, generation);
+            });
+            image.errorProperty().addListener((observable, oldValue, failed) -> {
+                if (generation == loadGeneration && failed) {
+                    logLoadFailure(url, image.getException());
+                }
+            });
+            if (image.getProgress() >= 1.0) {
+                if (image.isError()) {
+                    logLoadFailure(url, image.getException());
+                } else {
+                    applyLoadedSkin(image, url, generation);
+                }
             }
-        };
-        task.setOnSucceeded(ev -> buildModel(task.getValue())); // уже на FX-потоке
-        task.setOnFailed(ev -> task.getException().printStackTrace());
-        new Thread(task, "skin-loader").start();
+        } catch (RuntimeException error) {
+            logLoadFailure(url, error);
+        }
     }
 
-    // Если 64×32 — дорисовываем недостающие квадранты и пустые оверлеи
-    private Image normalizeTo64x64(Image src) {
-        int w = (int) src.getWidth(), h = (int) src.getHeight();
+    private void applyLoadedSkin(Image image, String url, long generation) {
+        if (generation != loadGeneration) {
+            return;
+        }
+        try {
+            rebuildModel(SkinTextureProcessor.process(image));
+            wave();
+        } catch (RuntimeException error) {
+            logLoadFailure(url, error);
+        }
+    }
 
-        // Подгоняем к 64×64 без сглаживания
-        WritableImage out = new WritableImage(64, 64);
-        PixelWriter pw = out.getPixelWriter();
-        PixelReader pr = src.getPixelReader();
+    private void logLoadFailure(String url, Throwable error) {
+        String message = error == null ? "unknown image error" : error.getMessage();
+        LogManager.getLogger().warning("Не удалось загрузить 3D-скин " + url + ": " + message);
+    }
 
-        // Копируем что есть
-        for (int y = 0; y < Math.min(h, 64); y++)
-            for (int x = 0; x < Math.min(w, 64); x++) pw.setArgb(x, y, pr.getArgb(x, y));
+    private void rebuildModel(SkinTextureProcessor.ProcessedSkin skin) {
+        player.getChildren().clear();
+        rig = new SkinRig(skin.texture(), skin.slim(), skin.atlasScale());
+        player.getChildren().add(rig.root);
+        // The model is slightly bottom-heavy (the leg overlay reaches farther
+        // from the origin than the head overlay). Keep an explicit lower
+        // viewport inset so feet stay visible at the default camera angle.
+        player.setTranslateY(-1);
+        animationDirector.reset();
+        applyAnimation(animationDirector.update(0.0));
+    }
 
-        // Если 64×32 — заполняем недостающие зоны как раньше
-        if (h == 32) {
-            // LLEG base <= RLEG base
-            mirrorCopy(pr, pw, 0, 16, 16, 16, 16, 48, true);
-            // LARM base <= RARM base
-            mirrorCopy(pr, pw, 40, 16, 16, 16, 32, 48, true);
-            // overlays остаются пустыми
-            return out;
+    private void applyAnimation(AnimationPose pose) {
+        if (rig == null) {
+            return;
         }
 
-        // ---- 64×64 fallback как в ванили ----
-        // LLEG base (16..32,48..64) <= RLEG base (0..16,16..32)
-        if (isRectTransparent(pr, 16, 48, 16, 16)) mirrorCopy(pr, pw, 0, 16, 16, 16, 16, 48, true);
-
-        // LARM base (32..48,48..64) <= RARM base (40..56,16..32)
-        if (isRectTransparent(pr, 32, 48, 16, 16)) mirrorCopy(pr, pw, 40, 16, 16, 16, 32, 48, true);
-
-        // LLEG overlay (0..16,48..64) <= RLEG overlay (0..16,32..48)
-        if (isRectTransparent(pr, 0, 48, 16, 16)) mirrorCopy(pr, pw, 0, 32, 16, 16, 0, 48, true);
-
-        // LARM overlay (48..64,48..64) <= RARM overlay (40..56,32..48)
-        if (isRectTransparent(pr, 48, 48, 16, 16)) mirrorCopy(pr, pw, 40, 32, 16, 16, 48, 48, true);
-
-        return out;
+        rig.resetPose();
+        rig.root.apply(pose.bone(SkinBone.BODY));
+        rig.head.apply(pose.bone(SkinBone.HEAD));
+        rig.body.apply(pose.bone(SkinBone.TORSO));
+        rig.rightArm.apply(pose.bone(SkinBone.RIGHT_ARM));
+        rig.leftArm.apply(pose.bone(SkinBone.LEFT_ARM));
+        rig.rightLeg.apply(pose.bone(SkinBone.RIGHT_LEG));
+        rig.leftLeg.apply(pose.bone(SkinBone.LEFT_LEG));
     }
 
-    private boolean isRectTransparent(PixelReader pr, int x, int y, int w, int h) {
-        for (int yy = 0; yy < h; yy++)
-            for (int xx = 0; xx < w; xx++) if (((pr.getArgb(x + xx, y + yy) >>> 24) & 0xFF) != 0) return false;
-        return true;
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 
-    private void mirrorCopy(
-            PixelReader pr, PixelWriter pw, int sx, int sy, int sw, int sh, int dx, int dy, boolean mirrorX) {
-        for (int y = 0; y < sh; y++)
-            for (int x = 0; x < sw; x++) {
-                int argb = pr.getArgb(sx + (mirrorX ? (sw - 1 - x) : x), sy + y);
-                pw.setArgb(dx + x, dy + y, argb);
+    private static final class SkinRig {
+        private final Joint root = new Joint(0.0, 0.0, 0.0);
+        private final Joint head;
+        private final Joint body;
+        private final Joint rightArm;
+        private final Joint leftArm;
+        private final Joint rightLeg;
+        private final Joint leftLeg;
+
+        private SkinRig(Image texture, boolean slim, int atlasScale) {
+            PhongMaterial innerMaterial = material(texture);
+            PhongMaterial outerMaterial = material(texture);
+
+            // The standalone viewer uses an actual connected skeleton.  The torso
+            // pivots at the hip; the head and arms are local children of it.  This
+            // keeps adjoining parts connected when an Emotecraft clip rotates or
+            // translates the torso (notably waving and backflip).
+            body = new Joint(0.0, 6.0, 0.0);
+            body.addLayers(
+                    cuboid(8, 12.25, 4, new AtlasBox(16, 16, 8, 12, 4), innerMaterial, false, atlasScale),
+                    cuboid(8.5, 12.75, 4.5, new AtlasBox(16, 32, 8, 12, 4), outerMaterial, true, atlasScale),
+                    0.0,
+                    -6.0,
+                    0.0);
+
+            head = new Joint(0.0, -12.0, 0.0);
+            head.addLayers(
+                    cuboid(8, 8, 8, new AtlasBox(0, 0, 8, 8, 8), innerMaterial, false, atlasScale),
+                    cuboid(9, 9, 9, new AtlasBox(32, 0, 8, 8, 8), outerMaterial, true, atlasScale),
+                    0.0,
+                    -4.0,
+                    0.0);
+
+            double armWidth = slim ? 3.0 : 4.0;
+            double armCenterOffset = slim ? 0.5 : 1.0;
+
+            rightArm = new Joint(-5.0, -10.0, 0.0);
+            rightArm.addLayers(
+                    cuboid(armWidth, 12, 4, new AtlasBox(40, 16, armWidth, 12, 4), innerMaterial, false, atlasScale),
+                    cuboid(
+                            armWidth + 0.5,
+                            12.5,
+                            4.5,
+                            new AtlasBox(40, 32, armWidth, 12, 4),
+                            outerMaterial,
+                            true,
+                            atlasScale),
+                    -armCenterOffset,
+                    4.0,
+                    0.0);
+
+            leftArm = new Joint(5.0, -10.0, 0.0);
+            leftArm.addLayers(
+                    cuboid(armWidth, 12, 4, new AtlasBox(32, 48, armWidth, 12, 4), innerMaterial, false, atlasScale),
+                    cuboid(
+                            armWidth + 0.5,
+                            12.5,
+                            4.5,
+                            new AtlasBox(48, 48, armWidth, 12, 4),
+                            outerMaterial,
+                            true,
+                            atlasScale),
+                    armCenterOffset,
+                    4.0,
+                    0.0);
+
+            rightLeg = new Joint(-1.9, 0.0, -0.1);
+            rightLeg.addLayers(
+                    cuboid(4, 12.25, 4, new AtlasBox(0, 16, 4, 12, 4), innerMaterial, false, atlasScale),
+                    cuboid(4.5, 12.75, 4.5, new AtlasBox(0, 32, 4, 12, 4), outerMaterial, true, atlasScale),
+                    0.0,
+                    6.0,
+                    0.0);
+
+            leftLeg = new Joint(1.9, 0.0, -0.1);
+            leftLeg.addLayers(
+                    cuboid(4, 12.25, 4, new AtlasBox(16, 48, 4, 12, 4), innerMaterial, false, atlasScale),
+                    cuboid(4.5, 12.75, 4.5, new AtlasBox(0, 48, 4, 12, 4), outerMaterial, true, atlasScale),
+                    0.0,
+                    6.0,
+                    0.0);
+
+            body.getChildren().addAll(head, rightArm, leftArm, rightLeg, leftLeg);
+            root.getChildren().add(body);
+        }
+
+        private void resetPose() {
+            root.resetTransform();
+            head.resetTransform();
+            body.resetTransform();
+            rightArm.resetTransform();
+            leftArm.resetTransform();
+            rightLeg.resetTransform();
+            leftLeg.resetTransform();
+        }
+
+        private static PhongMaterial material(Image texture) {
+            PhongMaterial result = new PhongMaterial(Color.WHITE);
+            result.setDiffuseMap(texture);
+            result.setSpecularColor(Color.BLACK);
+            result.setSpecularPower(1.0);
+            return result;
+        }
+    }
+
+    private static final class Joint extends Group {
+        private final Rotate rotateX = new Rotate(0.0, Rotate.X_AXIS);
+        private final Rotate rotateY = new Rotate(0.0, Rotate.Y_AXIS);
+        private final Rotate rotateZ = new Rotate(0.0, Rotate.Z_AXIS);
+        private final double baseX;
+        private final double baseY;
+        private final double baseZ;
+
+        private Joint(double x, double y, double z) {
+            baseX = x;
+            baseY = y;
+            baseZ = z;
+            setTranslateX(x);
+            setTranslateY(y);
+            setTranslateZ(z);
+            getTransforms().addAll(rotateZ, rotateY, rotateX);
+        }
+
+        private void addLayers(
+                MeshView inner,
+                MeshView outer,
+                double offsetX,
+                double offsetY,
+                double offsetZ) {
+            Group layers = new Group(inner, outer);
+            layers.setTranslateX(offsetX);
+            layers.setTranslateY(offsetY);
+            layers.setTranslateZ(offsetZ);
+            getChildren().add(layers);
+        }
+
+        private void resetTransform() {
+            setTranslateX(baseX);
+            setTranslateY(baseY);
+            setTranslateZ(baseZ);
+            setAngleX(0.0);
+            setAngleY(0.0);
+            setAngleZ(0.0);
+        }
+
+        private void apply(BoneTransform transform) {
+            setTranslateX(baseX + transform.offsetX());
+            setTranslateY(baseY + transform.offsetY());
+            setTranslateZ(baseZ + transform.offsetZ());
+            setAngleX(transform.pitch());
+            setAngleY(transform.yaw());
+            setAngleZ(transform.roll());
+        }
+
+        private void setAngleX(double value) {
+            rotateX.setAngle(value);
+        }
+
+        private void setAngleY(double value) {
+            rotateY.setAngle(value);
+        }
+
+        private void setAngleZ(double value) {
+            rotateZ.setAngle(value);
+        }
+    }
+
+    private static MeshView cuboid(
+            double width,
+            double height,
+            double depth,
+            AtlasBox atlas,
+            PhongMaterial material,
+            boolean alphaCutout,
+            int atlasScale) {
+        double halfWidth = width / 2.0;
+        double halfHeight = height / 2.0;
+        double halfDepth = depth / 2.0;
+        TriangleMesh mesh = new TriangleMesh();
+
+        Rect top = atlas.top();
+        Rect bottom = atlas.bottom();
+        Rect right = atlas.right();
+        Rect front = atlas.front();
+        Rect left = atlas.left();
+        Rect back = atlas.back();
+
+        addSurface(
+                mesh,
+                point(-halfWidth, -halfHeight, -halfDepth),
+                point(halfWidth, -halfHeight, -halfDepth),
+                point(halfWidth, halfHeight, -halfDepth),
+                point(-halfWidth, halfHeight, -halfDepth),
+                front,
+                material.getDiffuseMap(),
+                alphaCutout,
+                atlasScale);
+        addSurface(
+                mesh,
+                point(halfWidth, -halfHeight, halfDepth),
+                point(-halfWidth, -halfHeight, halfDepth),
+                point(-halfWidth, halfHeight, halfDepth),
+                point(halfWidth, halfHeight, halfDepth),
+                back,
+                material.getDiffuseMap(),
+                alphaCutout,
+                atlasScale);
+        addSurface(
+                mesh,
+                point(-halfWidth, -halfHeight, halfDepth),
+                point(-halfWidth, -halfHeight, -halfDepth),
+                point(-halfWidth, halfHeight, -halfDepth),
+                point(-halfWidth, halfHeight, halfDepth),
+                right,
+                material.getDiffuseMap(),
+                alphaCutout,
+                atlasScale);
+        addSurface(
+                mesh,
+                point(halfWidth, -halfHeight, -halfDepth),
+                point(halfWidth, -halfHeight, halfDepth),
+                point(halfWidth, halfHeight, halfDepth),
+                point(halfWidth, halfHeight, -halfDepth),
+                left,
+                material.getDiffuseMap(),
+                alphaCutout,
+                atlasScale);
+        addSurface(
+                mesh,
+                point(-halfWidth, -halfHeight, halfDepth),
+                point(halfWidth, -halfHeight, halfDepth),
+                point(halfWidth, -halfHeight, -halfDepth),
+                point(-halfWidth, -halfHeight, -halfDepth),
+                top,
+                material.getDiffuseMap(),
+                alphaCutout,
+                atlasScale);
+        addSurface(
+                mesh,
+                point(-halfWidth, halfHeight, -halfDepth),
+                point(halfWidth, halfHeight, -halfDepth),
+                point(halfWidth, halfHeight, halfDepth),
+                point(-halfWidth, halfHeight, halfDepth),
+                bottom,
+                material.getDiffuseMap(),
+                alphaCutout,
+                atlasScale);
+
+        if (mesh.getTexCoords().size() == 0) {
+            mesh.getTexCoords().addAll(0.0f, 0.0f);
+        }
+
+        MeshView result = new MeshView(mesh);
+        result.setMaterial(material);
+        result.setCullFace(CullFace.NONE);
+        return result;
+    }
+
+    private static void addSurface(
+            TriangleMesh mesh,
+            float[] topLeft,
+            float[] topRight,
+            float[] bottomRight,
+            float[] bottomLeft,
+            Rect textureArea,
+            Image texture,
+            boolean alphaCutout,
+            int atlasScale) {
+        if (!alphaCutout) {
+            addQuad(mesh, topLeft, topRight, bottomRight, bottomLeft, textureArea);
+            return;
+        }
+
+        int columns = Math.max(
+                1,
+                (int) Math.round((textureArea.u1() - textureArea.u0()) * 64.0 * atlasScale));
+        int rows = Math.max(
+                1,
+                (int) Math.round((textureArea.v1() - textureArea.v0()) * 64.0 * atlasScale));
+        double cellU = (textureArea.u1() - textureArea.u0()) / columns;
+        double cellV = (textureArea.v1() - textureArea.v0()) / rows;
+        double insetU = 0.5 / texture.getWidth();
+        double insetV = 0.5 / texture.getHeight();
+        PixelReader pixels = texture.getPixelReader();
+
+        for (int row = 0; row < rows; row++) {
+            double y0 = (double) row / rows;
+            double y1 = (double) (row + 1) / rows;
+            for (int column = 0; column < columns; column++) {
+                double u0 = textureArea.u0() + column * cellU;
+                double v0 = textureArea.v0() + row * cellV;
+                int sampleX = clampPixel((u0 + cellU * 0.5) * texture.getWidth(), texture.getWidth());
+                int sampleY = clampPixel((v0 + cellV * 0.5) * texture.getHeight(), texture.getHeight());
+                if ((pixels.getArgb(sampleX, sampleY) >>> 24) == 0) {
+                    continue;
+                }
+
+                double x0 = (double) column / columns;
+                double x1 = (double) (column + 1) / columns;
+                addQuad(
+                        mesh,
+                        interpolate(topLeft, topRight, bottomRight, bottomLeft, x0, y0),
+                        interpolate(topLeft, topRight, bottomRight, bottomLeft, x1, y0),
+                        interpolate(topLeft, topRight, bottomRight, bottomLeft, x1, y1),
+                        interpolate(topLeft, topRight, bottomRight, bottomLeft, x0, y1),
+                        new Rect(
+                                (float) (u0 + insetU),
+                                (float) (v0 + insetV),
+                                (float) (u0 + cellU - insetU),
+                                (float) (v0 + cellV - insetV)));
             }
-    }
-    // ---------- model ----------
-    private void buildModel(Image skin) {
-        model.getChildren().clear();
-        PhongMaterial mat = new PhongMaterial();
-        mat.setDiffuseMap(upscaleNearest(normalizeTo64x64(skin), 8));
-        mat.setSpecularColor(Color.BLACK);
-
-        // размеры в "пикселях"
-        final float HEAD = 8, BODY_H = 12, BODY_W = 8, BODY_D = 4;
-        final float ARM_W = 4, ARM_H = 12, ARM_D = 4;
-        final float LEG_W = 4, LEG_H = 12, LEG_D = 4;
-
-        // head base
-        MeshView head = box(8, 8, 8, uvHead(false, skin));
-        head.setMaterial(mat);
-        head.setTranslateY(-(BODY_H / 2 + HEAD / 2));
-
-        // head overlay (+1px по всем осям)
-        MeshView head2 = box(10, 10, 10, uvHead(true, skin));
-        head2.setMaterial(mat);
-        head2.setTranslateY(head.getTranslateY());
-
-        // body base
-        MeshView body = box(BODY_W, BODY_H, BODY_D, uvBody(false, skin));
-        body.setMaterial(mat);
-
-        // body overlay
-        MeshView body2 = box(BODY_W + 2, BODY_H + 2, BODY_D + 2, uvBody(true, skin));
-        body2.setMaterial(mat);
-
-        // right arm base
-        MeshView rArm = box(ARM_W, ARM_H, ARM_D, uvRightArm(false, skin));
-        rArm.setMaterial(mat);
-        rArm.setTranslateX((BODY_W / 2) + (ARM_W / 2));
-        rArm.setTranslateY(-(BODY_H / 2 - ARM_H / 2));
-
-        // right arm overlay
-        MeshView rArm2 = box(ARM_W + 2, ARM_H + 2, ARM_D + 2, uvRightArm(true, skin));
-        rArm2.setMaterial(mat);
-        rArm2.setTranslateX(rArm.getTranslateX());
-        rArm2.setTranslateY(rArm.getTranslateY());
-
-        // left arm base
-        MeshView lArm = box(ARM_W, ARM_H, ARM_D, uvLeftArm(false, skin));
-        lArm.setMaterial(mat);
-        lArm.setTranslateX(-(BODY_W / 2) - (ARM_W / 2));
-        lArm.setTranslateY(rArm.getTranslateY());
-
-        // left arm overlay
-        MeshView lArm2 = box(ARM_W + 2, ARM_H + 2, ARM_D + 2, uvLeftArm(true, skin));
-        lArm2.setMaterial(mat);
-        lArm2.setTranslateX(lArm.getTranslateX());
-        lArm2.setTranslateY(lArm.getTranslateY());
-
-        // right leg base
-        MeshView rLeg = box(LEG_W, LEG_H, LEG_D, uvRightLeg(false, skin));
-        rLeg.setMaterial(mat);
-        rLeg.setTranslateX(LEG_W / 2); // центр ног: ±2
-        rLeg.setTranslateY(BODY_H / 2 + LEG_H / 2);
-
-        // right leg overlay
-        MeshView rLeg2 = box(LEG_W + 2, LEG_H + 2, LEG_D + 2, uvRightLeg(true, skin));
-        rLeg2.setMaterial(mat);
-        rLeg2.setTranslateX(rLeg.getTranslateX());
-        rLeg2.setTranslateY(rLeg.getTranslateY());
-
-        // left leg base
-        MeshView lLeg = box(LEG_W, LEG_H, LEG_D, uvLeftLeg(false, skin));
-        lLeg.setMaterial(mat);
-        lLeg.setTranslateX(-LEG_W / 2);
-        lLeg.setTranslateY(rLeg.getTranslateY());
-
-        // left leg overlay
-        MeshView lLeg2 = box(LEG_W + 2, LEG_H + 2, LEG_D + 2, uvLeftLeg(true, skin));
-        lLeg2.setMaterial(mat);
-        lLeg2.setTranslateX(lLeg.getTranslateX());
-        lLeg2.setTranslateY(lLeg.getTranslateY());
-
-        // свет без бликов
-        AmbientLight amb = new AmbientLight(Color.WHITE);
-        model.getChildren().addAll(head, body, rArm, lArm, rLeg, lLeg, head2, body2, rArm2, lArm2, rLeg2, lLeg2, amb);
-    }
-
-    // ---------- UV maps (RIGHT, LEFT, TOP, BOTTOM, FRONT, BACK) ----------
-    private Rects uvHead(boolean overlay, Image img) {
-        int ox = overlay ? 32 : 0;
-        return new Rects(
-                img,
-                r(0 + ox, 8, 8, 8), // RIGHT
-                r(16 + ox, 8, 8, 8), // LEFT
-                r(8 + ox, 0, 8, 8), // TOP
-                r(16 + ox, 0, 8, 8), // BOTTOM
-                r(8 + ox, 8, 8, 8), // FRONT
-                r(24 + ox, 8, 8, 8) // BACK
-                );
-    }
-
-    private Rects uvBody(boolean overlay, Image img) {
-        int oy = overlay ? 32 : 16;
-        return new Rects(
-                img,
-                r(16, 4 + oy, 4, 12), // RIGHT
-                r(28, 4 + oy, 4, 12), // LEFT
-                r(20, 0 + oy, 8, 4), // TOP
-                r(28, 0 + oy, 8, 4), // BOTTOM
-                r(20, 4 + oy, 8, 12), // FRONT
-                r(32, 4 + oy, 8, 12) // BACK
-                );
-    }
-
-    private Rects uvRightArm(boolean overlay, Image img) {
-        int oy = overlay ? 32 : 16;
-        return new Rects(
-                img,
-                r(40, 4 + oy, 4, 12), // RIGHT (outside)
-                r(48, 4 + oy, 4, 12), // LEFT  (inside)
-                r(44, 0 + oy, 4, 4), // TOP
-                r(48, 0 + oy, 4, 4), // BOTTOM
-                r(44, 4 + oy, 4, 12), // FRONT
-                r(52, 4 + oy, 4, 12) // BACK
-                );
-    }
-
-    private Rects uvLeftArm(boolean overlay, Image img) {
-        int ox = overlay ? 48 : 32;
-        int oy = 48;
-        return new Rects(
-                img,
-                r(40, 4 + oy, 4, 12).shiftX(ox - 40), // RIGHT (inside)
-                r(32, 4 + oy, 4, 12).shiftX(ox - 32), // LEFT  (outside)
-                r(36, 0 + oy, 4, 4).shiftX(ox - 36), // TOP
-                r(40, 0 + oy, 4, 4).shiftX(ox - 40), // BOTTOM
-                r(36, 4 + oy, 4, 12).shiftX(ox - 36), // FRONT
-                r(44, 4 + oy, 4, 12).shiftX(ox - 44) // BACK
-                );
-    }
-
-    private Rects uvRightLeg(boolean overlay, Image img) {
-        int oy = overlay ? 32 : 16;
-        return new Rects(
-                img,
-                r(0, 4 + oy, 4, 12), // RIGHT (outside)
-                r(8, 4 + oy, 4, 12), // LEFT  (inside)
-                r(4, 0 + oy, 4, 4), // TOP
-                r(8, 0 + oy, 4, 4), // BOTTOM
-                r(4, 4 + oy, 4, 12), // FRONT
-                r(12, 4 + oy, 4, 12) // BACK
-                );
-    }
-
-    private Rects uvLeftLeg(boolean overlay, Image img) {
-        int ox = overlay ? 0 : 16;
-        int oy = 48;
-        return new Rects(
-                img,
-                r(24, 4 + oy, 4, 12).shiftX(ox - 24), // RIGHT (inside)
-                r(16, 4 + oy, 4, 12).shiftX(ox - 16), // LEFT  (outside)
-                r(20, 0 + oy, 4, 4).shiftX(ox - 20), // TOP
-                r(24, 0 + oy, 4, 4).shiftX(ox - 24), // BOTTOM
-                r(20, 4 + oy, 4, 12).shiftX(ox - 20), // FRONT
-                r(28, 4 + oy, 4, 12).shiftX(ox - 28) // BACK
-                );
-    }
-
-    private Rect r(int x, int y, int w, int h) {
-        return new Rect(x, y, w, h);
-    }
-
-    // ---------- geometry ----------
-    private MeshView box(float w, float h, float d, Rects uv) {
-        float hx = w / 2f, hy = h / 2f, hz = d / 2f;
-        TriangleMesh m = new TriangleMesh();
-
-        // 24 vertices: 4 на грань
-        // RIGHT
-        addQuadVerts(m, hx, -hy, -hz, hx, -hy, hz, hx, hy, hz, hx, hy, -hz);
-        // LEFT
-        addQuadVerts(m, -hx, -hy, hz, -hx, -hy, -hz, -hx, hy, -hz, -hx, hy, hz);
-        // TOP
-        addQuadVerts(m, -hx, -hy, -hz, hx, -hy, -hz, hx, -hy, hz, -hx, -hy, hz);
-        // BOTTOM
-        addQuadVerts(m, -hx, hy, hz, hx, hy, hz, hx, hy, -hz, -hx, hy, -hz);
-        // FRONT
-        addQuadVerts(m, -hx, -hy, hz, hx, -hy, hz, hx, hy, hz, -hx, hy, hz);
-        // BACK
-        addQuadVerts(m, hx, -hy, -hz, -hx, -hy, -hz, -hx, hy, -hz, hx, hy, -hz);
-
-        // UV: 4 на грань
-        uv.applyToMesh(m);
-
-        // faces: по 2 треугольника на грань, последовательность верш/uv совпадает
-        for (int f = 0; f < 6; f++) {
-            int vi = f * 4;
-            int ti = f * 4;
-            addFace(m, vi, vi + 1, vi + 2, ti, ti + 1, ti + 2);
-            addFace(m, vi + 2, vi + 3, vi, ti + 2, ti + 3, ti);
-        }
-        MeshView mv = new MeshView(m);
-        mv.setCullFace(CullFace.NONE);
-
-        mv.setDrawMode(DrawMode.FILL);
-        return mv;
-    }
-
-    private void addQuadVerts(
-            TriangleMesh m,
-            float x0,
-            float y0,
-            float z0,
-            float x1,
-            float y1,
-            float z1,
-            float x2,
-            float y2,
-            float z2,
-            float x3,
-            float y3,
-            float z3) {
-        m.getPoints().addAll(x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3);
-    }
-
-    private void addFace(TriangleMesh m, int v0, int v1, int v2, int t0, int t1, int t2) {
-        m.getFaces().addAll(v0, t0, v1, t1, v2, t2);
-    }
-
-    // ---------- helpers ----------
-    private static final class Rect {
-        int x, y, w, h;
-
-        Rect(int x, int y, int w, int h) {
-            this.x = x;
-            this.y = y;
-            this.w = w;
-            this.h = h;
-        }
-
-        Rect shiftX(int dx) {
-            return new Rect(x + dx, y, w, h);
         }
     }
 
-    private static final class Rects {
-        final Rect[] a = new Rect[6];
-        final double iw, ih;
+    private static int clampPixel(double coordinate, double size) {
+        return Math.max(0, Math.min((int) size - 1, (int) coordinate));
+    }
 
-        Rects(Image img, Rect r0, Rect r1, Rect r2, Rect r3, Rect r4, Rect r5) {
-            this.iw = img.getWidth();
-            this.ih = img.getHeight();
-            a[0] = r0;
-            a[1] = r1;
-            a[2] = r2;
-            a[3] = r3;
-            a[4] = r4;
-            a[5] = r5;
+    private static float[] interpolate(
+            float[] topLeft,
+            float[] topRight,
+            float[] bottomRight,
+            float[] bottomLeft,
+            double x,
+            double y) {
+        float[] result = new float[3];
+        for (int axis = 0; axis < result.length; axis++) {
+            double top = topLeft[axis] + (topRight[axis] - topLeft[axis]) * x;
+            double bottom = bottomLeft[axis] + (bottomRight[axis] - bottomLeft[axis]) * x;
+            result[axis] = (float) (top + (bottom - top) * y);
+        }
+        return result;
+    }
+
+    private static void addQuad(
+            TriangleMesh mesh,
+            float[] topLeft,
+            float[] topRight,
+            float[] bottomRight,
+            float[] bottomLeft,
+            Rect texture) {
+        int pointOffset = mesh.getPoints().size() / 3;
+        int textureOffset = mesh.getTexCoords().size() / 2;
+
+        mesh.getPoints().addAll(
+                topLeft[0], topLeft[1], topLeft[2],
+                topRight[0], topRight[1], topRight[2],
+                bottomRight[0], bottomRight[1], bottomRight[2],
+                bottomLeft[0], bottomLeft[1], bottomLeft[2]);
+        mesh.getTexCoords().addAll(
+                texture.u0(), texture.v0(),
+                texture.u1(), texture.v0(),
+                texture.u1(), texture.v1(),
+                texture.u0(), texture.v1());
+
+        mesh.getFaces().addAll(
+                pointOffset, textureOffset,
+                pointOffset + 3, textureOffset + 3,
+                pointOffset + 2, textureOffset + 2,
+                pointOffset + 2, textureOffset + 2,
+                pointOffset + 1, textureOffset + 1,
+                pointOffset, textureOffset);
+    }
+
+    private static float[] point(double x, double y, double z) {
+        return new float[] {(float) x, (float) y, (float) z};
+    }
+
+    private record AtlasBox(double u, double v, double width, double height, double depth) {
+        private Rect top() {
+            return rect(u + depth, v, width, depth);
         }
 
-        void applyToMesh(TriangleMesh m) {
-            // 4 UV на грань (0..1)
-            for (Rect r : a) {
-                float u0 = (float) (r.x / iw), v0 = (float) (r.y / ih);
-                float u1 = (float) ((r.x + r.w) / iw), v1 = (float) ((r.y + r.h) / ih);
-                // порядок: (u0,v0),(u1,v0),(u1,v1),(u0,v1)
-                m.getTexCoords().addAll(u0, v0, u1, v0, u1, v1, u0, v1);
-            }
+        private Rect bottom() {
+            return rect(u + width + depth, v, width, depth);
+        }
+
+        private Rect right() {
+            return rect(u, v + depth, depth, height);
+        }
+
+        private Rect front() {
+            return rect(u + depth, v + depth, width, height);
+        }
+
+        private Rect left() {
+            return rect(u + width + depth, v + depth, depth, height);
+        }
+
+        private Rect back() {
+            return rect(u + width + depth * 2.0, v + depth, width, height);
+        }
+
+        private static Rect rect(double x, double y, double width, double height) {
+            return new Rect(
+                    (float) (x / 64.0),
+                    (float) (y / 64.0),
+                    (float) ((x + width) / 64.0),
+                    (float) ((y + height) / 64.0));
         }
     }
 
-    private static Image upscaleNearest(Image src, int scale) {
-        int w = (int) src.getWidth(), h = (int) src.getHeight();
-        WritableImage out = new WritableImage(w * scale, h * scale);
-        PixelReader pr = src.getPixelReader();
-        PixelWriter pw = out.getPixelWriter();
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++) {
-                int argb = pr.getArgb(x, y);
-                int ox = x * scale, oy = y * scale;
-                for (int dy = 0; dy < scale; dy++)
-                    for (int dx = 0; dx < scale; dx++) pw.setArgb(ox + dx, oy + dy, argb);
-            }
-        return out;
-    }
+    private record Rect(float u0, float v0, float u1, float v1) {}
 }

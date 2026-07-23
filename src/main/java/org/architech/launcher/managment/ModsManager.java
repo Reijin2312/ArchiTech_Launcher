@@ -104,8 +104,7 @@ public final class ModsManager {
         }
 
         ArchiTechLauncher.DOWNLOAD_MANAGER.resetTotals();
-        long planned = ArchiTechLauncher.DOWNLOAD_MANAGER.computeTotalBytesToDownload(toDownload);
-        ArchiTechLauncher.DOWNLOAD_MANAGER.setTotalBytesPlanned(planned);
+        ArchiTechLauncher.DOWNLOAD_MANAGER.prepareDownloadPlan(toDownload);
 
         int threads =
                 Math.min(MAX_DOWNLOAD_THREADS, Math.max(2, Runtime.getRuntime().availableProcessors()));

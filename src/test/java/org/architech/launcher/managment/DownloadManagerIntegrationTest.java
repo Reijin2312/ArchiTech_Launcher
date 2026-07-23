@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.architech.launcher.utils.FileEntry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -37,6 +38,40 @@ import org.junit.jupiter.api.io.TempDir;
 class DownloadManagerIntegrationTest {
     @TempDir
     Path tempDir;
+
+    @Test
+    void diskProgressCountsOnlyFilesFromCurrentDownloadPlan() throws Exception {
+        byte[] existingBody = "already installed".getBytes(StandardCharsets.UTF_8);
+        byte[] missingBody = "new payload".getBytes(StandardCharsets.UTF_8);
+
+        Path existing = tempDir.resolve("game/existing.bin");
+        Files.createDirectories(existing.getParent());
+        Files.write(existing, existingBody);
+        Files.writeString(tempDir.resolve("game/launcher-config.json"), "unrelated");
+
+        FileEntry readyEntry = new FileEntry(
+                "test", "existing.bin", "https://example.invalid/existing", existing, existingBody.length, null, sha256(existingBody));
+        FileEntry missingEntry = new FileEntry(
+                "test",
+                "missing.bin",
+                "https://example.invalid/missing",
+                tempDir.resolve("game/missing.bin"),
+                missingBody.length,
+                null,
+                sha256(missingBody));
+
+        DownloadManager manager = new DownloadManager();
+        AtomicReference<DownloadSnapshot> latest = new AtomicReference<>();
+        manager.setSnapshotListener(latest::set);
+
+        long downloadBytes = manager.prepareDownloadPlan(List.of(readyEntry, missingEntry));
+        DownloadSnapshot snapshot = latest.get();
+
+        assertEquals(missingBody.length, downloadBytes);
+        assertEquals(missingBody.length, snapshot.bytesPlanned());
+        assertEquals(existingBody.length, snapshot.bytesWritten());
+        assertEquals(existingBody.length + missingBody.length, snapshot.diskBytesPlanned());
+    }
 
     @Test
     void downloadsFileAtomicallyAndChecksSha256() throws Exception {

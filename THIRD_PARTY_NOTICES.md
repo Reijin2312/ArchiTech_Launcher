@@ -19,6 +19,54 @@ the bundled runtime change.
 | Jackson Datatype JSR-310 | 2.16.1 | Apache-2.0 | Java date/time JSON support |
 | SLF4J API and Simple provider | 2.0.13 | MIT | Logging |
 
+## Source-derived components
+
+### Emotecraft built-in animations
+
+Repository: `https://github.com/KosmX/emotes`
+
+The files under `src/main/resources/animations/emotecraft/` are adapted copies
+of Emotecraft's built-in animation assets. Included clips: `waving`, `clap`,
+`palm`, `here`, `point`, and `backflip`.
+
+Emotecraft and these assets are licensed under GNU GPL version 3. The complete
+GPL-3.0 license text is provided in this repository's `LICENSE` file. Original
+author metadata is retained inside each animation JSON file.
+
+### skinview3d and skinview-utils
+
+Repositories: `https://github.com/bs-community/skinview3d` and
+`https://github.com/bs-community/skinview-utils`
+
+The native JavaFX skin renderer adapts the Minecraft model proportions, UV
+atlas mapping, joint placement, animation curves, legacy-skin conversion, and
+slim-arm detection from these MIT-licensed projects. Their JavaScript runtime
+is not bundled with the launcher.
+
+Copyright (c) 2014-2018 Kent Rasmussen
+
+Copyright (c) 2017-2022 Haowei Wen, Sean Boult and contributors
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
 ### Vatuu `discord-rpc`
 
 Repository: `https://github.com/Vatuu/discord-rpc`

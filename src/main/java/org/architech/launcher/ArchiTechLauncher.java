@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -38,6 +37,9 @@ import org.architech.launcher.managment.ModsManager;
 import org.architech.launcher.managment.NativesManager;
 import org.architech.launcher.managment.NeoForgeManager;
 import org.architech.launcher.managment.VersionManager;
+import org.architech.launcher.process.GameProcessTracker;
+import org.architech.launcher.runtime.JavaRuntimeMode;
+import org.architech.launcher.runtime.JavaRuntimeResolver;
 import org.architech.launcher.utils.*;
 import org.architech.launcher.utils.logging.LogManager;
 import org.architech.launcher.utils.serverinfo.ServersDatGenerator;
@@ -57,6 +59,8 @@ public class ArchiTechLauncher extends Application {
     public static Path LIBRARIES_DIR;
     public static Path ASSETS_DIR;
     public static Path JAVA_PATH;
+    public static JavaRuntimeMode JAVA_RUNTIME_MODE = JavaRuntimeMode.BUNDLED;
+    public static Path CUSTOM_JAVA_PATH;
     public static Path ACCOUNT_FILE;
     public static Path LEGACY_GAME_LOCK_FILE;
     public static Path GAME_LOCK_FILE;
@@ -77,10 +81,10 @@ public class ArchiTechLauncher extends Application {
     private static final AtomicReference<Future<?>> launchFuture = new AtomicReference<>();
     private static final AtomicReference<Future<?>> updateFuture = new AtomicReference<>();
     private static final AtomicReference<DownloadManager> activeDownloadManager = new AtomicReference<>();
-    private static volatile Process currentGameProcess = null;
     private static volatile String lastJoinId = null;
-    private static volatile ProcessHandle trackedProcessHandle = null;
+    private static volatile GameProcessTracker gameProcessTracker;
     private static final AtomicBoolean launchCancelled = new AtomicBoolean(false);
+    private static final AtomicBoolean gameTerminationInProgress = new AtomicBoolean(false);
 
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
@@ -102,11 +106,31 @@ public class ArchiTechLauncher extends Application {
             Map<?, ?> cfg;
             try (Reader r = Files.newBufferedReader(CONFIG_PATH, StandardCharsets.UTF_8)) {
                 cfg = Jsons.MAPPER.readValue(r, Map.class);
-                if (cfg == null) return;
-                if (cfg.containsKey("gameDir"))
+                if (cfg == null) {
+                    cfg = Collections.emptyMap();
+                }
+
+                if (cfg.containsKey("gameDir")) {
                     GAME_DIR = Path.of(cfg.get("gameDir").toString());
-                if (cfg.containsKey("javaPath"))
-                    JAVA_PATH = Path.of(cfg.get("javaPath").toString());
+                }
+
+                JAVA_RUNTIME_MODE = JavaRuntimeMode.fromConfig(cfg.get("javaMode"));
+
+                if (cfg.containsKey("customJavaPath")
+                        && cfg.get("customJavaPath") != null
+                        && !String.valueOf(cfg.get("customJavaPath")).isBlank()) {
+                    CUSTOM_JAVA_PATH = Path.of(String.valueOf(cfg.get("customJavaPath")));
+                } else if (!cfg.containsKey("javaMode")
+                        && cfg.containsKey("javaPath")
+                        && cfg.get("javaPath") != null
+                        && !String.valueOf(cfg.get("javaPath")).isBlank()) {
+
+                    JAVA_RUNTIME_MODE = JavaRuntimeMode.CUSTOM;
+                    CUSTOM_JAVA_PATH = Path.of(String.valueOf(cfg.get("javaPath")));
+                }
+
+                JAVA_PATH = JavaRuntimeResolver.resolveOrBundled(JAVA_RUNTIME_MODE, CUSTOM_JAVA_PATH);
+
                 if (cfg.containsKey("closeOnLaunch")) CLOSE_ON_LAUNCH = (boolean) cfg.get("closeOnLaunch");
                 if (cfg.containsKey("netTimeout")) HTTP_TIMEOUT = (int) cfg.get("netTimeout");
                 if (cfg.containsKey("autoUpdate")) AUTO_UPDATE_CLIENT = (boolean) cfg.get("autoUpdate");
@@ -120,8 +144,13 @@ public class ArchiTechLauncher extends Application {
                 }
             }
         }
+
         GAME_LOCK_FILE = GAME_DIR.resolve(".game.lock.json");
-        loadExistingGameLock();
+        gameProcessTracker =
+                new GameProcessTracker(
+                        GAME_LOCK_FILE,
+                        LEGACY_GAME_LOCK_FILE);
+
         Files.createDirectories(ACCOUNT_FILE.getParent());
 
         Path initialBg = LAUNCHER_DIR.resolve("backgrounds").resolve(LAUNCHER_BACKGROUND);
@@ -142,12 +171,41 @@ public class ArchiTechLauncher extends Application {
                     });
                 }
             } catch (Exception e) {
-                LogManager.getLogger()
-                        .warning("РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ С‚РѕРєРµРЅРѕРІ/РїСЂРѕС„РёР»СЏ: " + e.getMessage());
+                LogManager.getLogger().warning("Ошибка обновления токенов/профиля: " + e.getMessage());
             }
         });
 
-        UI = new LauncherUI(stage, this::onLaunchClicked, this::onCheckUpdatesClicked);
+        UI =
+                new LauncherUI(
+                        stage,
+                        this::onLaunchClicked,
+                        this::onCheckUpdatesClicked);
+
+        DOWNLOAD_MANAGER.setSnapshotListener(
+                snapshot -> {
+                    LauncherUI currentUi = UI;
+                    if (currentUi != null) {
+                        currentUi.updateDownloadSnapshot(snapshot);
+                    }
+                });
+
+        Optional<ProcessHandle> restoredGame =
+                gameProcessTracker.restore(
+                        () ->
+                                Platform.runLater(
+                                        () -> {
+                                            if (UI != null) {
+                                                UI.setGameRunningState(false);
+                                                UI.updateProgress(
+                                                        "Готово. Клиент завершил работу.",
+                                                        1.0);
+                                            }
+                                        }));
+
+        if (restoredGame.isPresent()) {
+            UI.setGameRunningState(true);
+            UI.updateProgress("Игра уже запущена.", 1.0);
+        }
 
         DiscordIntegration.start();
     }
@@ -162,20 +220,27 @@ public class ArchiTechLauncher extends Application {
         DownloadManager dm = activeDownloadManager.getAndSet(null);
         if (dm != null) dm.cancelAllDownloads();
         DOWNLOAD_MANAGER.cancelAllDownloads();
+        launcherExecutor.shutdownNow();
         backgroundExecutor.shutdownNow();
         scheduledExecutor.shutdownNow();
         DiscordIntegration.stop();
     }
 
     private void onLaunchClicked(String playerName) {
+        if (isGameProcessRunning()) {
+            requestGameTermination();
+            return;
+        }
+
         Future<?> running = launchFuture.get();
         if (running != null && !running.isDone()) {
             cancelLaunch();
             return;
         }
-        if (isGameProcessRunning()) {
-            Platform.runLater(
-                    () -> ErrorPanel.showError("Игра уже запущена", "Закройте текущий клиент перед новым запуском."));
+
+        Future<?> updating = updateFuture.get();
+        if (updating != null && !updating.isDone()) {
+            cancelUpdate();
             return;
         }
 
@@ -218,7 +283,7 @@ public class ArchiTechLauncher extends Application {
                         return 5;
                     }));
 
-                    DOWNLOAD_MANAGER.setTotalBytesPlanned(DOWNLOAD_MANAGER.computeTotalBytesToDownload(files));
+                    DOWNLOAD_MANAGER.prepareDownloadPlan(files);
 
                     List<FileEntry> failed = DOWNLOAD_MANAGER.downloadFilesInParallel(files, threads, rounds, true);
 
@@ -260,40 +325,44 @@ public class ArchiTechLauncher extends Application {
                 var jt = JoinTicketService.request(account, mySrv.ip);
                 lastJoinId = jt != null ? jt.joinId() : null;
 
-                Process p = MinecraftLauncher.launchMinecraft(GAME_DIR, "neoforge-" + getInstalledVersion(GAME_DIR));
-                currentGameProcess = p;
-                trackedProcessHandle = p.toHandle();
-                persistGameLock(p);
+                Process process =
+                        MinecraftLauncher.launchMinecraft(GAME_DIR, "neoforge-" + getInstalledVersion(GAME_DIR));
 
-                UI.updateProgress("Клиент запущен...", 1);
+                String completedJoinId = lastJoinId;
+
+                gameProcessTracker.track(process, GAME_DIR, () -> {
+                    Account accountOnExit = AccountManager.getCurrentAccount();
+
+                    if (completedJoinId != null && accountOnExit != null) {
+                        submitBackground(() -> {
+                            try {
+                                JoinTicketService.consume(accountOnExit, completedJoinId);
+                            } catch (Exception error) {
+                                LogManager.getLogger()
+                                        .warning("Не удалось завершить join ticket: " + error.getMessage());
+                            }
+                        });
+                    }
+
+                    Platform.runLater(
+                            () -> {
+                                if (UI != null) {
+                                    UI.setGameRunningState(false);
+                                    UI.updateProgress(
+                                            "Готово. Клиент завершил работу.",
+                                            1.0);
+                                }
+                            });
+                });
+
+                lastJoinId = null;
+
+                UI.setGameRunningState(true);
+                UI.updateProgress("Клиент запущен...", 1.0);
 
                 if (CLOSE_ON_LAUNCH) {
                     Platform.runLater(Platform::exit);
-                    return;
                 }
-
-                try {
-                    while (true) {
-                        if (launchCancelled.get() || Thread.currentThread().isInterrupted()) {
-                            try {
-                                p.destroyForcibly();
-                            } catch (Exception ignored) {
-                            }
-                            throw new InterruptedException();
-                        }
-                        try {
-                            p.exitValue();
-                            break;
-                        } catch (IllegalThreadStateException itse) {
-                            Thread.sleep(500);
-                        }
-                    }
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw ie;
-                }
-
-                Platform.runLater(() -> UI.updateProgress("Готово. Клиент завершил работу.", 1));
             } catch (InterruptedException ie) {
                 Platform.runLater(() -> UI.updateProgress("Отмена...", 1.0));
             } catch (Exception e) {
@@ -301,25 +370,36 @@ public class ArchiTechLauncher extends Application {
                 Platform.runLater(() -> ErrorPanel.showError("Ошибка при запуске игры", e.getMessage()));
             } finally {
                 activeDownloadManager.set(null);
-                currentGameProcess = null;
-                trackedProcessHandle = null;
                 launchFuture.set(null);
-                clearGameLock();
                 DOWNLOAD_MANAGER.cancelAllDownloads();
 
-                Platform.runLater(() -> {
-                    Timer.stopTimer();
-                    UI.setLaunchingState(false);
-                });
-                String joinIdToConsume = lastJoinId;
+                Platform.runLater(
+                        () -> {
+                            Timer.stopTimer();
+                            if (UI != null) {
+                                UI.setDownloadPauseAvailable(false);
+                                if (isGameProcessRunning()) {
+                                    UI.setGameRunningState(true);
+                                } else {
+                                    UI.setLaunchingState(false);
+                                }
+                            }
+                        });
+
+                String pendingJoinId = lastJoinId;
                 lastJoinId = null;
-                Account acc = AccountManager.getCurrentAccount();
-                backgroundExecutor.submit(() -> {
-                    try {
-                        JoinTicketService.consume(acc, joinIdToConsume);
-                    } catch (Exception ignored) {
-                    }
-                });
+                Account account = AccountManager.getCurrentAccount();
+
+                if (pendingJoinId != null && account != null) {
+                    submitBackground(() -> {
+                        try {
+                            JoinTicketService.consume(account, pendingJoinId);
+                        } catch (Exception error) {
+                            LogManager.getLogger()
+                                    .warning("Не удалось отменить неиспользованный join ticket: " + error.getMessage());
+                        }
+                    });
+                }
             }
         });
 
@@ -329,7 +409,7 @@ public class ArchiTechLauncher extends Application {
     private void onCheckUpdatesClicked() {
         Future<?> running = updateFuture.get();
         if (running != null && !running.isDone()) {
-            running.cancel(true);
+            cancelUpdate();
             return;
         }
 
@@ -357,8 +437,7 @@ public class ArchiTechLauncher extends Application {
 
                 activeDownloadManager.set(DOWNLOAD_MANAGER);
 
-                long total = DOWNLOAD_MANAGER.computeTotalBytesToDownload(files);
-                DOWNLOAD_MANAGER.setTotalBytesPlanned(total);
+                DOWNLOAD_MANAGER.prepareDownloadPlan(files);
 
                 int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
                 int rounds = 3;
@@ -403,10 +482,14 @@ public class ArchiTechLauncher extends Application {
                 activeDownloadManager.set(null);
                 updateFuture.set(null);
                 DOWNLOAD_MANAGER.cancelAllDownloads();
-                Platform.runLater(() -> {
-                    Timer.stopTimer();
-                    UI.setLaunchingState(false);
-                });
+                Platform.runLater(
+                        () -> {
+                            Timer.stopTimer();
+                            if (UI != null) {
+                                UI.setDownloadPauseAvailable(false);
+                                UI.setLaunchingState(false);
+                            }
+                        });
             }
         });
 
@@ -421,22 +504,121 @@ public class ArchiTechLauncher extends Application {
         DownloadManager dm = activeDownloadManager.getAndSet(null);
         if (dm != null) dm.cancelAllDownloads();
 
-        if (currentGameProcess != null) {
-            try {
-                currentGameProcess.destroyForcibly();
-            } catch (Exception ignored) {
-            }
-        }
-        clearGameLock();
-        trackedProcessHandle = null;
-        lastJoinId = null;
+        Platform.runLater(
+                () -> {
+                    if (UI != null) {
+                        Timer.stopTimer();
+                        UI.setDownloadPauseAvailable(false);
+                        UI.setLaunchingState(false);
+                    }
+                });
+    }
 
-        Platform.runLater(() -> {
-            if (UI != null) {
-                Timer.stopTimer();
-                UI.setLaunchingState(false);
-            }
-        });
+    private static void cancelUpdate() {
+        Future<?> future = updateFuture.getAndSet(null);
+        if (future != null && !future.isDone()) {
+            future.cancel(true);
+        }
+
+        DownloadManager manager = activeDownloadManager.getAndSet(null);
+        if (manager != null) {
+            manager.cancelAllDownloads();
+        }
+
+        Platform.runLater(
+                () -> {
+                    if (UI != null) {
+                        Timer.stopTimer();
+                        UI.setDownloadPauseAvailable(false);
+                        UI.setLaunchingState(false);
+                        UI.updateProgress("Операция отменена.", 1.0);
+                    }
+                });
+    }
+
+    public static void toggleDownloadPause() {
+        DownloadManager manager = activeDownloadManager.get();
+        if (manager == null || !manager.hasActiveDownloadSession()) {
+            Platform.runLater(
+                    () -> {
+                        if (UI != null) {
+                            UI.setDownloadPauseAvailable(false);
+                        }
+                    });
+            return;
+        }
+
+        boolean paused = manager.togglePause();
+        Platform.runLater(
+                () -> {
+                    if (UI != null) {
+                        UI.setDownloadPaused(paused);
+                        UI.updateProgress(
+                                paused
+                                        ? "Загрузка приостановлена"
+                                        : "Загрузка продолжена",
+                                -1);
+                    }
+                });
+    }
+
+    private void requestGameTermination() {
+        if (!gameTerminationInProgress.compareAndSet(false, true)) {
+            return;
+        }
+
+        Platform.runLater(
+                () -> {
+                    if (UI != null) {
+                        UI.setGameStoppingState();
+                        UI.updateProgress(
+                                "Завершаю клиент...",
+                                -1);
+                    }
+                });
+
+        submitBackground(
+                () -> {
+                    boolean terminated = false;
+                    String failureMessage = null;
+
+                    try {
+                        terminated = terminateRunningGame();
+                        if (!terminated && isGameProcessRunning()) {
+                            failureMessage =
+                                    "Не удалось завершить процесс Minecraft.";
+                        }
+                    } catch (Exception error) {
+                        failureMessage = error.getMessage();
+                    } finally {
+                        gameTerminationInProgress.set(false);
+                    }
+
+                    boolean stopped =
+                            terminated || !isGameProcessRunning();
+                    String finalFailureMessage = failureMessage;
+
+                    Platform.runLater(
+                            () -> {
+                                if (UI == null) {
+                                    return;
+                                }
+
+                                if (stopped) {
+                                    UI.setGameRunningState(false);
+                                    UI.updateProgress(
+                                            "Клиент завершён.",
+                                            1.0);
+                                } else {
+                                    UI.setGameRunningState(true);
+                                    ErrorPanel.showError(
+                                            "Не удалось завершить игру",
+                                            finalFailureMessage == null
+                                                    ? "Процесс Minecraft продолжает работать."
+                                                    : finalFailureMessage);
+                                }
+                            });
+                });
     }
 
     private static void checkCancelled() throws InterruptedException {
@@ -453,72 +635,12 @@ public class ArchiTechLauncher extends Application {
         return GAME_LANGUAGE_TAG == null ? "ru-RU" : GAME_LANGUAGE_TAG;
     }
 
-    private static void loadExistingGameLock() {
-        try {
-            Path lockPath = GAME_LOCK_FILE;
-            if (lockPath == null || !Files.exists(lockPath)) {
-                if (LEGACY_GAME_LOCK_FILE != null && Files.exists(LEGACY_GAME_LOCK_FILE)) {
-                    lockPath = LEGACY_GAME_LOCK_FILE;
-                } else {
-                    return;
-                }
-            }
-            Map<?, ?> lock = Jsons.MAPPER.readValue(Files.readString(lockPath), Map.class);
-            Object pidObj = lock.get("pid");
-            if (pidObj instanceof Number num) {
-                long pid = num.longValue();
-                final Path lp = lockPath;
-                ProcessHandle.of(pid).ifPresent(ph -> {
-                    if (ph.isAlive()) {
-                        trackedProcessHandle = ph;
-                        // migrate legacy lock forward for consistency
-                        if (!lp.equals(GAME_LOCK_FILE) && GAME_LOCK_FILE != null) {
-                            try {
-                                Files.createDirectories(GAME_LOCK_FILE.getParent());
-                                Files.copy(lp, GAME_LOCK_FILE);
-                            } catch (Exception ignored) {
-                            }
-                        }
-                    } else {
-                        clearGameLock();
-                    }
-                });
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
     private static boolean isGameProcessRunning() {
-        try {
-            if (currentGameProcess != null && currentGameProcess.isAlive()) return true;
-        } catch (Exception ignored) {
-        }
-        if (trackedProcessHandle != null && trackedProcessHandle.isAlive()) return true;
-        loadExistingGameLock();
-        return trackedProcessHandle != null && trackedProcessHandle.isAlive();
+        return gameProcessTracker != null && gameProcessTracker.isRunning();
     }
 
-    private static void persistGameLock(Process p) {
-        if (GAME_LOCK_FILE == null || p == null) return;
-        try {
-            Map<String, Object> lock = new LinkedHashMap<>();
-            lock.put("pid", p.pid());
-            lock.put("ts", Instant.now().toString());
-            Files.createDirectories(GAME_LOCK_FILE.getParent());
-            Files.writeString(
-                    GAME_LOCK_FILE,
-                    Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(lock),
-                    StandardCharsets.UTF_8);
-        } catch (Exception ignored) {
-        }
-    }
-
-    private static void clearGameLock() {
-        try {
-            if (GAME_LOCK_FILE != null) Files.deleteIfExists(GAME_LOCK_FILE);
-            if (LEGACY_GAME_LOCK_FILE != null) Files.deleteIfExists(LEGACY_GAME_LOCK_FILE);
-        } catch (Exception ignored) {
-        }
+    public static boolean terminateRunningGame() {
+        return gameProcessTracker != null && gameProcessTracker.terminate(java.time.Duration.ofSeconds(5));
     }
 
     private static ThreadFactory daemonFactory(String prefix) {

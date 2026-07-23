@@ -143,9 +143,9 @@ public class NeoForgeManager {
 
         long size = Utils.tryHeadSize(url);
         ArchiTechLauncher.DOWNLOAD_MANAGER.resetTotals();
-        ArchiTechLauncher.DOWNLOAD_MANAGER.setTotalBytesPlanned(size);
 
         FileEntry entry = new FileEntry("neoforge", "NeoForge installer", url, installer, size, null);
+        ArchiTechLauncher.DOWNLOAD_MANAGER.prepareDownloadPlan(List.of(entry));
 
         ArchiTechLauncher.DOWNLOAD_MANAGER.ensureFilePresentAndValid(entry, true);
 
