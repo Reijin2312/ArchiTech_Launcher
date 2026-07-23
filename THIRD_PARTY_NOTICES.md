@@ -33,6 +33,16 @@ Emotecraft and these assets are licensed under GNU GPL version 3. The complete
 GPL-3.0 license text is provided in this repository's `LICENSE` file. Original
 author metadata is retained inside each animation JSON file.
 
+### Inspect Animations
+
+Repository: `https://codeberg.org/SoundsoftheSun/inspect-animations`
+
+The native JavaFX skin renderer adapts the procedural held-item transforms and
+third-person arm poses for the turn, toss, flip, and flourish inspections from
+Inspect Animations. No upstream binary or texture assets are bundled.
+
+Copyright (c) 2026 SoundsoftheSun. Licensed under the MIT License.
+
 ### skinview3d and skinview-utils
 
 Repositories: `https://github.com/bs-community/skinview3d` and

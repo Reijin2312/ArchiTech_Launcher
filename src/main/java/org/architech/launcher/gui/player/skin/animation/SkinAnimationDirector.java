@@ -44,7 +44,13 @@ public final class SkinAnimationDirector {
                 entry("palm", 8, 12, 34),
                 entry("here", 10, 14, 30),
                 entry("point", 10, 14, 30),
-                entry("backflip", 1, 6, 120));
+                entry("backflip", 1, 6, 120)
+                // Held-item animations are temporarily excluded from the pool.
+                // proceduralEntry("item_turn", 4.2, 2, 12, 55),
+                // proceduralEntry("item_toss", 1.2, 3, 14, 35),
+                // proceduralEntry("item_flip", 1.2, 2, 12, 45),
+                // proceduralEntry("item_flourish", 8.0, 1, 10, 110)
+                );
         nextAutomaticAt = randomIdleDelay();
     }
 
@@ -69,7 +75,11 @@ public final class SkinAnimationDirector {
         }
 
         double remaining = active.entry.clip.durationSeconds() - active.elapsed;
-        AnimationPose clipPose = active.entry.clip.sample(active.elapsed);
+        // Inspect Animations only replaces the held-item arm pose in Minecraft;
+        // the ordinary humanoid pose continues underneath it.
+        AnimationPose clipPose = active.entry.clip.procedural()
+                ? idle
+                : active.entry.clip.sample(active.elapsed);
         if (active.elapsed < BLEND_IN_SECONDS) {
             lastPose = AnimationPose.blend(
                     active.transitionFrom,
@@ -99,8 +109,22 @@ public final class SkinAnimationDirector {
         nextAutomaticAt = clock + randomIdleDelay();
     }
 
-    String activeAnimationId() {
+    public String activeAnimationId() {
         return active == null ? null : active.entry.clip.id();
+    }
+
+    public double activeAnimationTime() {
+        return active == null ? 0.0 : active.elapsed;
+    }
+
+    public double activeAnimationBlend() {
+        if (active == null) {
+            return 0.0;
+        }
+        double remaining = active.entry.clip.durationSeconds() - active.elapsed;
+        double blendIn = smoothStep(active.elapsed / BLEND_IN_SECONDS);
+        double blendOut = smoothStep(remaining / BLEND_OUT_SECONDS);
+        return Math.min(blendIn, blendOut);
     }
 
     private void chooseAndPlay(boolean interaction) {
@@ -160,17 +184,29 @@ public final class SkinAnimationDirector {
         return new AnimationEntry(clip, automaticWeight, interactionWeight, cooldownSeconds);
     }
 
+    private AnimationEntry proceduralEntry(
+            String id,
+            double durationSeconds,
+            int automaticWeight,
+            int interactionWeight,
+            double cooldownSeconds) {
+        SkinAnimationClip clip = SkinAnimationClip.procedural(id, durationSeconds);
+        return new AnimationEntry(clip, automaticWeight, interactionWeight, cooldownSeconds);
+    }
+
     private double randomIdleDelay() {
         return MIN_IDLE_SECONDS + random.nextDouble() * (MAX_IDLE_SECONDS - MIN_IDLE_SECONDS);
     }
 
     private static AnimationPose idlePose(double time) {
-        double baseAngle = Math.toDegrees(Math.PI * 0.02);
-        double leftRoll = -Math.toDegrees(Math.cos(time * 2.0) * 0.03) - baseAngle;
-        double rightRoll = -Math.toDegrees(Math.cos(time * 2.0 + Math.PI) * 0.03) + baseAngle;
+        // Vanilla HumanoidModel standing bob. Inspect Animations replaces the
+        // item arm pose on top of this base model animation.
+        double ageInTicks = time * 20.0;
+        double pitch = Math.toDegrees(Math.sin(ageInTicks * 0.067) * 0.05);
+        double roll = Math.toDegrees(Math.cos(ageInTicks * 0.09) * 0.05 + 0.05);
         return new AnimationPose()
-                .set(SkinBone.LEFT_ARM, new BoneTransform(0, 0, leftRoll, 0, 0, 0))
-                .set(SkinBone.RIGHT_ARM, new BoneTransform(0, 0, rightRoll, 0, 0, 0));
+                .set(SkinBone.LEFT_ARM, new BoneTransform(-pitch, 0, -roll, 0, 0, 0))
+                .set(SkinBone.RIGHT_ARM, new BoneTransform(pitch, 0, roll, 0, 0, 0));
     }
 
     private static double smoothStep(double value) {

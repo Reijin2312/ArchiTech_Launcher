@@ -18,6 +18,12 @@ public final class AnimationPose {
         return this;
     }
 
+    public AnimationPose copy() {
+        AnimationPose result = new AnimationPose();
+        bones.forEach(result::set);
+        return result;
+    }
+
     public static AnimationPose blend(AnimationPose from, AnimationPose to, double amount) {
         AnimationPose result = new AnimationPose();
         for (SkinBone bone : SkinBone.values()) {

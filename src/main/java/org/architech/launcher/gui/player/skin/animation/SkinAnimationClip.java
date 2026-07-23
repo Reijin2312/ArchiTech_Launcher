@@ -17,12 +17,20 @@ public final class SkinAnimationClip {
         this.bones = new EnumMap<>(bones);
     }
 
+    static SkinAnimationClip procedural(String id, double durationSeconds) {
+        return new SkinAnimationClip(id, durationSeconds, new EnumMap<>(SkinBone.class));
+    }
+
     public String id() {
         return id;
     }
 
     public double durationSeconds() {
         return durationSeconds;
+    }
+
+    boolean procedural() {
+        return bones.isEmpty();
     }
 
     public AnimationPose sample(double timeSeconds) {

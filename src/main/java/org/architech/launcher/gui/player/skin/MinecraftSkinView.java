@@ -29,6 +29,9 @@ import org.architech.launcher.gui.player.skin.animation.AnimationPose;
 import org.architech.launcher.gui.player.skin.animation.BoneTransform;
 import org.architech.launcher.gui.player.skin.animation.SkinAnimationDirector;
 import org.architech.launcher.gui.player.skin.animation.SkinBone;
+import org.architech.launcher.gui.player.skin.item.HeldItemAnimation;
+import org.architech.launcher.gui.player.skin.item.HeldItemType;
+import org.architech.launcher.gui.player.skin.item.HeldItemView;
 import org.architech.launcher.utils.logging.LogManager;
 
 /**
@@ -280,14 +283,25 @@ public final class MinecraftSkinView extends StackPane {
             return;
         }
 
+        String animationId = animationDirector.activeAnimationId();
+        double animationTime = animationDirector.activeAnimationTime();
+        double animationBlend = animationDirector.activeAnimationBlend();
+        HeldItemAnimation itemAnimation = HeldItemAnimation.forId(animationId);
+        AnimationPose renderedPose = itemAnimation.applyArmPose(pose, animationTime, animationBlend);
+
         rig.resetPose();
-        rig.root.apply(pose.bone(SkinBone.BODY));
-        rig.head.apply(pose.bone(SkinBone.HEAD));
-        rig.body.apply(pose.bone(SkinBone.TORSO));
-        rig.rightArm.apply(pose.bone(SkinBone.RIGHT_ARM));
-        rig.leftArm.apply(pose.bone(SkinBone.LEFT_ARM));
-        rig.rightLeg.apply(pose.bone(SkinBone.RIGHT_LEG));
-        rig.leftLeg.apply(pose.bone(SkinBone.LEFT_LEG));
+        rig.root.apply(renderedPose.bone(SkinBone.BODY));
+        rig.head.apply(renderedPose.bone(SkinBone.HEAD));
+        rig.body.apply(renderedPose.bone(SkinBone.TORSO));
+        rig.rightArm.apply(renderedPose.bone(SkinBone.RIGHT_ARM));
+        rig.leftArm.apply(renderedPose.bone(SkinBone.LEFT_ARM));
+        rig.rightLeg.apply(renderedPose.bone(SkinBone.RIGHT_LEG));
+        rig.leftLeg.apply(renderedPose.bone(SkinBone.LEFT_LEG));
+        rig.updateItem(
+                itemAnimation,
+                HeldItemType.forAnimation(animationId),
+                animationTime,
+                animationBlend);
     }
 
     private static double clamp(double value, double min, double max) {
@@ -302,6 +316,8 @@ public final class MinecraftSkinView extends StackPane {
         private final Joint leftArm;
         private final Joint rightLeg;
         private final Joint leftLeg;
+        private final HeldItemView heldItem;
+        private final HeldItemView flourishItem;
 
         private SkinRig(Image texture, boolean slim, int atlasScale) {
             PhongMaterial innerMaterial = material(texture);
@@ -329,6 +345,9 @@ public final class MinecraftSkinView extends StackPane {
 
             double armWidth = slim ? 3.0 : 4.0;
             double armCenterOffset = slim ? 0.5 : 1.0;
+            heldItem = new HeldItemView(armCenterOffset);
+            flourishItem = new HeldItemView(armCenterOffset);
+            flourishItem.setTranslateY(-6.0);
 
             rightArm = new Joint(-5.0, -10.0, 0.0);
             rightArm.addLayers(
@@ -376,8 +395,24 @@ public final class MinecraftSkinView extends StackPane {
                     6.0,
                     0.0);
 
+            rightArm.getChildren().add(heldItem);
+
             body.getChildren().addAll(head, rightArm, leftArm, rightLeg, leftLeg);
-            root.getChildren().add(body);
+            root.getChildren().addAll(body, flourishItem);
+        }
+
+        private void updateItem(
+                HeldItemAnimation animation,
+                HeldItemType type,
+                double elapsedSeconds,
+                double blend) {
+            HeldItemView activeItem = animation.bodyRelative() ? flourishItem : heldItem;
+            HeldItemView inactiveItem = animation.bodyRelative() ? heldItem : flourishItem;
+            inactiveItem.setType(HeldItemType.NONE);
+            HeldItemAnimation.NONE.applyItemTransform(inactiveItem, 0.0);
+            activeItem.setType(type);
+            activeItem.setOpacity(blend);
+            animation.applyItemTransform(activeItem, elapsedSeconds);
         }
 
         private void resetPose() {
