@@ -9,6 +9,8 @@ import org.architech.launcher.authentication.account.AccountStore;
 import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.Utils;
+import org.architech.launcher.utils.SafePaths;
+import org.architech.launcher.utils.SafeZipExtractor;
 import org.architech.launcher.utils.logging.LogManager;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -188,54 +190,66 @@ public class MinecraftLauncher {
         return classpathEntries;
     }
 
-    private static void extractNatives(Path gameDir, List<JsonNode> versionChain, Path nativesDir, String osName, String osArch) throws IOException {
-        String classifier = null;
+    private static void extractNatives(
+            Path gameDir,
+            List<JsonNode> versionChain,
+            Path nativesDir,
+            String osName,
+            String osArch
+    ) throws IOException {
+        String osKey;
         if (osName.contains("win")) {
-            classifier = "natives-windows" + (osArch.contains("64") ? "" : "-32");
+            osKey = "windows";
         } else if (osName.contains("mac")) {
-            classifier = "natives-macos" + (osArch.contains("arm") ? "-arm64" : "");
+            osKey = "osx";
         } else if (osName.contains("linux")) {
-            classifier = "natives-linux";
-        }
-        if (classifier == null) {
-            System.err.println("Unsupported OS for natives: " + osName);
+            osKey = "linux";
+        } else {
+            LogManager.getLogger().warning("Unsupported OS for natives: " + osName);
             return;
         }
 
-        for (JsonNode versionObj : versionChain) {
-            if (versionObj.has("libraries") && versionObj.get("libraries").isArray()) {
-                ArrayNode libs = (ArrayNode) versionObj.get("libraries");
-                for (JsonNode  lib  : libs) {
-                    if (lib.has("natives")) {
-                        JsonNode natives = lib.get("natives");
-                        if (natives.has(classifier)) {
-                            String nativeClassifier = natives.get(classifier).asText();
-                            if (lib.has("downloads") && lib.get("downloads").has("classifiers")) {
-                                JsonNode classifiers = lib.get("downloads").get("classifiers");
-                                if (classifiers.has(nativeClassifier)) {
-                                    JsonNode artifact = classifiers.get(nativeClassifier);
-                                    if (artifact.has("path")) {
-                                        String path = artifact.get("path").asText();
-                                        Path nativeJar = gameDir.resolve("libraries").resolve(path);
-                                        if (Files.exists(nativeJar)) {
-                                            try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(nativeJar))) {
-                                                ZipEntry entry;
-                                                while ((entry = zis.getNextEntry()) != null) {
-                                                    if (entry.isDirectory() || entry.getName().startsWith("META-INF/")) {
-                                                        continue;
-                                                    }
-                                                    Path outPath = nativesDir.resolve(entry.getName());
-                                                    Files.createDirectories(outPath.getParent());
-                                                    Files.copy(zis, outPath, StandardCopyOption.REPLACE_EXISTING);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+        String archBits = osArch.contains("64") || osArch.contains("aarch64") ? "64" : "32";
+        Path librariesRoot = gameDir.resolve("libraries").toAbsolutePath().normalize();
+        Set<Path> extractedArchives = new HashSet<>();
+
+        for (JsonNode versionObject : versionChain) {
+            if (!versionObject.path("libraries").isArray()) {
+                continue;
+            }
+
+            for (JsonNode library : versionObject.path("libraries")) {
+                JsonNode natives = library.path("natives");
+                if (!natives.hasNonNull(osKey)) {
+                    continue;
                 }
+
+                String nativeClassifier = natives.get(osKey)
+                        .asText()
+                        .replace("${arch}", archBits);
+                JsonNode artifact = library.path("downloads")
+                        .path("classifiers")
+                        .path(nativeClassifier);
+                if (!artifact.hasNonNull("path")) {
+                    continue;
+                }
+
+                Path nativeArchive = SafePaths.resolveInside(
+                        librariesRoot,
+                        artifact.get("path").asText()
+                );
+                SafePaths.verifyNoSymlinkParents(librariesRoot, nativeArchive);
+                SafePaths.rejectSymbolicLink(nativeArchive);
+
+                if (!Files.isRegularFile(nativeArchive) || !extractedArchives.add(nativeArchive)) {
+                    continue;
+                }
+
+                SafeZipExtractor.extract(
+                        nativeArchive,
+                        nativesDir,
+                        name -> !name.toUpperCase(Locale.ROOT).startsWith("META-INF/")
+                );
             }
         }
     }

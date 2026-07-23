@@ -1,44 +1,74 @@
 package org.architech.launcher.managment;
 
 import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.utils.logging.LogManager;
+import org.architech.launcher.utils.SafePaths;
+import org.architech.launcher.utils.SafeZipExtractor;
 
-import java.nio.file.*;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipEntry;
-import java.io.*;
 
 public record NativesManager(Path gameDir, String version) {
-
-    public void prepareNatives(List<FileEntry> files) throws Exception {
-        Path nativesRoot = gameDir.resolve("natives").resolve(version);
-        Files.createDirectories(nativesRoot);
-        try (DirectoryStream<Path> ds = Files.newDirectoryStream(nativesRoot)) {
-            for (Path p : ds) Files.deleteIfExists(p);
-        } catch (IOException ex) {
-            LogManager.getLogger().severe("Ошибка удаления файла " + ex);
+    public NativesManager {
+        if (gameDir == null) {
+            throw new IllegalArgumentException("gameDir must not be null");
         }
-        for (FileEntry f : files) {
-            if (!"natives".equals(f.kind)) continue;
-            if (!Files.exists(f.path)) continue;
-            unzip(f.path, nativesRoot);
+        if (version == null || version.isBlank()) {
+            throw new IllegalArgumentException("version must not be blank");
         }
     }
 
-    private void unzip(Path zipFile, Path destDir) throws Exception {
-        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(zipFile))) {
-            ZipEntry entry;
-            while ((entry = zis.getNextEntry()) != null) {
-                if (entry.isDirectory()) continue;
-                Path out = destDir.resolve(entry.getName()).normalize();
-                Files.createDirectories(out.getParent());
-                try (OutputStream os = Files.newOutputStream(out, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
-                    byte[] buf = new byte[8192];
-                    int len;
-                    while ((len = zis.read(buf)) != -1) os.write(buf, 0, len);
-                }
-            }
+    public void prepareNatives(List<FileEntry> files) throws Exception {
+        Path gameRoot = gameDir.toAbsolutePath().normalize();
+        String relativeNatives = "natives/" + SafePaths.normalizeRelative(version);
+        Path nativesRoot = SafePaths.resolveInside(gameRoot, relativeNatives);
+        SafePaths.verifyNoSymlinkParents(gameRoot, nativesRoot);
+        SafePaths.rejectSymbolicLink(nativesRoot);
+        recreateDirectory(nativesRoot);
+
+        if (files == null) {
+            return;
         }
+        for (FileEntry file : files) {
+            if (file == null || !"natives".equals(file.kind)) {
+                continue;
+            }
+            if (file.path == null || !Files.isRegularFile(file.path)) {
+                continue;
+            }
+            SafeZipExtractor.extract(
+                    file.path,
+                    nativesRoot,
+                    name -> !name.startsWith("META-INF/")
+            );
+        }
+    }
+
+    private static void recreateDirectory(Path directory) throws IOException {
+        if (Files.exists(directory)) {
+            Files.walkFileTree(directory, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException failure) throws IOException {
+                    if (failure != null) {
+                        throw failure;
+                    }
+                    if (!dir.equals(directory)) {
+                        Files.delete(dir);
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        }
+        Files.createDirectories(directory);
     }
 }

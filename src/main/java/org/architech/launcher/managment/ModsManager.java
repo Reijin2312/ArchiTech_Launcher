@@ -3,207 +3,405 @@ package org.architech.launcher.managment;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.Jsons;
-import org.architech.launcher.utils.logging.LogManager;
+import org.architech.launcher.utils.SafePaths;
 import org.architech.launcher.utils.Utils;
+import org.architech.launcher.utils.logging.LogManager;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
 import static org.architech.launcher.ArchiTechLauncher.UI;
 
-public class ModsManager {
-    private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT)).build();
+public final class ModsManager {
+    private static final long MAX_MANIFEST_BYTES = 4L * 1024L * 1024L;
+    private static final int MAX_DOWNLOAD_THREADS = 8;
 
-    public static void syncMods(Path modsDir) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(BACKEND_URL + "/api/files/manifest")).
-                timeout(Duration.ofSeconds(ArchiTechLauncher.HTTP_TIMEOUT)).
-                GET().build();
-        HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        if (res.statusCode() != 200) {
-            LogManager.getLogger().severe("manifest HTTP " + res.statusCode() + ": " + res.body());
-            throw new IOException("manifest HTTP " + res.statusCode() + ": " + res.body());
+    private static final HttpClient HTTP = HttpClient.newBuilder()
+            .connectTimeout(networkTimeout())
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+
+    private ModsManager() {
+    }
+
+    public static void syncMods(Path gameDir) throws Exception {
+        Path root = gameDir.toAbsolutePath().normalize();
+        SafePaths.createParentDirectoriesSecurely(root, root.resolve(".root-check"));
+        SafePaths.rejectSymbolicLink(root);
+
+        Manifest newManifest = fetchAndValidateManifest(root);
+        String manifestJson = Jsons.MAPPER.writeValueAsString(newManifest);
+        byte[] manifestBytes = manifestJson.getBytes(StandardCharsets.UTF_8);
+        if (manifestBytes.length > MAX_MANIFEST_BYTES) {
+            throw new IOException("Manifest is too large after normalization");
         }
 
-        String manifestJson = res.body();
-        Manifest newManifest = Jsons.MAPPER.readValue(res.body(), Manifest.class);
+        Path localManifest = SafePaths.resolveInside(root, "manifest.json");
+        Manifest oldManifest = readLocalManifest(localManifest);
 
-        if (newManifest == null) {
-            LogManager.getLogger().severe("manifest parse error: empty/invalid JSON");
-            throw new IOException("manifest parse error: empty/invalid JSON");
-        }
+        Set<String> oldPaths = safeOldPaths(root, oldManifest);
+        Set<String> newPaths = newManifest.files.stream()
+                .map(file -> file.path)
+                .collect(Collectors.toCollection(HashSet::new));
 
-        if (newManifest.files == null) {
-            newManifest.files = new ArrayList<>();
-        }
+        deleteRemovedFiles(root, oldPaths, newPaths);
 
-        newManifest.files = newManifest.files.stream()
-                .filter(f -> !normalizePath(f.path).startsWith("launcher/"))
-                .collect(Collectors.toList());
-        newManifest.files = newManifest.files.stream()
-                .filter(f -> !normalizePath(f.path).startsWith("neoforge/"))
-                .collect(Collectors.toList());
-        newManifest.files = newManifest.files.stream()
-                .filter(f -> !normalizePath(f.path).startsWith("news/"))
-                .collect(Collectors.toList());
+        List<FileEntry> toDownload = new ArrayList<>();
+        Map<String, Boolean> desiredDisabledState = new HashMap<>();
 
-        Files.createDirectories(modsDir);
+        for (FileInfo file : newManifest.files) {
+            Path enabled = SafePaths.resolveInside(root, file.path);
+            Path disabled = SafePaths.resolveInside(root, file.path + ".disabled");
+            SafePaths.verifyNoSymlinkParents(root, enabled);
+            SafePaths.verifyNoSymlinkParents(root, disabled);
+            rejectExistingSymlink(enabled);
+            rejectExistingSymlink(disabled);
 
-        Path localManifest = modsDir.resolve("manifest.json");
-        Manifest oldManifest = null;
-        if (Files.exists(localManifest)) {
-            try {
-                String oldJson = Files.readString(localManifest, StandardCharsets.UTF_8);
-                oldManifest = Jsons.MAPPER.readValue(oldJson, Manifest.class);
-            } catch (Exception ignored) {}
-        }
+            boolean enabledExists = Files.exists(enabled, LinkOption.NOFOLLOW_LINKS);
+            boolean disabledExists = Files.exists(disabled, LinkOption.NOFOLLOW_LINKS);
+            boolean enabledValid = enabledExists && matchesFile(enabled, file);
+            boolean disabledValid = disabledExists && matchesFile(disabled, file);
 
-        Set<String> oldPaths = (oldManifest == null || oldManifest.files == null)
-                ? Collections.emptySet()
-                : oldManifest.files.stream().map(f -> normalizePath(f.path)).collect(Collectors.toSet());
-
-        Set<String> newPaths = (newManifest.files == null)
-                ? Collections.emptySet()
-                : newManifest.files.stream().map(f -> normalizePath(f.path)).collect(Collectors.toSet());
-
-        Set<String> toDelete = new HashSet<>(oldPaths);
-        toDelete.removeAll(newPaths);
-
-        for (String rel : toDelete) {
-            try {
-                Path enabled = modsDir.resolve(rel);
-                Path disabled = modsDir.resolve(rel + ".disabled");
-                Files.deleteIfExists(enabled);
+            if (enabledValid) {
                 Files.deleteIfExists(disabled);
-            } catch (Exception ex) {
-                if (UI != null) UI.updateProgress("Ошибка при удалении мода: " + rel + " — " + ex.getMessage(), -1);
-                LogManager.getLogger().severe("Ошибка при удалении мода: " + rel + " — " + ex.getMessage());
+                continue;
             }
-        }
-
-        List<FileEntry> toDownload = new java.util.ArrayList<>();
-
-        assert newManifest.files != null;
-        for (FileInfo f : newManifest.files) {
-            String relPath = normalizePath(f.path);
-            Path enabled  = modsDir.resolve(relPath);
-            Path disabled = modsDir.resolve(relPath + ".disabled");
-
-            boolean enabledExists  = Files.exists(enabled);
-            boolean disabledExists = Files.exists(disabled);
-
-            boolean validPresent = false;
-            try {
-                if (enabledExists) {
-                    if (matchesFile(enabled, f)) validPresent = true;
-                } else if (disabledExists) {
-                    if (matchesFile(disabled, f)) validPresent = true;
-                }
-            } catch (Exception ignored) {}
-
-            if (validPresent) {
-                try { if (enabledExists && disabledExists) Files.deleteIfExists(disabled); } catch (Exception ignored) {}
+            if (disabledValid) {
+                Files.deleteIfExists(enabled);
                 continue;
             }
 
-            Path target = disabledExists ? disabled : enabled;
-            String url = BACKEND_URL + "/api/files/file/" + encodePathForUri(f.path.replace("\\","/"));
+            // Preserve the user's disabled state only when there is no enabled copy.
+            boolean remainDisabled = disabledExists && !enabledExists;
+            Path target = remainDisabled ? disabled : enabled;
+            desiredDisabledState.put(file.path, remainDisabled);
+            SafePaths.createParentDirectoriesSecurely(root, target);
 
-            toDownload.add(new FileEntry("mod", relPath, url, target, Math.max(0, f.size), (f.sha1 != null && !f.sha1.isBlank()) ? f.sha1 : null
+            String url = backendFileUrl(file.path);
+            toDownload.add(new FileEntry(
+                    "mod",
+                    file.path,
+                    url,
+                    target,
+                    file.size,
+                    blankToNull(file.sha1),
+                    blankToNull(file.sha256)
             ));
         }
 
-        try {
-            ArchiTechLauncher.DOWNLOAD_MANAGER.resetTotals();
-        } catch (Throwable ignored) {}
-
+        ArchiTechLauncher.DOWNLOAD_MANAGER.resetTotals();
         long planned = ArchiTechLauncher.DOWNLOAD_MANAGER.computeTotalBytesToDownload(toDownload);
         ArchiTechLauncher.DOWNLOAD_MANAGER.setTotalBytesPlanned(planned);
 
-        int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
-        java.util.List<FileEntry> failed =
-                ArchiTechLauncher.DOWNLOAD_MANAGER.downloadFilesInParallel(toDownload, threads, 3, true);
+        int threads = Math.min(
+                MAX_DOWNLOAD_THREADS,
+                Math.max(2, Runtime.getRuntime().availableProcessors())
+        );
+        List<FileEntry> failed = ArchiTechLauncher.DOWNLOAD_MANAGER
+                .downloadFilesInParallel(toDownload, threads, 3, true);
 
-        boolean allOk = failed.isEmpty();
-        if (!allOk && UI != null) {
-            UI.updateProgress("Не удалось скачать: " +
-                    failed.stream().map(fe -> fe.name).collect(java.util.stream.Collectors.joining(", ")), -1);
+        if (!failed.isEmpty()) {
+            String names = failed.stream()
+                    .map(entry -> entry.name)
+                    .collect(Collectors.joining(", "));
+            updateUi("Не удалось скачать: " + names, -1);
+            throw new IOException("Не удалось скачать файлы из манифеста: " + names);
         }
 
-        if (allOk) {
-            try {
-                Path tmp = modsDir.resolve("manifest.json.tmp");
-                Files.writeString(tmp, manifestJson, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                try {
-                    Files.move(tmp, localManifest, REPLACE_EXISTING, ATOMIC_MOVE);
-                } catch (AtomicMoveNotSupportedException amnse) {
-                    Files.move(tmp, localManifest, REPLACE_EXISTING);
-                }
-            } catch (Exception ex) {
-                if (UI != null) UI.updateProgress("Не удалось обновить локальный манифест: " + ex.getMessage(), -1);
+        cleanupDuplicateStates(root, desiredDisabledState);
+        writeManifestAtomically(localManifest, manifestBytes);
+    }
+
+    private static Manifest fetchAndValidateManifest(Path root) throws Exception {
+        URI endpoint = URI.create(stripTrailingSlash(BACKEND_URL) + "/api/files/manifest");
+        HttpRequest request = HttpRequest.newBuilder(endpoint)
+                .timeout(networkTimeout())
+                .header("Accept", "application/json")
+                .GET()
+                .build();
+
+        HttpResponse<byte[]> response = HTTP.send(request, HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() != 200) {
+            throw new IOException("manifest HTTP " + response.statusCode());
+        }
+        if (response.body().length > MAX_MANIFEST_BYTES) {
+            throw new IOException("Remote manifest is too large");
+        }
+
+        Manifest manifest = Jsons.MAPPER.readValue(response.body(), Manifest.class);
+        if (manifest == null) {
+            throw new IOException("Manifest parse error: empty JSON");
+        }
+        if (manifest.files == null) {
+            manifest.files = new ArrayList<>();
+        }
+
+        List<FileInfo> managedFiles = new ArrayList<>();
+        Set<String> collisionKeys = new HashSet<>();
+        for (FileInfo file : manifest.files) {
+            if (file == null) {
+                throw new IOException("Manifest contains a null file entry");
             }
-        } else {
-            if (UI != null) UI.updateProgress("Синхронизация модов завершилась с ошибками. Локальный манифест не изменён.", -1);
+            if (ManifestPathPolicy.isProtectedTopLevel(file.path)) {
+                continue;
+            }
+
+            String normalizedPath = ManifestPathPolicy.validate(root, file.path);
+            String collisionKey = normalizedPath.toLowerCase(Locale.ROOT);
+            if (!collisionKeys.add(collisionKey)) {
+                throw new IOException("Manifest contains duplicate or case-colliding path: " + file.path);
+            }
+            if (file.size < 0) {
+                throw new IOException("Manifest contains a negative size for " + normalizedPath);
+            }
+            if (file.size == 0 && blankToNull(file.sha1) == null && blankToNull(file.sha256) == null) {
+                throw new IOException("Manifest entry has no integrity metadata: " + normalizedPath);
+            }
+
+            file.path = normalizedPath;
+            file.sha1 = normalizeHash(file.sha1, 40, "SHA-1", normalizedPath);
+            file.sha256 = normalizeHash(file.sha256, 64, "SHA-256", normalizedPath);
+            managedFiles.add(file);
+        }
+        manifest.files = managedFiles;
+        return manifest;
+    }
+
+    private static Manifest readLocalManifest(Path localManifest) {
+        if (!Files.isRegularFile(localManifest, LinkOption.NOFOLLOW_LINKS)) {
+            return null;
+        }
+        try {
+            return Jsons.MAPPER.readValue(Files.readAllBytes(localManifest), Manifest.class);
+        } catch (Exception failure) {
+            LogManager.getLogger().warning(
+                    "Локальный manifest.json повреждён и будет проигнорирован: " + failure.getMessage()
+            );
+            return null;
         }
     }
 
-    private static String normalizePath(String p) {
-        return p == null ? "" : p.replace("\\", "/");
+    private static Set<String> safeOldPaths(Path root, Manifest oldManifest) {
+        if (oldManifest == null || oldManifest.files == null) {
+            return Collections.emptySet();
+        }
+
+        Set<String> paths = new HashSet<>();
+        for (FileInfo file : oldManifest.files) {
+            if (file == null || ManifestPathPolicy.isProtectedTopLevel(file.path)) {
+                continue;
+            }
+            try {
+                paths.add(ManifestPathPolicy.validate(root, file.path));
+            } catch (IOException unsafePath) {
+                LogManager.getLogger().warning(
+                        "Небезопасный путь в локальном manifest.json проигнорирован: " + file.path
+                );
+            }
+        }
+        return paths;
+    }
+
+    private static void deleteRemovedFiles(
+            Path root,
+            Set<String> oldPaths,
+            Set<String> newPaths
+    ) throws IOException {
+        Set<String> toDelete = new HashSet<>(oldPaths);
+        toDelete.removeAll(newPaths);
+
+        for (String relative : toDelete) {
+            Path enabled = SafePaths.resolveInside(root, relative);
+            Path disabled = SafePaths.resolveInside(root, relative + ".disabled");
+            deleteRegularFileSafely(root, enabled);
+            deleteRegularFileSafely(root, disabled);
+        }
+    }
+
+    private static void cleanupDuplicateStates(
+            Path root,
+            Map<String, Boolean> desiredDisabledState
+    ) throws IOException {
+        for (Map.Entry<String, Boolean> entry : desiredDisabledState.entrySet()) {
+            Path enabled = SafePaths.resolveInside(root, entry.getKey());
+            Path disabled = SafePaths.resolveInside(root, entry.getKey() + ".disabled");
+            if (entry.getValue()) {
+                deleteRegularFileSafely(root, enabled);
+            } else {
+                deleteRegularFileSafely(root, disabled);
+            }
+        }
+    }
+
+    private static void deleteRegularFileSafely(Path root, Path file) throws IOException {
+        SafePaths.verifyNoSymlinkParents(root, file);
+        if (!Files.exists(file, LinkOption.NOFOLLOW_LINKS)) {
+            return;
+        }
+        SafePaths.rejectSymbolicLink(file);
+        if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("Refusing to delete a directory as a manifest file: " + file);
+        }
+        Files.delete(file);
+    }
+
+    private static void rejectExistingSymlink(Path file) throws IOException {
+        if (Files.exists(file, LinkOption.NOFOLLOW_LINKS)) {
+            SafePaths.rejectSymbolicLink(file);
+        }
     }
 
     private static boolean matchesFile(Path file, FileInfo expected) throws Exception {
-        if (!Files.exists(file)) return false;
-        if (expected.sha256 != null && !expected.sha256.isBlank()) {
-            return expected.sha256.equalsIgnoreCase(Utils.sha256Hex(file));
-        } else if (expected.sha1 != null && !expected.sha1.isBlank()) {
-            return expected.sha1.equalsIgnoreCase(Utils.sha1Hex(file));
-        } else if (expected.size > 0) {
-            return Files.size(file) == expected.size;
-        } else {
-            return true;
+        if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) {
+            return false;
         }
+        if (expected.sha256 != null) {
+            return expected.sha256.equalsIgnoreCase(Utils.sha256Hex(file));
+        }
+        if (expected.sha1 != null) {
+            return expected.sha1.equalsIgnoreCase(Utils.sha1Hex(file));
+        }
+        return expected.size > 0 && Files.size(file) == expected.size;
+    }
+
+    private static void writeManifestAtomically(Path localManifest, byte[] bytes) throws IOException {
+        Path parent = localManifest.getParent();
+        if (parent == null) {
+            throw new IOException("Manifest path has no parent: " + localManifest);
+        }
+        Path temporary = parent.resolve("manifest.json.tmp");
+        Files.write(
+                temporary,
+                bytes,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE
+        );
+        try {
+            Files.move(
+                    temporary,
+                    localManifest,
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE
+            );
+        } catch (AtomicMoveNotSupportedException ignored) {
+            Files.move(temporary, localManifest, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
+    }
+
+    private static String backendFileUrl(String normalizedPath) {
+        return stripTrailingSlash(BACKEND_URL)
+                + "/api/files/file/"
+                + encodePathForUri(normalizedPath);
     }
 
     private static String encodePathForUri(String path) {
-        String[] segments = path.split("/");
-        StringBuilder encoded = new StringBuilder();
-        for (int i = 0; i < segments.length; i++) {
-            if (i > 0) encoded.append("/");
-            encoded.append(encodeSegment(segments[i]));
-        }
-        return encoded.toString();
+        return java.util.Arrays.stream(path.split("/", -1))
+                .map(ModsManager::encodeSegment)
+                .collect(Collectors.joining("/"));
     }
 
     private static String encodeSegment(String segment) {
-        StringBuilder sb = new StringBuilder();
-        for (int j = 0; j < segment.length(); j++) {
-            char c = segment.charAt(j);
-            if (isAllowedInPath(c)) {
-                sb.append(c);
+        StringBuilder result = new StringBuilder();
+        for (byte value : segment.getBytes(StandardCharsets.UTF_8)) {
+            int unsigned = value & 0xFF;
+            if (isPathSegmentByteAllowed(unsigned)) {
+                result.append((char) unsigned);
             } else {
-                byte[] bytes = String.valueOf(c).getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                for (byte b : bytes) sb.append(String.format("%%%02X", b));
+                result.append('%');
+                result.append(Character.toUpperCase(Character.forDigit((unsigned >>> 4) & 0xF, 16)));
+                result.append(Character.toUpperCase(Character.forDigit(unsigned & 0xF, 16)));
             }
         }
-        return sb.toString();
+        return result.toString();
     }
 
-    private static boolean isAllowedInPath(char c) {
-        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-                c == '-' || c == '_' || c == '.' || c == '~') return true;
-        if (c == '!' || c == '$' || c == '&' || c == '\'' || c == '(' || c == ')' ||
-                c == '*' || c == '+' || c == ',' || c == ';' || c == '=' || c == ':' || c == '@') return true;
-        return false;
+    private static boolean isPathSegmentByteAllowed(int value) {
+        return (value >= 'A' && value <= 'Z')
+                || (value >= 'a' && value <= 'z')
+                || (value >= '0' && value <= '9')
+                || value == '-'
+                || value == '_'
+                || value == '.'
+                || value == '~'
+                || value == '!'
+                || value == '$'
+                || value == '&'
+                || value == '\''
+                || value == '('
+                || value == ')'
+                || value == '*'
+                || value == '+'
+                || value == ','
+                || value == ';'
+                || value == '='
+                || value == ':'
+                || value == '@';
+    }
+
+    private static String normalizeHash(
+            String hash,
+            int expectedLength,
+            String algorithm,
+            String path
+    ) throws IOException {
+        String normalized = blankToNull(hash);
+        if (normalized == null) {
+            return null;
+        }
+        normalized = normalized.toLowerCase(Locale.ROOT);
+        if (normalized.length() != expectedLength || !normalized.matches("[0-9a-f]+")) {
+            throw new IOException("Invalid " + algorithm + " for " + path);
+        }
+        return normalized;
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static String stripTrailingSlash(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("BACKEND_URL is not configured");
+        }
+        String result = value.trim();
+        while (result.endsWith("/")) {
+            result = result.substring(0, result.length() - 1);
+        }
+        return result;
+    }
+
+    private static Duration networkTimeout() {
+        return Duration.ofSeconds(Math.max(1, ArchiTechLauncher.HTTP_TIMEOUT));
+    }
+
+    private static void updateUi(String text, double progress) {
+        if (UI != null) {
+            UI.updateProgress(text, progress);
+        }
     }
 
     public static class Manifest {

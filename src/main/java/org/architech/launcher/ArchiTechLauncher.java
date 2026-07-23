@@ -224,12 +224,7 @@ public class ArchiTechLauncher extends Application {
                 NeoForgeManager.ensureInstalledAndReady(GAME_DIR, MINECRAFT_VERSION);
                 checkCancelled();
 
-                try {
-                    ModsManager.syncMods(GAME_DIR);
-                } catch (Exception ex) {
-                    LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
-                    Platform.runLater(() -> ErrorPanel.showError("Ошибка синхронизации модов", ex.getMessage()));
-                }
+                ModsManager.syncMods(GAME_DIR);
 
                 checkCancelled();
 
@@ -364,12 +359,7 @@ public class ArchiTechLauncher extends Application {
 
                 NeoForgeManager.ensureInstalledAndReady(GAME_DIR, MINECRAFT_VERSION);
 
-                try {
-                    ModsManager.syncMods(GAME_DIR);
-                } catch (Exception ex) {
-                    LogManager.getLogger().severe("Ошибка синхронизации модов: " + ex.getMessage());
-                    Platform.runLater(() -> ErrorPanel.showError("Ошибка синхронизации модов", ex.getMessage()));
-                }
+                ModsManager.syncMods(GAME_DIR);
 
                 Path serversDat = GAME_DIR.resolve("servers.dat");
                 if (!Files.exists(serversDat)) ServersDatGenerator.createServersDat(serversDat);
