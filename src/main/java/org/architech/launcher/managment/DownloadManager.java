@@ -3,11 +3,6 @@
 
 package org.architech.launcher.managment;
 
-import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.utils.Utils;
-import org.architech.launcher.utils.logging.LogManager;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.Closeable;
@@ -38,6 +33,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.utils.FileEntry;
+import org.architech.launcher.utils.Utils;
+import org.architech.launcher.utils.logging.LogManager;
 
 public class DownloadManager {
     private static final int CONNECT_TIMEOUT_MS = 10_000;
@@ -97,12 +96,8 @@ public class DownloadManager {
         throw new IOException("Файл не удалось корректно скачать: " + file.name);
     }
 
-    public List<FileEntry> downloadFilesInParallel(
-            List<FileEntry> files,
-            int threads,
-            int rounds,
-            boolean updateUI
-    ) throws InterruptedException {
+    public List<FileEntry> downloadFilesInParallel(List<FileEntry> files, int threads, int rounds, boolean updateUI)
+            throws InterruptedException {
         Objects.requireNonNull(files, "files");
 
         int workerCount = Math.max(1, threads);
@@ -116,19 +111,15 @@ public class DownloadManager {
                     remaining.add(file);
                 }
             } catch (Exception failure) {
-                LogManager.getLogger().warning(
-                        "Не удалось проверить файл " + safeName(file) + ": " + failure.getMessage()
-                );
+                LogManager.getLogger()
+                        .warning("Не удалось проверить файл " + safeName(file) + ": " + failure.getMessage());
                 remaining.add(file);
             }
         }
 
         for (int round = 1; round <= maxRounds && !remaining.isEmpty(); round++) {
             ExecutorService pool = Executors.newFixedThreadPool(workerCount, runnable -> {
-                Thread thread = new Thread(
-                        runnable,
-                        "download-worker-" + DOWNLOAD_THREAD_SEQUENCE.getAndIncrement()
-                );
+                Thread thread = new Thread(runnable, "download-worker-" + DOWNLOAD_THREAD_SEQUENCE.getAndIncrement());
                 thread.setDaemon(true);
                 return thread;
             });
@@ -143,13 +134,10 @@ public class DownloadManager {
                             if (parent != null) {
                                 Files.createDirectories(parent);
                             }
-                            return downloadWithRoundsSingleFile(file, 1, 0, updateUI)
-                                    ? null
-                                    : file;
+                            return downloadWithRoundsSingleFile(file, 1, 0, updateUI) ? null : file;
                         } catch (Exception failure) {
-                            LogManager.getLogger().warning(
-                                    "Ошибка скачивания " + safeName(file) + ": " + failure.getMessage()
-                            );
+                            LogManager.getLogger()
+                                    .warning("Ошибка скачивания " + safeName(file) + ": " + failure.getMessage());
                             return file;
                         }
                     });
@@ -201,10 +189,9 @@ public class DownloadManager {
                 if (cause instanceof Error error) {
                     throw error;
                 }
-                LogManager.getLogger().warning(
-                        "Фоновая загрузка завершилась ошибкой для " + safeName(task.file())
-                                + ": " + (cause == null ? execution.getMessage() : cause.getMessage())
-                );
+                LogManager.getLogger()
+                        .warning("Фоновая загрузка завершилась ошибкой для " + safeName(task.file()) + ": "
+                                + (cause == null ? execution.getMessage() : cause.getMessage()));
                 failed.add(task.file());
             }
         }
@@ -212,11 +199,7 @@ public class DownloadManager {
     }
 
     private boolean downloadWithRoundsSingleFile(
-            FileEntry file,
-            int maxAttempts,
-            long waitBetweenAttemptsMs,
-            boolean updateUI
-    ) {
+            FileEntry file, int maxAttempts, long waitBetweenAttemptsMs, boolean updateUI) {
         Path key = file.path.toAbsolutePath().normalize();
         Object lock = FILE_LOCK_STRIPES[Math.floorMod(key.hashCode(), FILE_LOCK_STRIPES.length)];
 
@@ -231,18 +214,15 @@ public class DownloadManager {
                     return false;
                 }
                 try {
-                        downloadAtomicOnce(file, updateUI);
-                        if (isFileValid(file)) {
-                            return true;
-                        }
-                        LogManager.getLogger().warning(
-                                "Скачанный файл не прошёл финальную проверку: " + file.name
-                        );
+                    downloadAtomicOnce(file, updateUI);
+                    if (isFileValid(file)) {
+                        return true;
+                    }
+                    LogManager.getLogger().warning("Скачанный файл не прошёл финальную проверку: " + file.name);
                 } catch (Exception failure) {
-                    LogManager.getLogger().warning(
-                            "Попытка скачивания " + attempt + " провалилась для файла "
-                                    + file.name + ": " + failure.getMessage()
-                    );
+                    LogManager.getLogger()
+                            .warning("Попытка скачивания " + attempt + " провалилась для файла " + file.name + ": "
+                                    + failure.getMessage());
                 }
 
                 deleteTemporaryFile(file.path);
@@ -293,12 +273,11 @@ public class DownloadManager {
             }
 
             try (InputStream input = new BufferedInputStream(connection.getInputStream());
-                 OutputStream output = new BufferedOutputStream(Files.newOutputStream(
-                         temporary,
-                         StandardOpenOption.CREATE,
-                         StandardOpenOption.TRUNCATE_EXISTING,
-                         StandardOpenOption.WRITE
-                 ))) {
+                    OutputStream output = new BufferedOutputStream(Files.newOutputStream(
+                            temporary,
+                            StandardOpenOption.CREATE,
+                            StandardOpenOption.TRUNCATE_EXISTING,
+                            StandardOpenOption.WRITE))) {
                 activeDownloads.put(downloadKey, input);
                 byte[] buffer = new byte[16 * 1024];
                 int read;
@@ -333,17 +312,12 @@ public class DownloadManager {
         }
     }
 
-    private void validateDownloadedTemporaryFile(
-            FileEntry file,
-            Path temporary,
-            long downloadedBytes
-    ) throws Exception {
+    private void validateDownloadedTemporaryFile(FileEntry file, Path temporary, long downloadedBytes)
+            throws Exception {
         if (file.size > 0 && downloadedBytes != file.size) {
-            throw new IOException(
-                    "Размер не совпал для файла " + file.name
-                            + ": скачано " + downloadedBytes
-                            + ", ожидалось " + file.size
-            );
+            throw new IOException("Размер не совпал для файла " + file.name
+                    + ": скачано " + downloadedBytes
+                    + ", ожидалось " + file.size);
         }
 
         if (hasText(file.sha256)) {
@@ -366,12 +340,9 @@ public class DownloadManager {
 
         long planned = totalBytesPlanned.get();
         long done = totalBytesDone.get();
-        double globalProgress = planned > 0
-                ? Math.min(1.0, Math.max(0.0, (double) done / planned))
-                : -1;
-        String text = file.name + " (" + (downloadedFile / 1024)
-                + (file.size > 0 ? " / " + (file.size / 1024) : "")
-                + " КБ)";
+        double globalProgress = planned > 0 ? Math.min(1.0, Math.max(0.0, (double) done / planned)) : -1;
+        String text =
+                file.name + " (" + (downloadedFile / 1024) + (file.size > 0 ? " / " + (file.size / 1024) : "") + " КБ)";
         ArchiTechLauncher.UI.updateProgress(text, globalProgress);
     }
 
@@ -391,9 +362,7 @@ public class DownloadManager {
             }
             return true;
         } catch (Exception failure) {
-            LogManager.getLogger().warning(
-                    "Найден невалидный файл: " + safePath(file) + ": " + failure.getMessage()
-            );
+            LogManager.getLogger().warning("Найден невалидный файл: " + safePath(file) + ": " + failure.getMessage());
             return false;
         }
     }
@@ -427,7 +396,9 @@ public class DownloadManager {
             throw new IllegalArgumentException("file.url must not be blank");
         }
         if (file.name == null || file.name.isBlank()) {
-            file.name = file.path.getFileName() == null ? file.path.toString() : file.path.getFileName().toString();
+            file.name = file.path.getFileName() == null
+                    ? file.path.toString()
+                    : file.path.getFileName().toString();
         }
     }
 
@@ -441,9 +412,9 @@ public class DownloadManager {
         try {
             Files.deleteIfExists(temporaryPath(target));
         } catch (IOException failure) {
-            LogManager.getLogger().warning(
-                    "Не удалось удалить временный файл " + temporaryPath(target) + ": " + failure.getMessage()
-            );
+            LogManager.getLogger()
+                    .warning(
+                            "Не удалось удалить временный файл " + temporaryPath(target) + ": " + failure.getMessage());
         }
     }
 
@@ -453,12 +424,7 @@ public class DownloadManager {
 
     private static void moveAtomically(Path source, Path target) throws IOException {
         try {
-            Files.move(
-                    source,
-                    target,
-                    StandardCopyOption.REPLACE_EXISTING,
-                    StandardCopyOption.ATOMIC_MOVE
-            );
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException ignored) {
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
         }
@@ -484,6 +450,5 @@ public class DownloadManager {
         return file == null ? "<null>" : String.valueOf(file.path);
     }
 
-    private record DownloadTask(FileEntry file, Future<FileEntry> future) {
-    }
+    private record DownloadTask(FileEntry file, Future<FileEntry> future) {}
 }

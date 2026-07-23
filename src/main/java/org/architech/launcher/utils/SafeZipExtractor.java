@@ -21,33 +21,20 @@ import java.util.zip.ZipInputStream;
 
 /** Secure ZIP extraction with Zip Slip, symlink and zip-bomb protection. */
 public final class SafeZipExtractor {
-    public static final Limits DEFAULT_LIMITS = new Limits(
-            10_000,
-            256L * 1024L * 1024L,
-            1024L * 1024L * 1024L
-    );
+    public static final Limits DEFAULT_LIMITS = new Limits(10_000, 256L * 1024L * 1024L, 1024L * 1024L * 1024L);
 
-    private SafeZipExtractor() {
-    }
+    private SafeZipExtractor() {}
 
     public static void extract(Path zipFile, Path destination) throws IOException {
         extract(zipFile, destination, ignored -> true, DEFAULT_LIMITS);
     }
 
-    public static void extract(
-            Path zipFile,
-            Path destination,
-            Predicate<String> includeEntry
-    ) throws IOException {
+    public static void extract(Path zipFile, Path destination, Predicate<String> includeEntry) throws IOException {
         extract(zipFile, destination, includeEntry, DEFAULT_LIMITS);
     }
 
-    public static void extract(
-            Path zipFile,
-            Path destination,
-            Predicate<String> includeEntry,
-            Limits limits
-    ) throws IOException {
+    public static void extract(Path zipFile, Path destination, Predicate<String> includeEntry, Limits limits)
+            throws IOException {
         Objects.requireNonNull(zipFile, "zipFile");
         Objects.requireNonNull(destination, "destination");
         Objects.requireNonNull(includeEntry, "includeEntry");
@@ -61,7 +48,7 @@ public final class SafeZipExtractor {
         long totalExtracted = 0;
 
         try (InputStream fileInput = Files.newInputStream(zipFile);
-             ZipInputStream zipInput = new ZipInputStream(new BufferedInputStream(fileInput))) {
+                ZipInputStream zipInput = new ZipInputStream(new BufferedInputStream(fileInput))) {
             ZipEntry entry;
             while ((entry = zipInput.getNextEntry()) != null) {
                 entryCount++;
@@ -92,10 +79,7 @@ public final class SafeZipExtractor {
                 }
 
                 Path temp = Files.createTempFile(
-                        output.getParent(),
-                        output.getFileName().toString() + ".",
-                        ".part"
-                );
+                        output.getParent(), output.getFileName().toString() + ".", ".part");
                 boolean moved = false;
                 try {
                     long entryBytes = copyEntry(zipInput, temp, normalizedName, limits, totalExtracted);
@@ -114,20 +98,13 @@ public final class SafeZipExtractor {
     }
 
     private static long copyEntry(
-            ZipInputStream zipInput,
-            Path temp,
-            String entryName,
-            Limits limits,
-            long totalBeforeEntry
-    ) throws IOException {
+            ZipInputStream zipInput, Path temp, String entryName, Limits limits, long totalBeforeEntry)
+            throws IOException {
         long entryBytes = 0;
         byte[] buffer = new byte[16 * 1024];
 
-        try (OutputStream output = new BufferedOutputStream(Files.newOutputStream(
-                temp,
-                StandardOpenOption.WRITE,
-                StandardOpenOption.TRUNCATE_EXISTING
-        ))) {
+        try (OutputStream output = new BufferedOutputStream(
+                Files.newOutputStream(temp, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING))) {
             int read;
             while ((read = zipInput.read(buffer)) != -1) {
                 entryBytes += read;
@@ -145,12 +122,7 @@ public final class SafeZipExtractor {
 
     private static void moveAtomically(Path source, Path target) throws IOException {
         try {
-            Files.move(
-                    source,
-                    target,
-                    StandardCopyOption.REPLACE_EXISTING,
-                    StandardCopyOption.ATOMIC_MOVE
-            );
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException ignored) {
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
         }

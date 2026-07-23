@@ -3,6 +3,16 @@
 
 package org.architech.launcher.gui.settings.tab;
 
+import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -15,20 +25,11 @@ import javafx.scene.layout.*;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.logging.LogManager;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
-
-import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 
 public class ModsTab extends AbstractAssetsTab {
 
-    private static final String FALLBACK_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAF0lEQVR42mP8z/CfAQgwYGBgYGLAAQBVmgJ3jzg9HwAAAABJRU5ErkJggg==";
+    private static final String FALLBACK_PNG_BASE64 =
+            "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAF0lEQVR42mP8z/CfAQgwYGBgYGLAAQBVmgJ3jzg9HwAAAABJRU5ErkJggg==";
 
     public Parent createContent() {
         BorderPane modsRoot = new BorderPane();
@@ -40,17 +41,20 @@ public class ModsTab extends AbstractAssetsTab {
         this.modsListRef = modsList;
 
         Path modsDir = GAME_DIR.resolve("mods");
-        try { Files.createDirectories(modsDir); } catch (Exception ignored) {}
+        try {
+            Files.createDirectories(modsDir);
+        } catch (Exception ignored) {
+        }
 
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setStyle("-fx-font-weight: bold; -fx-padding: 4 0 8 0;");
-        header.getChildren().addAll(
-                fixedHeaderLabel("Название", COL_NAME),
-                fixedHeaderLabel("Версия",   COL_VER),
-                fixedHeaderLabel("Обновлён", COL_DATE),
-                fixedHeaderLabel("Активен",  COL_TOGGLE)
-        );
+        header.getChildren()
+                .addAll(
+                        fixedHeaderLabel("Название", COL_NAME),
+                        fixedHeaderLabel("Версия", COL_VER),
+                        fixedHeaderLabel("Обновлён", COL_DATE),
+                        fixedHeaderLabel("Активен", COL_TOGGLE));
         this.modsHeaderRef = header;
 
         ProgressIndicator loading = new ProgressIndicator();
@@ -59,7 +63,8 @@ public class ModsTab extends AbstractAssetsTab {
         loadingHolder.setPadding(new Insets(24));
         modsRoot.setCenter(loadingHolder);
 
-        record ModMeta(Path path, String fileName, boolean disabled, String displayName, String version, String lastUpdated) {}
+        record ModMeta(
+                Path path, String fileName, boolean disabled, String displayName, String version, String lastUpdated) {}
 
         ArchiTechLauncher.submitBackground(() -> {
             List<ModMeta> metas = new ArrayList<>();
@@ -71,9 +76,11 @@ public class ModsTab extends AbstractAssetsTab {
                         String display = fn.replace(".disabled", "");
                         String version = parseModVersion(modPath);
                         String lastUpdated = formatFileTime(Files.getLastModifiedTime(modPath));
-                        metas.add(new ModMeta(modPath, fn, disabled, display, version == null ? "" : version, lastUpdated));
+                        metas.add(new ModMeta(
+                                modPath, fn, disabled, display, version == null ? "" : version, lastUpdated));
                     } catch (Exception exInner) {
-                        LogManager.getLogger().warning("mods: read meta failed for " + modPath + ": " + exInner.getMessage());
+                        LogManager.getLogger()
+                                .warning("mods: read meta failed for " + modPath + ": " + exInner.getMessage());
                     }
                 }
             } catch (Exception ex) {
@@ -97,7 +104,8 @@ public class ModsTab extends AbstractAssetsTab {
                     icon.setPreserveRatio(true);
                     try (InputStream is = getClass().getResourceAsStream("/img/mod_placeholder.png")) {
                         if (is != null) icon.setImage(new Image(is));
-                    } catch (Exception ignore) {}
+                    } catch (Exception ignore) {
+                    }
 
                     Label nameLabel = new Label(m.displayName());
                     nameLabel.setGraphic(icon);
@@ -113,8 +121,8 @@ public class ModsTab extends AbstractAssetsTab {
                     toggle.getStyleClass().add("mods-checkbox");
                     toggle.setSelected(!m.disabled());
 
-                    final String[] fileName = { m.fileName() };
-                    final boolean[] disabled = { m.disabled() };
+                    final String[] fileName = {m.fileName()};
+                    final boolean[] disabled = {m.disabled()};
 
                     toggle.selectedProperty().addListener((obs, oldVal, val) -> {
                         try {
@@ -129,7 +137,8 @@ public class ModsTab extends AbstractAssetsTab {
                             } else if (!val && !disabled[0]) {
                                 Path newName = modsDir.resolve(fileName[0] + ".disabled");
                                 Files.move(current, newName, StandardCopyOption.REPLACE_EXISTING);
-                                nameLabel.setText(newName.getFileName().toString().replace(".disabled", ""));
+                                nameLabel.setText(
+                                        newName.getFileName().toString().replace(".disabled", ""));
                                 fileName[0] = newName.getFileName().toString();
                                 disabled[0] = true;
                                 row.getStyleClass().add("disabled");
@@ -140,12 +149,12 @@ public class ModsTab extends AbstractAssetsTab {
                         }
                     });
 
-                    row.getChildren().addAll(
-                            fixedCell(nameLabel, COL_NAME, Pos.CENTER_LEFT),
-                            fixedCell(versionLabel, COL_VER, Pos.CENTER),
-                            fixedCell(dateLabel, COL_DATE, Pos.CENTER),
-                            fixedCell(toggle, COL_TOGGLE, Pos.CENTER)
-                    );
+                    row.getChildren()
+                            .addAll(
+                                    fixedCell(nameLabel, COL_NAME, Pos.CENTER_LEFT),
+                                    fixedCell(versionLabel, COL_VER, Pos.CENTER),
+                                    fixedCell(dateLabel, COL_DATE, Pos.CENTER),
+                                    fixedCell(toggle, COL_TOGGLE, Pos.CENTER));
 
                     modsList.getChildren().add(row);
 
@@ -153,7 +162,10 @@ public class ModsTab extends AbstractAssetsTab {
                         byte[] bytes = robustLoadIconBytes(m.path());
                         if (bytes != null && bytes.length > 0) {
                             Platform.runLater(() -> {
-                                try { icon.setImage(new Image(new ByteArrayInputStream(bytes))); } catch (Exception ignored) {}
+                                try {
+                                    icon.setImage(new Image(new ByteArrayInputStream(bytes)));
+                                } catch (Exception ignored) {
+                                }
                             });
                         }
                     });
@@ -180,12 +192,12 @@ public class ModsTab extends AbstractAssetsTab {
             List<IconCandidate> candidates = new ArrayList<>();
 
             addTomlIcons(fs, candidates);
-            for (String jfn : new String[]{"fabric.mod.json", "quilt.mod.json", "mods.json", "mod.json"}) {
+            for (String jfn : new String[] {"fabric.mod.json", "quilt.mod.json", "mods.json", "mod.json"}) {
                 addJsonIcons(fs, jfn, candidates);
             }
             addAssetsIcons(fs, modId, candidates);
 
-            for (String rootName : new String[]{"pack.png", "icon.png", "logo.png", "mod_icon.png"}) {
+            for (String rootName : new String[] {"pack.png", "icon.png", "logo.png", "mod_icon.png"}) {
                 Path p = safeFsPath(fs, rootName);
                 if (p != null && Files.exists(p)) candidates.add(new IconCandidate(p, 150));
             }
@@ -193,20 +205,24 @@ public class ModsTab extends AbstractAssetsTab {
             for (Path root : fs.getRootDirectories()) {
                 try (Stream<Path> walk = Files.walk(root, 6)) {
                     walk.filter(p -> {
-                        Path fn = p.getFileName();
-                        return fn != null && fn.toString().toLowerCase().endsWith(".png");
-                    }).forEach(p -> {
-                        String fn = p.getFileName().toString().toLowerCase(Locale.ROOT);
-                        int score = 10;
-                        if (fn.contains("logo")) score += 60;
-                        if (fn.contains("icon")) score += 50;
-                        if (fn.contains("pack")) score += 40;
-                        if (fn.contains("mod")) score += 20;
-                        if (modId != null && p.toString().toLowerCase().contains(modId.toLowerCase(Locale.ROOT))) score += 40;
-                        score += Math.max(0, 20 - p.getNameCount());
-                        candidates.add(new IconCandidate(p, score));
-                    });
-                } catch (Exception ignored) {}
+                                Path fn = p.getFileName();
+                                return fn != null && fn.toString().toLowerCase().endsWith(".png");
+                            })
+                            .forEach(p -> {
+                                String fn = p.getFileName().toString().toLowerCase(Locale.ROOT);
+                                int score = 10;
+                                if (fn.contains("logo")) score += 60;
+                                if (fn.contains("icon")) score += 50;
+                                if (fn.contains("pack")) score += 40;
+                                if (fn.contains("mod")) score += 20;
+                                if (modId != null
+                                        && p.toString().toLowerCase().contains(modId.toLowerCase(Locale.ROOT)))
+                                    score += 40;
+                                score += Math.max(0, 20 - p.getNameCount());
+                                candidates.add(new IconCandidate(p, score));
+                            });
+                } catch (Exception ignored) {
+                }
             }
 
             return candidates.stream()
@@ -230,7 +246,8 @@ public class ModsTab extends AbstractAssetsTab {
             Path toml = fs.getPath("META-INF", "mods.toml");
             if (Files.exists(toml)) {
                 String content = Files.readString(toml, StandardCharsets.UTF_8);
-                Matcher m = Pattern.compile("(?m)^\\s*logoFile\\s*=\\s*\"([^\"]+)\"").matcher(content);
+                Matcher m = Pattern.compile("(?m)^\\s*logoFile\\s*=\\s*\"([^\"]+)\"")
+                        .matcher(content);
                 if (m.find()) {
                     Path p = safeFsPath(fs, m.group(1));
                     if (p != null && Files.exists(p)) candidates.add(new IconCandidate(p, 200));
@@ -241,7 +258,8 @@ public class ModsTab extends AbstractAssetsTab {
                     if (p != null && Files.exists(p)) candidates.add(new IconCandidate(p, 140));
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void addJsonIcons(FileSystem fs, String fileName, List<IconCandidate> candidates) {
@@ -250,21 +268,27 @@ public class ModsTab extends AbstractAssetsTab {
             if (!Files.exists(json)) return;
             String content = Files.readString(json, StandardCharsets.UTF_8);
 
-            Matcher m1 = Pattern.compile("\"icon\"\\s*:\\s*\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE).matcher(content);
+            Matcher m1 = Pattern.compile("\"icon\"\\s*:\\s*\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE)
+                    .matcher(content);
             if (m1.find()) addIfExists(fs, m1.group(1), candidates, 190);
 
-            Matcher mArr = Pattern.compile("\"icon\"\\s*:\\s*\\[(.*?)]", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(content);
+            Matcher mArr = Pattern.compile("\"icon\"\\s*:\\s*\\[(.*?)]", Pattern.DOTALL | Pattern.CASE_INSENSITIVE)
+                    .matcher(content);
             if (mArr.find()) {
-                Matcher png = Pattern.compile("\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE).matcher(mArr.group(1));
+                Matcher png = Pattern.compile("\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE)
+                        .matcher(mArr.group(1));
                 if (png.find()) addIfExists(fs, png.group(1), candidates, 180);
             }
 
-            Matcher mObj = Pattern.compile("\"icon\"\\s*:\\s*\\{([^}]+)}", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(content);
+            Matcher mObj = Pattern.compile("\"icon\"\\s*:\\s*\\{([^}]+)}", Pattern.DOTALL | Pattern.CASE_INSENSITIVE)
+                    .matcher(content);
             if (mObj.find()) {
-                Matcher mf = Pattern.compile("\"file\"\\s*:\\s*\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE).matcher(mObj.group(1));
+                Matcher mf = Pattern.compile("\"file\"\\s*:\\s*\"([^\"]+\\.png)\"", Pattern.CASE_INSENSITIVE)
+                        .matcher(mObj.group(1));
                 if (mf.find()) addIfExists(fs, mf.group(1), candidates, 185);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void addAssetsIcons(FileSystem fs, String modId, List<IconCandidate> candidates) {
@@ -273,7 +297,14 @@ public class ModsTab extends AbstractAssetsTab {
             if (!Files.exists(assets) || !Files.isDirectory(assets)) return;
             try (DirectoryStream<Path> ns = Files.newDirectoryStream(assets)) {
                 for (Path nsDir : ns) {
-                    for (String fname : new String[]{"icon.png", "logo.png", "textures/icon.png", "textures/logo.png", "textures/gui/logo.png", "textures/gui/icon.png"}) {
+                    for (String fname : new String[] {
+                        "icon.png",
+                        "logo.png",
+                        "textures/icon.png",
+                        "textures/logo.png",
+                        "textures/gui/logo.png",
+                        "textures/gui/icon.png"
+                    }) {
                         Path candidate = nsDir.resolve(fname);
                         if (Files.exists(candidate)) {
                             int score = 180 + (nsDir.getFileName().toString().equalsIgnoreCase(modId) ? 20 : 0);
@@ -282,13 +313,15 @@ public class ModsTab extends AbstractAssetsTab {
                     }
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private byte[] fallbackIconBytes() {
         try (InputStream res = getClass().getResourceAsStream("/img/mod_placeholder.png")) {
             if (res != null) return res.readAllBytes();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return Base64.getDecoder().decode(FALLBACK_PNG_BASE64);
     }
 
@@ -314,27 +347,32 @@ public class ModsTab extends AbstractAssetsTab {
             Path toml = fs.getPath("META-INF", "mods.toml");
             if (Files.exists(toml)) {
                 String content = Files.readString(toml, StandardCharsets.UTF_8);
-                Matcher mods = Pattern.compile("\\[\\[mods]](.*?)(?=\\n\\[\\[|$)", Pattern.DOTALL).matcher(content);
+                Matcher mods = Pattern.compile("\\[\\[mods]](.*?)(?=\\n\\[\\[|$)", Pattern.DOTALL)
+                        .matcher(content);
                 if (mods.find()) {
                     String block = mods.group(1);
-                    Matcher mid = Pattern.compile("(?m)\\b(modId|modid|id)\\s*=\\s*\"([^\"]+)\"").matcher(block);
+                    Matcher mid = Pattern.compile("(?m)\\b(modId|modid|id)\\s*=\\s*\"([^\"]+)\"")
+                            .matcher(block);
                     if (mid.find()) return mid.group(2);
                 }
             }
-        } catch (Exception ignored) {}
-        for (String jfn : new String[]{"fabric.mod.json", "quilt.mod.json", "mods.json", "mod.json"}) {
+        } catch (Exception ignored) {
+        }
+        for (String jfn : new String[] {"fabric.mod.json", "quilt.mod.json", "mods.json", "mod.json"}) {
             try {
                 Path json = fs.getPath(jfn);
                 if (Files.exists(json)) {
                     String content = Files.readString(json, StandardCharsets.UTF_8);
-                    Matcher m = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE).matcher(content);
+                    Matcher m = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE)
+                            .matcher(content);
                     if (m.find()) return m.group(1);
-                    Matcher m2 = Pattern.compile("\"modid\"\\s*:\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE).matcher(content);
+                    Matcher m2 = Pattern.compile("\"modid\"\\s*:\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE)
+                            .matcher(content);
                     if (m2.find()) return m2.group(1);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         return null;
     }
-
 }

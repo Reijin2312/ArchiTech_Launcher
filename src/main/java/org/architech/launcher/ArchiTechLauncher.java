@@ -3,46 +3,45 @@
 
 package org.architech.launcher;
 
+import static org.architech.launcher.managment.NeoForgeManager.getInstalledVersion;
+import static org.architech.launcher.utils.serverinfo.ServersDatWriter.writeServersDat;
+
 import com.fasterxml.jackson.databind.JsonNode;
-import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.stage.Stage;
-import org.architech.launcher.authentication.auth.AuthService;
-import org.architech.launcher.discord.DiscordIntegration;
-import org.architech.launcher.gui.BackgroundCache;
-import org.architech.launcher.gui.error.ErrorPanel;
-import org.architech.launcher.gui.settings.tab.SettingsTab;
-import org.architech.launcher.gui.LauncherUI;
-import org.architech.launcher.authentication.account.Account;
-import org.architech.launcher.authentication.account.AccountManager;
-import org.architech.launcher.authentication.auth.JoinTicketService;
-import org.architech.launcher.gui.timer.Timer;
-import org.architech.launcher.managment.DownloadManager;
-import org.architech.launcher.managment.ModsManager;
-import org.architech.launcher.managment.NativesManager;
-import org.architech.launcher.managment.VersionManager;
-import org.architech.launcher.managment.NeoForgeManager;
-import org.architech.launcher.utils.*;
-import org.architech.launcher.utils.logging.LogManager;
-import org.architech.launcher.utils.serverinfo.ServersDatGenerator;
-import org.architech.launcher.utils.serverinfo.ServersDatWriter;
 import java.io.*;
 import java.net.URISyntaxException;
-import java.time.Instant;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.lang.ProcessHandle;
-
-import static org.architech.launcher.managment.NeoForgeManager.getInstalledVersion;
-import static org.architech.launcher.utils.serverinfo.ServersDatWriter.writeServersDat;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.stage.Stage;
+import org.architech.launcher.authentication.account.Account;
+import org.architech.launcher.authentication.account.AccountManager;
+import org.architech.launcher.authentication.auth.AuthService;
+import org.architech.launcher.authentication.auth.JoinTicketService;
+import org.architech.launcher.discord.DiscordIntegration;
+import org.architech.launcher.gui.BackgroundCache;
+import org.architech.launcher.gui.LauncherUI;
+import org.architech.launcher.gui.error.ErrorPanel;
+import org.architech.launcher.gui.settings.tab.SettingsTab;
+import org.architech.launcher.gui.timer.Timer;
+import org.architech.launcher.managment.DownloadManager;
+import org.architech.launcher.managment.ModsManager;
+import org.architech.launcher.managment.NativesManager;
+import org.architech.launcher.managment.NeoForgeManager;
+import org.architech.launcher.managment.VersionManager;
+import org.architech.launcher.utils.*;
+import org.architech.launcher.utils.logging.LogManager;
+import org.architech.launcher.utils.serverinfo.ServersDatGenerator;
+import org.architech.launcher.utils.serverinfo.ServersDatWriter;
 
 public class ArchiTechLauncher extends Application {
 
@@ -70,9 +69,11 @@ public class ArchiTechLauncher extends Application {
     public static LauncherUI UI;
     public static final DownloadManager DOWNLOAD_MANAGER = new DownloadManager();
 
-    private static final ExecutorService launcherExecutor = Executors.newSingleThreadExecutor(daemonFactory("launcher-worker"));
+    private static final ExecutorService launcherExecutor =
+            Executors.newSingleThreadExecutor(daemonFactory("launcher-worker"));
     public static final ExecutorService backgroundExecutor = Executors.newCachedThreadPool(daemonFactory("bg"));
-    public static final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor(daemonFactory("sched"));
+    public static final ScheduledExecutorService scheduledExecutor =
+            Executors.newSingleThreadScheduledExecutor(daemonFactory("sched"));
     private static final AtomicReference<Future<?>> launchFuture = new AtomicReference<>();
     private static final AtomicReference<Future<?>> updateFuture = new AtomicReference<>();
     private static final AtomicReference<DownloadManager> activeDownloadManager = new AtomicReference<>();
@@ -85,7 +86,12 @@ public class ArchiTechLauncher extends Application {
     public void start(Stage stage) throws IOException, URISyntaxException {
         LogManager.setupLogger();
 
-        LAUNCHER_DIR = Paths.get(SettingsTab.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
+        LAUNCHER_DIR = Paths.get(SettingsTab.class
+                        .getProtectionDomain()
+                        .getCodeSource()
+                        .getLocation()
+                        .toURI())
+                .getParent();
         CONFIG_PATH = LAUNCHER_DIR.resolve("launcher_config.json");
         ACCOUNT_FILE = LAUNCHER_DIR.resolve(".account.json");
         LEGACY_GAME_LOCK_FILE = LAUNCHER_DIR.resolve(".game.lock.json");
@@ -97,12 +103,15 @@ public class ArchiTechLauncher extends Application {
             try (Reader r = Files.newBufferedReader(CONFIG_PATH, StandardCharsets.UTF_8)) {
                 cfg = Jsons.MAPPER.readValue(r, Map.class);
                 if (cfg == null) return;
-                if (cfg.containsKey("gameDir")) GAME_DIR = Path.of(cfg.get("gameDir").toString());
-                if (cfg.containsKey("javaPath")) JAVA_PATH = Path.of(cfg.get("javaPath").toString());
+                if (cfg.containsKey("gameDir"))
+                    GAME_DIR = Path.of(cfg.get("gameDir").toString());
+                if (cfg.containsKey("javaPath"))
+                    JAVA_PATH = Path.of(cfg.get("javaPath").toString());
                 if (cfg.containsKey("closeOnLaunch")) CLOSE_ON_LAUNCH = (boolean) cfg.get("closeOnLaunch");
                 if (cfg.containsKey("netTimeout")) HTTP_TIMEOUT = (int) cfg.get("netTimeout");
                 if (cfg.containsKey("autoUpdate")) AUTO_UPDATE_CLIENT = (boolean) cfg.get("autoUpdate");
-                if (cfg.containsKey("language")) GAME_LANGUAGE_TAG = mapLanguageTag(String.valueOf(cfg.get("language")));
+                if (cfg.containsKey("language"))
+                    GAME_LANGUAGE_TAG = mapLanguageTag(String.valueOf(cfg.get("language")));
                 if (cfg.containsKey("background")) {
                     Object bg = cfg.get("background");
                     LAUNCHER_BACKGROUND = (bg instanceof String) ? ((String) bg).trim() : "CherryAndRiver.png";
@@ -133,7 +142,8 @@ public class ArchiTechLauncher extends Application {
                     });
                 }
             } catch (Exception e) {
-                LogManager.getLogger().warning("РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ С‚РѕРєРµРЅРѕРІ/РїСЂРѕС„РёР»СЏ: " + e.getMessage());
+                LogManager.getLogger()
+                        .warning("РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ С‚РѕРєРµРЅРѕРІ/РїСЂРѕС„РёР»СЏ: " + e.getMessage());
             }
         });
 
@@ -164,7 +174,8 @@ public class ArchiTechLauncher extends Application {
             return;
         }
         if (isGameProcessRunning()) {
-            Platform.runLater(() -> ErrorPanel.showError("Игра уже запущена", "Закройте текущий клиент перед новым запуском."));
+            Platform.runLater(
+                    () -> ErrorPanel.showError("Игра уже запущена", "Закройте текущий клиент перед новым запуском."));
             return;
         }
 
@@ -234,7 +245,8 @@ public class ArchiTechLauncher extends Application {
                 Path serversDat = GAME_DIR.resolve("servers.dat");
                 if (!Files.exists(serversDat)) ServersDatGenerator.createServersDat(serversDat);
 
-                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("ArchiTech MC", MINESERVER_URL).withHidden(false);
+                ServersDatWriter.ServerEntry mySrv =
+                        new ServersDatWriter.ServerEntry("ArchiTech MC", MINESERVER_URL).withHidden(false);
                 List<ServersDatWriter.ServerEntry> list = Collections.singletonList(mySrv);
 
                 Files.createDirectories(serversDat.getParent());
@@ -263,7 +275,10 @@ public class ArchiTechLauncher extends Application {
                 try {
                     while (true) {
                         if (launchCancelled.get() || Thread.currentThread().isInterrupted()) {
-                            try { p.destroyForcibly(); } catch (Exception ignored) {}
+                            try {
+                                p.destroyForcibly();
+                            } catch (Exception ignored) {
+                            }
                             throw new InterruptedException();
                         }
                         try {
@@ -300,8 +315,10 @@ public class ArchiTechLauncher extends Application {
                 lastJoinId = null;
                 Account acc = AccountManager.getCurrentAccount();
                 backgroundExecutor.submit(() -> {
-                    try { JoinTicketService.consume(acc, joinIdToConsume); }
-                    catch (Exception ignored) {}
+                    try {
+                        JoinTicketService.consume(acc, joinIdToConsume);
+                    } catch (Exception ignored) {
+                    }
                 });
             }
         });
@@ -367,7 +384,8 @@ public class ArchiTechLauncher extends Application {
                 Path serversDat = GAME_DIR.resolve("servers.dat");
                 if (!Files.exists(serversDat)) ServersDatGenerator.createServersDat(serversDat);
 
-                ServersDatWriter.ServerEntry mySrv = new ServersDatWriter.ServerEntry("ArchiTech MC", MINESERVER_URL).withHidden(false);
+                ServersDatWriter.ServerEntry mySrv =
+                        new ServersDatWriter.ServerEntry("ArchiTech MC", MINESERVER_URL).withHidden(false);
                 List<ServersDatWriter.ServerEntry> list = Collections.singletonList(mySrv);
 
                 Files.createDirectories(serversDat.getParent());
@@ -394,6 +412,7 @@ public class ArchiTechLauncher extends Application {
 
         updateFuture.set(f);
     }
+
     public static void cancelLaunch() {
         launchCancelled.set(true);
         Future<?> f = launchFuture.getAndSet(null);
@@ -403,7 +422,10 @@ public class ArchiTechLauncher extends Application {
         if (dm != null) dm.cancelAllDownloads();
 
         if (currentGameProcess != null) {
-            try { currentGameProcess.destroyForcibly(); } catch (Exception ignored) {}
+            try {
+                currentGameProcess.destroyForcibly();
+            } catch (Exception ignored) {
+            }
         }
         clearGameLock();
         trackedProcessHandle = null;
@@ -441,7 +463,7 @@ public class ArchiTechLauncher extends Application {
                     return;
                 }
             }
-            Map<?,?> lock = Jsons.MAPPER.readValue(Files.readString(lockPath), Map.class);
+            Map<?, ?> lock = Jsons.MAPPER.readValue(Files.readString(lockPath), Map.class);
             Object pidObj = lock.get("pid");
             if (pidObj instanceof Number num) {
                 long pid = num.longValue();
@@ -454,7 +476,8 @@ public class ArchiTechLauncher extends Application {
                             try {
                                 Files.createDirectories(GAME_LOCK_FILE.getParent());
                                 Files.copy(lp, GAME_LOCK_FILE);
-                            } catch (Exception ignored) {}
+                            } catch (Exception ignored) {
+                            }
                         }
                     } else {
                         clearGameLock();
@@ -468,7 +491,8 @@ public class ArchiTechLauncher extends Application {
     private static boolean isGameProcessRunning() {
         try {
             if (currentGameProcess != null && currentGameProcess.isAlive()) return true;
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         if (trackedProcessHandle != null && trackedProcessHandle.isAlive()) return true;
         loadExistingGameLock();
         return trackedProcessHandle != null && trackedProcessHandle.isAlive();
@@ -481,16 +505,22 @@ public class ArchiTechLauncher extends Application {
             lock.put("pid", p.pid());
             lock.put("ts", Instant.now().toString());
             Files.createDirectories(GAME_LOCK_FILE.getParent());
-            Files.writeString(GAME_LOCK_FILE, Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(lock), StandardCharsets.UTF_8);
-        } catch (Exception ignored) {}
+            Files.writeString(
+                    GAME_LOCK_FILE,
+                    Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(lock),
+                    StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+        }
     }
 
     private static void clearGameLock() {
         try {
             if (GAME_LOCK_FILE != null) Files.deleteIfExists(GAME_LOCK_FILE);
             if (LEGACY_GAME_LOCK_FILE != null) Files.deleteIfExists(LEGACY_GAME_LOCK_FILE);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
+
     private static ThreadFactory daemonFactory(String prefix) {
         final AtomicInteger id = new AtomicInteger(1);
         return r -> {
@@ -504,13 +534,3 @@ public class ArchiTechLauncher extends Application {
         backgroundExecutor.submit(r);
     }
 }
-
-
-
-
-
-
-
-
-
-

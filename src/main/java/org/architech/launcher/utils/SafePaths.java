@@ -14,13 +14,11 @@ import java.util.Objects;
 /**
  * Utilities for resolving paths received from manifests and archives.
  *
- * <p>The checks are intentionally platform-independent: Windows drive paths,
- * UNC paths and backslash traversal are rejected even when the launcher is
- * currently running on Linux or macOS.</p>
+ * <p>The checks are intentionally platform-independent: Windows drive paths, UNC paths and backslash traversal are
+ * rejected even when the launcher is currently running on Linux or macOS.
  */
 public final class SafePaths {
-    private SafePaths() {
-    }
+    private SafePaths() {}
 
     public static String normalizeRelative(String untrustedPath) throws IOException {
         Path relative = parseRelative(untrustedPath);
@@ -41,9 +39,8 @@ public final class SafePaths {
     }
 
     /**
-     * Creates the parent directory tree one component at a time and refuses to
-     * traverse symbolic links. This prevents an existing symlink inside the
-     * destination tree from redirecting writes outside the trusted root.
+     * Creates the parent directory tree one component at a time and refuses to traverse symbolic links. This prevents
+     * an existing symlink inside the destination tree from redirecting writes outside the trusted root.
      */
     public static void createParentDirectoriesSecurely(Path root, Path target) throws IOException {
         Objects.requireNonNull(root, "root");
@@ -80,8 +77,7 @@ public final class SafePaths {
             throw new IOException("Target escapes root directory: " + target);
         }
 
-        if (Files.exists(normalizedRoot, LinkOption.NOFOLLOW_LINKS)
-                && Files.isSymbolicLink(normalizedRoot)) {
+        if (Files.exists(normalizedRoot, LinkOption.NOFOLLOW_LINKS) && Files.isSymbolicLink(normalizedRoot)) {
             throw new IOException("Refusing to traverse symbolic link: " + normalizedRoot);
         }
 
@@ -144,19 +140,14 @@ public final class SafePaths {
         }
 
         String normalized = relative.toString();
-        if (relative.isAbsolute()
-                || normalized.isEmpty()
-                || ".".equals(normalized)
-                || relative.startsWith("..")) {
+        if (relative.isAbsolute() || normalized.isEmpty() || ".".equals(normalized) || relative.startsWith("..")) {
             throw new IOException("Unsafe relative path: " + untrustedPath);
         }
         return relative;
     }
 
     private static boolean looksLikeWindowsDrivePath(String path) {
-        return path.length() >= 2
-                && Character.isLetter(path.charAt(0))
-                && path.charAt(1) == ':';
+        return path.length() >= 2 && Character.isLetter(path.charAt(0)) && path.charAt(1) == ':';
     }
 
     private static void createDirectoryWithoutFollowingLinks(Path directory) throws IOException {
@@ -173,8 +164,7 @@ public final class SafePaths {
         try {
             Files.createDirectory(directory);
         } catch (FileAlreadyExistsException race) {
-            if (Files.isSymbolicLink(directory)
-                    || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
+            if (Files.isSymbolicLink(directory) || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
                 throw new IOException("Directory was replaced while being created: " + directory, race);
             }
         }

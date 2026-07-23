@@ -4,15 +4,6 @@
 package org.architech.launcher.authentication.account;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.authentication.keystorage.LocalEncryptedSecretStorage;
-import org.architech.launcher.authentication.keystorage.SecretStorage;
-import org.architech.launcher.utils.Jsons;
-import org.architech.launcher.utils.logging.LogManager;
-
-import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -20,14 +11,23 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.*;
 import java.util.logging.Level;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.authentication.keystorage.LocalEncryptedSecretStorage;
+import org.architech.launcher.authentication.keystorage.SecretStorage;
+import org.architech.launcher.utils.Jsons;
+import org.architech.launcher.utils.logging.LogManager;
 
 /**
- * Stores non-sensitive account data on disk, while tokens live in a local AES-encrypted store
- * located next to .account.json in the launcher directory. No OS keyring dependency.
+ * Stores non-sensitive account data on disk, while tokens live in a local AES-encrypted store located next to
+ * .account.json in the launcher directory. No OS keyring dependency.
  */
 public final class AccountStore {
     private static final Path SECRET_FILE = ArchiTechLauncher.ACCOUNT_FILE.resolveSibling(".account.secrets");
-    private static final Path SECRET_KEY_FILE = SECRET_FILE.resolveSibling(SECRET_FILE.getFileName().toString() + ".key");
+    private static final Path SECRET_KEY_FILE =
+            SECRET_FILE.resolveSibling(SECRET_FILE.getFileName().toString() + ".key");
     private static final TypeReference<Map<String, String>> MAP_TYPE = new TypeReference<>() {};
 
     private static final SecretStorage STORE = initStore();
@@ -76,14 +76,17 @@ public final class AccountStore {
     private static void deleteSecret(Account account, String name) {
         if (STORE == null) return;
         for (String key : secretKeys(account, name)) {
-            try { STORE.deleteSecret(key); } catch (Exception ignored) {}
+            try {
+                STORE.deleteSecret(key);
+            } catch (Exception ignored) {
+            }
         }
     }
 
     public static Account load() {
         Path primary = ArchiTechLauncher.ACCOUNT_FILE;
         Path secondary = ArchiTechLauncher.GAME_DIR.resolve("config").resolve(".account.json"); // legacy/migration
-        Path[] candidates = primary.equals(secondary) ? new Path[]{primary} : new Path[]{primary, secondary};
+        Path[] candidates = primary.equals(secondary) ? new Path[] {primary} : new Path[] {primary, secondary};
         for (Path p : candidates) {
             try {
                 if (Files.exists(p)) {
@@ -111,10 +114,10 @@ public final class AccountStore {
         return a;
     }
 
-    public static void save(Account a){
+    public static void save(Account a) {
         Path target = ArchiTechLauncher.ACCOUNT_FILE;
         try {
-            if(a == null) {
+            if (a == null) {
                 Files.deleteIfExists(target);
                 deleteSecret(null, "launcherToken");
                 deleteSecret(null, "refreshToken");
@@ -135,8 +138,8 @@ public final class AccountStore {
             Files.createDirectories(target.getParent());
             Path tmp = target.resolveSibling(target.getFileName().toString() + ".tmp");
             String json = Jsons.MAPPER.writeValueAsString(copy);
-            Files.writeString(tmp, json, StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            Files.writeString(
+                    tmp, json, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             try {
                 Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             } catch (AtomicMoveNotSupportedException ex) {
@@ -145,7 +148,8 @@ public final class AccountStore {
             try {
                 Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
                 Files.setPosixFilePermissions(target, perms);
-            } catch (UnsupportedOperationException ignored) {}
+            } catch (UnsupportedOperationException ignored) {
+            }
         } catch (IOException ex) {
             LogManager.getLogger().log(Level.SEVERE, "Failed to write account file", ex);
         }
@@ -167,14 +171,18 @@ public final class AccountStore {
     private static boolean importPlain(Path plainFile, LocalEncryptedSecretStorage storage) {
         if (!Files.exists(plainFile)) return false;
         try {
-            Map<String, String> data = Jsons.MAPPER.readValue(Files.readString(plainFile, StandardCharsets.UTF_8), MAP_TYPE);
+            Map<String, String> data =
+                    Jsons.MAPPER.readValue(Files.readString(plainFile, StandardCharsets.UTF_8), MAP_TYPE);
             if (data != null && !data.isEmpty()) {
                 for (Map.Entry<String, String> e : data.entrySet()) {
                     if (e.getValue() != null) {
                         storage.putSecret(e.getKey(), e.getValue());
                     }
                 }
-                try { Files.deleteIfExists(plainFile); } catch (Exception ignored) {}
+                try {
+                    Files.deleteIfExists(plainFile);
+                } catch (Exception ignored) {
+                }
                 return true;
             }
         } catch (Exception e) {
@@ -203,12 +211,19 @@ public final class AccountStore {
                     storage.putSecret(e.getKey(), plain);
                     imported++;
                 } catch (Exception ex) {
-                    LogManager.getLogger().warning("Failed to migrate legacy secret " + e.getKey() + ": " + ex.getMessage());
+                    LogManager.getLogger()
+                            .warning("Failed to migrate legacy secret " + e.getKey() + ": " + ex.getMessage());
                 }
             }
             if (imported > 0) {
-                try { Files.deleteIfExists(encFile); } catch (Exception ignored) {}
-                try { Files.deleteIfExists(keyFile); } catch (Exception ignored) {}
+                try {
+                    Files.deleteIfExists(encFile);
+                } catch (Exception ignored) {
+                }
+                try {
+                    Files.deleteIfExists(keyFile);
+                } catch (Exception ignored) {
+                }
                 return true;
             }
         } catch (Exception e) {

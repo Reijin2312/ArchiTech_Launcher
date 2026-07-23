@@ -3,16 +3,15 @@
 
 package org.architech.launcher.utils;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class SafePathsTest {
     @TempDir
@@ -22,10 +21,7 @@ class SafePathsTest {
     void resolvesNestedRelativePathInsideRoot() throws Exception {
         Path resolved = SafePaths.resolveInside(tempDir, "mods/example.jar");
 
-        assertEquals(
-                tempDir.toAbsolutePath().normalize().resolve("mods/example.jar"),
-                resolved
-        );
+        assertEquals(tempDir.toAbsolutePath().normalize().resolve("mods/example.jar"), resolved);
     }
 
     @Test
@@ -76,9 +72,6 @@ class SafePathsTest {
         }
 
         Path target = SafePaths.resolveInside(tempDir, "link/file.txt");
-        assertThrows(
-                IOException.class,
-                () -> SafePaths.createParentDirectoriesSecurely(tempDir, target)
-        );
+        assertThrows(IOException.class, () -> SafePaths.createParentDirectoriesSecurely(tempDir, target));
     }
 }

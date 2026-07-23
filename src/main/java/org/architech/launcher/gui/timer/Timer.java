@@ -3,11 +3,11 @@
 
 package org.architech.launcher.gui.timer;
 
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
 import org.architech.launcher.ArchiTechLauncher;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 public class Timer {
 
@@ -22,18 +22,22 @@ public class Timer {
             timerFuture.cancel(true);
         }
 
-        timerFuture = ArchiTechLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
-            if (Thread.currentThread().isInterrupted()) return;
+        timerFuture = ArchiTechLauncher.scheduledExecutor.scheduleAtFixedRate(
+                () -> {
+                    if (Thread.currentThread().isInterrupted()) return;
 
-            long elapsed = System.currentTimeMillis() - startTimeMs;
-            long sec = elapsed / 1000;
-            long h = sec / 3600;
-            long m = (sec % 3600) / 60;
-            long s = sec % 60;
+                    long elapsed = System.currentTimeMillis() - startTimeMs;
+                    long sec = elapsed / 1000;
+                    long h = sec / 3600;
+                    long m = (sec % 3600) / 60;
+                    long s = sec % 60;
 
-            String formatted = String.format("Времени прошло: %02d:%02d:%02d", h, m, s);
-            Platform.runLater(() -> timerLabel.setText(formatted));
-        }, 0, 1, TimeUnit.SECONDS);
+                    String formatted = String.format("Времени прошло: %02d:%02d:%02d", h, m, s);
+                    Platform.runLater(() -> timerLabel.setText(formatted));
+                },
+                0,
+                1,
+                TimeUnit.SECONDS);
     }
 
     public static void stopTimer() {
@@ -44,5 +48,4 @@ public class Timer {
         startTimeMs = System.currentTimeMillis();
         Platform.runLater(() -> timerLabel.setText("Времени прошло: 00:00:00"));
     }
-
 }

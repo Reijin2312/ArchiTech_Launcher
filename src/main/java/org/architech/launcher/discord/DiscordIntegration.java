@@ -3,14 +3,13 @@
 
 package org.architech.launcher.discord;
 
-import net.arikia.dev.drpc.DiscordEventHandlers;
-import net.arikia.dev.drpc.DiscordRichPresence;
-import net.arikia.dev.drpc.DiscordRPC;
-import org.architech.launcher.utils.logging.LogManager;
-
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import net.arikia.dev.drpc.DiscordEventHandlers;
+import net.arikia.dev.drpc.DiscordRPC;
+import net.arikia.dev.drpc.DiscordRichPresence;
+import org.architech.launcher.utils.logging.LogManager;
 
 public class DiscordIntegration {
     private static final String APP_ID = "1409949210568298647";
@@ -26,20 +25,30 @@ public class DiscordIntegration {
         DiscordEventHandlers handlers = new DiscordEventHandlers.Builder().build();
         DiscordRPC.discordInitialize(APP_ID, handlers, true);
 
-        presence = new DiscordRichPresence.Builder("В лаунчере").setDetails("На главной странице")
+        presence = new DiscordRichPresence.Builder("В лаунчере")
+                .setDetails("На главной странице")
                 .setBigImage("embedded_cover", "Launcher")
                 .build();
         DiscordRPC.discordUpdatePresence(presence);
 
-        discordExecutor.scheduleWithFixedDelay(() -> {
-            try { DiscordRPC.discordRunCallbacks(); } catch (Throwable t) { LogManager.getLogger().warning("RPC callback failed: " + t.getMessage()); }
-        }, 0, 2, TimeUnit.SECONDS);
+        discordExecutor.scheduleWithFixedDelay(
+                () -> {
+                    try {
+                        DiscordRPC.discordRunCallbacks();
+                    } catch (Throwable t) {
+                        LogManager.getLogger().warning("RPC callback failed: " + t.getMessage());
+                    }
+                },
+                0,
+                2,
+                TimeUnit.SECONDS);
 
         LogManager.getLogger().info("Запуск интеграции с discord...");
     }
 
     public static void update(String mainStatus, String details) {
-        presence = new DiscordRichPresence.Builder(mainStatus).setDetails(details)
+        presence = new DiscordRichPresence.Builder(mainStatus)
+                .setDetails(details)
                 .setBigImage("embedded_cover", "Launcher")
                 .build();
         DiscordRPC.discordUpdatePresence(presence);
@@ -55,5 +64,4 @@ public class DiscordIntegration {
         DiscordRPC.discordShutdown();
         LogManager.getLogger().info("Остановка интеграции с discord...");
     }
-
 }

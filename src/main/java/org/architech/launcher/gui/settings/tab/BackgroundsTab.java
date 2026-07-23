@@ -3,6 +3,14 @@
 
 package org.architech.launcher.gui.settings.tab;
 
+import static org.architech.launcher.ArchiTechLauncher.LAUNCHER_DIR;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -19,18 +27,12 @@ import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.logging.LogManager;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static org.architech.launcher.ArchiTechLauncher.LAUNCHER_DIR;
 
 public class BackgroundsTab {
-    private static final String SELECTED_STYLE = "-fx-border-color: -fx-focus-color, -fx-focus-color; -fx-border-width: 3; -fx-border-radius: 6; -fx-background-radius: 6;";
-    private static final String NON_SELECTED_STYLE = "-fx-border-color: transparent; -fx-border-width: 0; -fx-border-radius: 6; -fx-background-radius: 6;";
+    private static final String SELECTED_STYLE =
+            "-fx-border-color: -fx-focus-color, -fx-focus-color; -fx-border-width: 3; -fx-border-radius: 6; -fx-background-radius: 6;";
+    private static final String NON_SELECTED_STYLE =
+            "-fx-border-color: transparent; -fx-border-width: 0; -fx-border-radius: 6; -fx-background-radius: 6;";
 
     private final Stage stage;
     private final Path backgroundsDir = LAUNCHER_DIR.resolve("backgrounds");
@@ -40,7 +42,10 @@ public class BackgroundsTab {
 
     public BackgroundsTab(Stage stage) {
         this.stage = stage;
-        try { Files.createDirectories(backgroundsDir); } catch (Exception ignored) {}
+        try {
+            Files.createDirectories(backgroundsDir);
+        } catch (Exception ignored) {
+        }
     }
 
     public Parent createContent() {
@@ -48,13 +53,13 @@ public class BackgroundsTab {
         root.getStyleClass().add("mods-pane");
 
         HBox top = new HBox(8);
-        top.setPadding(new Insets(8,16,8,16));
+        top.setPadding(new Insets(8, 16, 8, 16));
         TextField search = new TextField();
         search.setPromptText("Поиск по имени файла");
         Button searchBtn = new Button("Поиск");
         searchBtn.setPrefHeight(28);
         Button addBtn = new Button("+");
-        addBtn.setPrefSize(28,28);
+        addBtn.setPrefSize(28, 28);
         HBox.setHgrow(search, Priority.ALWAYS);
         top.getChildren().addAll(search, searchBtn, addBtn);
         root.setTop(top);
@@ -78,7 +83,8 @@ public class BackgroundsTab {
         addBtn.setOnAction(e -> {
             FileChooser chooser = new FileChooser();
             chooser.setTitle("Добавить фон");
-            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Изображения", "*.png", "*.jpg", "*.jpeg"));
+            chooser.getExtensionFilters()
+                    .add(new FileChooser.ExtensionFilter("Изображения", "*.png", "*.jpg", "*.jpeg"));
             java.io.File f = chooser.showOpenDialog(stage);
             if (f == null) return;
             try {
@@ -100,13 +106,13 @@ public class BackgroundsTab {
         ArchiTechLauncher.submitBackground(() -> {
             List<Path> newItems;
             try (Stream<Path> s = Files.list(backgroundsDir)) {
-                newItems = s
-                        .filter(p -> {
+                newItems = s.filter(p -> {
                             String n = p.getFileName().toString().toLowerCase();
                             return n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg");
                         })
-                        .sorted(Comparator.comparing((Path x) -> x.getFileName().toString(),
-                                String.CASE_INSENSITIVE_ORDER).reversed())
+                        .sorted(Comparator.comparing(
+                                        (Path x) -> x.getFileName().toString(), String.CASE_INSENSITIVE_ORDER)
+                                .reversed())
                         .toList();
             } catch (Exception ex) {
                 LogManager.getLogger().warning("list backgrounds failed: " + ex.getMessage());
@@ -125,13 +131,15 @@ public class BackgroundsTab {
                     Path match = null;
                     for (Path p : items) {
                         if (cfg.equalsIgnoreCase(p.getFileName().toString().trim())) {
-                            match = p; break;
+                            match = p;
+                            break;
                         }
                     }
                     if (match != null) {
                         try {
                             LauncherUI.applyBackground(match);
-                            ArchiTechLauncher.LAUNCHER_BACKGROUND = match.getFileName().toString().trim();
+                            ArchiTechLauncher.LAUNCHER_BACKGROUND =
+                                    match.getFileName().toString().trim();
                             selectedFileName = ArchiTechLauncher.LAUNCHER_BACKGROUND;
                         } catch (Exception ex) {
                             LogManager.getLogger().warning("apply background on load failed: " + ex.getMessage());
@@ -152,12 +160,13 @@ public class BackgroundsTab {
         try {
             if (!Files.exists(ArchiTechLauncher.CONFIG_PATH)) return;
             try (Reader r = Files.newBufferedReader(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
-                Map<?,?> old = Jsons.MAPPER.readValue(r, Map.class);
+                Map<?, ?> old = Jsons.MAPPER.readValue(r, Map.class);
                 if (old != null) {
                     Object bg = old.get("background");
                     if (bg instanceof String) {
                         selectedFileName = ((String) bg).trim();
-                        LogManager.getLogger().info("BackgroundsTab: read selected from config -> '" + selectedFileName + "'");
+                        LogManager.getLogger()
+                                .info("BackgroundsTab: read selected from config -> '" + selectedFileName + "'");
                     }
                 }
             } catch (Exception ex) {
@@ -201,7 +210,8 @@ public class BackgroundsTab {
             try {
                 Image img = new Image(p.toUri().toString(), 0, 120, true, true, true);
                 iv.setImage(img);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
 
             Label name = new Label(p.getFileName().toString());
             name.setMaxWidth(Double.MAX_VALUE);
@@ -216,11 +226,14 @@ public class BackgroundsTab {
                     && !selectedFileName.isBlank()
                     && selectedFileName.trim().equalsIgnoreCase(tileName);
 
-            LogManager.getLogger().fine("BackgroundsTab: compare cfg='" + selectedFileName + "' vs tile='" + tileName + "' => " + isSelected);
+            LogManager.getLogger()
+                    .fine("BackgroundsTab: compare cfg='" + selectedFileName + "' vs tile='" + tileName + "' => "
+                            + isSelected);
 
             if (isSelected) {
                 tile.setStyle(SELECTED_STYLE);
-                if (!tile.getStyleClass().contains("selected-bg")) tile.getStyleClass().add("selected-bg");
+                if (!tile.getStyleClass().contains("selected-bg"))
+                    tile.getStyleClass().add("selected-bg");
             } else {
                 tile.setStyle(NON_SELECTED_STYLE);
                 tile.getStyleClass().remove("selected-bg");
@@ -252,26 +265,35 @@ public class BackgroundsTab {
                     Files.deleteIfExists(p);
 
                     try {
-                        Map<String,Object> cfg = new LinkedHashMap<>();
+                        Map<String, Object> cfg = new LinkedHashMap<>();
                         if (Files.exists(ArchiTechLauncher.CONFIG_PATH)) {
-                            try (Reader r = Files.newBufferedReader(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
+                            try (Reader r =
+                                    Files.newBufferedReader(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
                                 @SuppressWarnings("unchecked")
                                 Map<String, Object> old = (Map<String, Object>) Jsons.MAPPER.readValue(r, Map.class);
                                 if (old != null) cfg.putAll(old);
-                            } catch (Exception ignored) {}
+                            } catch (Exception ignored) {
+                            }
                         }
 
                         Object bgObj = cfg.get("background");
                         String current = (bgObj instanceof String) ? ((String) bgObj).trim() : null;
-                        if (current != null && current.equalsIgnoreCase(p.getFileName().toString().trim())) {
+                        if (current != null
+                                && current.equalsIgnoreCase(
+                                        p.getFileName().toString().trim())) {
                             cfg.remove("background");
                             Files.createDirectories(ArchiTechLauncher.CONFIG_PATH.getParent());
-                            try (Writer w = Files.newBufferedWriter(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
+                            try (Writer w =
+                                    Files.newBufferedWriter(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
                                 Jsons.MAPPER.writerWithDefaultPrettyPrinter().writeValue(w, cfg);
-                            } catch (Exception ignored) {}
+                            } catch (Exception ignored) {
+                            }
                             selectedFileName = null;
                             Platform.runLater(() -> {
-                                try { LauncherUI.applyBackground(null); } catch (Exception ignored) {}
+                                try {
+                                    LauncherUI.applyBackground(null);
+                                } catch (Exception ignored) {
+                                }
                             });
                         }
                     } catch (Exception ex) {
@@ -296,13 +318,14 @@ public class BackgroundsTab {
         }
 
         try {
-            Map<String,Object> cfg = new LinkedHashMap<>();
+            Map<String, Object> cfg = new LinkedHashMap<>();
             if (Files.exists(ArchiTechLauncher.CONFIG_PATH)) {
                 try (Reader r = Files.newBufferedReader(ArchiTechLauncher.CONFIG_PATH, StandardCharsets.UTF_8)) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> old = (Map<String, Object>) Jsons.MAPPER.readValue(r, Map.class);
                     if (old != null) cfg.putAll(old);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
 
             String fileName = p.getFileName().toString().trim();
@@ -323,7 +346,8 @@ public class BackgroundsTab {
         Platform.runLater(() -> {
             try {
                 grid.requestFocus();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         });
     }
 }

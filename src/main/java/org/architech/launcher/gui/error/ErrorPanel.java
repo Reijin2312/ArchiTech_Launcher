@@ -3,6 +3,9 @@
 
 package org.architech.launcher.gui.error;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -13,10 +16,6 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.architech.launcher.gui.LauncherUI;
 import org.architech.launcher.utils.Utils;
-
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 
 public class ErrorPanel {
 
@@ -41,9 +40,8 @@ public class ErrorPanel {
         Label detailsLabel = new Label("Подробности:");
         detailsLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
 
-        ImageView gifView = new ImageView(new Image(
-                Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/cat.gif"))
-        ));
+        ImageView gifView = new ImageView(
+                new Image(Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/cat.gif"))));
         gifView.setPreserveRatio(true);
         gifView.setFitWidth(500);
 
@@ -67,9 +65,8 @@ public class ErrorPanel {
         }
 
         Stage stage = (Stage) pane.getScene().getWindow();
-        stage.getIcons().add(new Image(
-                Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))
-        ));
+        stage.getIcons()
+                .add(new Image(Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))));
         stage.setResizable(false);
 
         a.showAndWait().ifPresent(response -> {
@@ -79,5 +76,4 @@ public class ErrorPanel {
             }
         });
     }
-
 }

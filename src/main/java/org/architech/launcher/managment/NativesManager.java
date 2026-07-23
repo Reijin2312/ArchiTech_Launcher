@@ -3,10 +3,6 @@
 
 package org.architech.launcher.managment;
 
-import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.utils.SafePaths;
-import org.architech.launcher.utils.SafeZipExtractor;
-
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -14,6 +10,9 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
+import org.architech.launcher.utils.FileEntry;
+import org.architech.launcher.utils.SafePaths;
+import org.architech.launcher.utils.SafeZipExtractor;
 
 public record NativesManager(Path gameDir, String version) {
     public NativesManager {
@@ -43,11 +42,7 @@ public record NativesManager(Path gameDir, String version) {
             if (file.path == null || !Files.isRegularFile(file.path)) {
                 continue;
             }
-            SafeZipExtractor.extract(
-                    file.path,
-                    nativesRoot,
-                    name -> !name.startsWith("META-INF/")
-            );
+            SafeZipExtractor.extract(file.path, nativesRoot, name -> !name.startsWith("META-INF/"));
         }
     }
 

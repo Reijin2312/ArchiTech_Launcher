@@ -1,0 +1,58 @@
+// SPDX-FileCopyrightText: 2026 Raijin2312
+// SPDX-License-Identifier: GPL-3.0-only
+
+spotless {
+    java {
+        target 'src/main/java/**/*.java', 'src/test/java/**/*.java'
+
+        removeUnusedImports()
+
+        palantirJavaFormat('2.96.0')
+                .formatJavadoc(true)
+
+        formatAnnotations()
+        trimTrailingWhitespace()
+        endWithNewline()
+
+        licenseHeader '''// SPDX-FileCopyrightText: 2026 Raijin2312
+// SPDX-License-Identifier: GPL-3.0-only
+
+''', 'package '
+    }
+
+    format 'misc', {
+        target(
+                '*.gradle',
+                'gradle/**/*.gradle',
+                '*.md',
+                '.gitignore',
+                '.gitattributes',
+                'src/main/resources/**/*.css'
+        )
+
+        targetExclude(
+                'build/**',
+                '.gradle/**',
+                '.idea/**',
+                'gradle/wrapper/**'
+        )
+
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+def spotlessApplyTask = tasks.named('spotlessApply')
+def spotlessCheckTask = tasks.named('spotlessCheck')
+
+spotlessCheckTask.configure {
+    mustRunAfter(spotlessApplyTask)
+}
+
+tasks.register('formatAndCheck') {
+    group = 'formatting'
+    description = 'Applies Spotless formatting and verifies the result.'
+
+    dependsOn(spotlessApplyTask)
+    dependsOn(spotlessCheckTask)
+}

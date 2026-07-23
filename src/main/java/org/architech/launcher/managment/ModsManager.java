@@ -3,12 +3,8 @@
 
 package org.architech.launcher.managment;
 
-import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.utils.Jsons;
-import org.architech.launcher.utils.SafePaths;
-import org.architech.launcher.utils.Utils;
-import org.architech.launcher.utils.logging.LogManager;
+import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
+import static org.architech.launcher.ArchiTechLauncher.UI;
 
 import java.io.IOException;
 import java.net.URI;
@@ -32,9 +28,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
-import static org.architech.launcher.ArchiTechLauncher.UI;
+import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.utils.FileEntry;
+import org.architech.launcher.utils.Jsons;
+import org.architech.launcher.utils.SafePaths;
+import org.architech.launcher.utils.Utils;
+import org.architech.launcher.utils.logging.LogManager;
 
 public final class ModsManager {
     private static final long MAX_MANIFEST_BYTES = 4L * 1024L * 1024L;
@@ -45,8 +44,7 @@ public final class ModsManager {
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
-    private ModsManager() {
-    }
+    private ModsManager() {}
 
     public static void syncMods(Path gameDir) throws Exception {
         Path root = gameDir.toAbsolutePath().normalize();
@@ -64,9 +62,8 @@ public final class ModsManager {
         Manifest oldManifest = readLocalManifest(localManifest);
 
         Set<String> oldPaths = safeOldPaths(root, oldManifest);
-        Set<String> newPaths = newManifest.files.stream()
-                .map(file -> file.path)
-                .collect(Collectors.toCollection(HashSet::new));
+        Set<String> newPaths =
+                newManifest.files.stream().map(file -> file.path).collect(Collectors.toCollection(HashSet::new));
 
         deleteRemovedFiles(root, oldPaths, newPaths);
 
@@ -103,31 +100,20 @@ public final class ModsManager {
 
             String url = backendFileUrl(file.path);
             toDownload.add(new FileEntry(
-                    "mod",
-                    file.path,
-                    url,
-                    target,
-                    file.size,
-                    blankToNull(file.sha1),
-                    blankToNull(file.sha256)
-            ));
+                    "mod", file.path, url, target, file.size, blankToNull(file.sha1), blankToNull(file.sha256)));
         }
 
         ArchiTechLauncher.DOWNLOAD_MANAGER.resetTotals();
         long planned = ArchiTechLauncher.DOWNLOAD_MANAGER.computeTotalBytesToDownload(toDownload);
         ArchiTechLauncher.DOWNLOAD_MANAGER.setTotalBytesPlanned(planned);
 
-        int threads = Math.min(
-                MAX_DOWNLOAD_THREADS,
-                Math.max(2, Runtime.getRuntime().availableProcessors())
-        );
-        List<FileEntry> failed = ArchiTechLauncher.DOWNLOAD_MANAGER
-                .downloadFilesInParallel(toDownload, threads, 3, true);
+        int threads =
+                Math.min(MAX_DOWNLOAD_THREADS, Math.max(2, Runtime.getRuntime().availableProcessors()));
+        List<FileEntry> failed =
+                ArchiTechLauncher.DOWNLOAD_MANAGER.downloadFilesInParallel(toDownload, threads, 3, true);
 
         if (!failed.isEmpty()) {
-            String names = failed.stream()
-                    .map(entry -> entry.name)
-                    .collect(Collectors.joining(", "));
+            String names = failed.stream().map(entry -> entry.name).collect(Collectors.joining(", "));
             updateUi("Не удалось скачать: " + names, -1);
             throw new IOException("Не удалось скачать файлы из манифеста: " + names);
         }
@@ -198,9 +184,8 @@ public final class ModsManager {
         try {
             return Jsons.MAPPER.readValue(Files.readAllBytes(localManifest), Manifest.class);
         } catch (Exception failure) {
-            LogManager.getLogger().warning(
-                    "Локальный manifest.json повреждён и будет проигнорирован: " + failure.getMessage()
-            );
+            LogManager.getLogger()
+                    .warning("Локальный manifest.json повреждён и будет проигнорирован: " + failure.getMessage());
             return null;
         }
     }
@@ -218,19 +203,14 @@ public final class ModsManager {
             try {
                 paths.add(ManifestPathPolicy.validate(root, file.path));
             } catch (IOException unsafePath) {
-                LogManager.getLogger().warning(
-                        "Небезопасный путь в локальном manifest.json проигнорирован: " + file.path
-                );
+                LogManager.getLogger()
+                        .warning("Небезопасный путь в локальном manifest.json проигнорирован: " + file.path);
             }
         }
         return paths;
     }
 
-    private static void deleteRemovedFiles(
-            Path root,
-            Set<String> oldPaths,
-            Set<String> newPaths
-    ) throws IOException {
+    private static void deleteRemovedFiles(Path root, Set<String> oldPaths, Set<String> newPaths) throws IOException {
         Set<String> toDelete = new HashSet<>(oldPaths);
         toDelete.removeAll(newPaths);
 
@@ -242,10 +222,8 @@ public final class ModsManager {
         }
     }
 
-    private static void cleanupDuplicateStates(
-            Path root,
-            Map<String, Boolean> desiredDisabledState
-    ) throws IOException {
+    private static void cleanupDuplicateStates(Path root, Map<String, Boolean> desiredDisabledState)
+            throws IOException {
         for (Map.Entry<String, Boolean> entry : desiredDisabledState.entrySet()) {
             Path enabled = SafePaths.resolveInside(root, entry.getKey());
             Path disabled = SafePaths.resolveInside(root, entry.getKey() + ".disabled");
@@ -299,15 +277,9 @@ public final class ModsManager {
                 bytes,
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE
-        );
+                StandardOpenOption.WRITE);
         try {
-            Files.move(
-                    temporary,
-                    localManifest,
-                    StandardCopyOption.REPLACE_EXISTING,
-                    StandardCopyOption.ATOMIC_MOVE
-            );
+            Files.move(temporary, localManifest, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException ignored) {
             Files.move(temporary, localManifest, StandardCopyOption.REPLACE_EXISTING);
         } finally {
@@ -316,9 +288,7 @@ public final class ModsManager {
     }
 
     private static String backendFileUrl(String normalizedPath) {
-        return stripTrailingSlash(BACKEND_URL)
-                + "/api/files/file/"
-                + encodePathForUri(normalizedPath);
+        return stripTrailingSlash(BACKEND_URL) + "/api/files/file/" + encodePathForUri(normalizedPath);
     }
 
     private static String encodePathForUri(String path) {
@@ -365,12 +335,8 @@ public final class ModsManager {
                 || value == '@';
     }
 
-    private static String normalizeHash(
-            String hash,
-            int expectedLength,
-            String algorithm,
-            String path
-    ) throws IOException {
+    private static String normalizeHash(String hash, int expectedLength, String algorithm, String path)
+            throws IOException {
         String normalized = blankToNull(hash);
         if (normalized == null) {
             return null;

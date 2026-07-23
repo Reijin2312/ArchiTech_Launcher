@@ -3,6 +3,18 @@
 
 package org.architech.launcher.gui.settings.tab;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.TranslateTransition;
@@ -15,23 +27,10 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.nio.file.attribute.FileTime;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.jar.Attributes;
-import java.util.jar.Manifest;
-
 public abstract class AbstractAssetsTab {
-    protected static final double COL_NAME   = 320;
-    protected static final double COL_VER    = 140;
-    protected static final double COL_DATE   = 180;
+    protected static final double COL_NAME = 320;
+    protected static final double COL_VER = 140;
+    protected static final double COL_DATE = 180;
     protected static final double COL_TOGGLE = 80;
     protected static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     protected VBox modsListRef;
@@ -40,12 +39,16 @@ public abstract class AbstractAssetsTab {
     protected static Pane fixedCell(javafx.scene.Node node, double width, Pos align) {
         StackPane box = new StackPane(node);
         box.setAlignment(align);
-        box.setMinWidth(width); box.setPrefWidth(width); box.setMaxWidth(width);
+        box.setMinWidth(width);
+        box.setPrefWidth(width);
+        box.setMaxWidth(width);
         return box;
     }
 
     protected static Pane fixedHeaderLabel(String text, double width) {
-        Label l = new Label(text); l.setAlignment(Pos.CENTER); return fixedCell(l, width, Pos.CENTER);
+        Label l = new Label(text);
+        l.setAlignment(Pos.CENTER);
+        return fixedCell(l, width, Pos.CENTER);
     }
 
     protected String formatFileTime(FileTime ft) {
@@ -62,15 +65,18 @@ public abstract class AbstractAssetsTab {
         if (!Files.exists(toml)) return null;
         try {
             String content = Files.readString(toml, StandardCharsets.UTF_8);
-            Matcher mods = Pattern.compile("\\[\\[mods]](.*?)(?=\\n\\[\\[|$)", Pattern.DOTALL).matcher(content);
+            Matcher mods = Pattern.compile("\\[\\[mods]](.*?)(?=\\n\\[\\[|$)", Pattern.DOTALL)
+                    .matcher(content);
             if (mods.find()) {
                 String block = mods.group(1);
                 Matcher v = Pattern.compile("version\\s*=\\s*\"([^\"]+)\"").matcher(block);
                 if (v.find()) return v.group(1);
             }
-            Matcher glob = Pattern.compile("(?m)^\\s*version\\s*=\\s*\"([^\"]+)\"\\s*$").matcher(content);
+            Matcher glob = Pattern.compile("(?m)^\\s*version\\s*=\\s*\"([^\"]+)\"\\s*$")
+                    .matcher(content);
             if (glob.find()) return glob.group(1);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return null;
     }
 
@@ -78,9 +84,11 @@ public abstract class AbstractAssetsTab {
         Path json = fs.getPath(fileName);
         if (!Files.exists(json)) return null;
         try {
-            Matcher m = Pattern.compile("\"version\"\\s*:\\s*\"([^\"]+)\"").matcher(Files.readString(json, StandardCharsets.UTF_8));
+            Matcher m = Pattern.compile("\"version\"\\s*:\\s*\"([^\"]+)\"")
+                    .matcher(Files.readString(json, StandardCharsets.UTF_8));
             if (m.find()) return m.group(1);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return null;
     }
 
@@ -96,7 +104,8 @@ public abstract class AbstractAssetsTab {
             if (isGood(v)) return v;
             v = a.getValue(Attributes.Name.SPECIFICATION_VERSION);
             if (isGood(v)) return v;
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+        }
         return null;
     }
 
@@ -110,7 +119,8 @@ public abstract class AbstractAssetsTab {
             if (isGood(v)) return v;
             v = readVersionFromManifest(fs);
             if (isGood(v)) return v;
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return "???";
     }
 
@@ -120,13 +130,15 @@ public abstract class AbstractAssetsTab {
                 Path p1 = packPath.resolve("shaderpack.properties");
                 if (Files.exists(p1)) {
                     String s = Files.readString(p1, StandardCharsets.UTF_8);
-                    Matcher m = Pattern.compile("(?m)^\\s*version\\s*=\\s*(.+)$").matcher(s);
+                    Matcher m =
+                            Pattern.compile("(?m)^\\s*version\\s*=\\s*(.+)$").matcher(s);
                     if (m.find()) return m.group(1).trim();
                 }
                 Path p2 = packPath.resolve("shaderpack.txt");
                 if (Files.exists(p2)) {
                     String s = Files.readString(p2, StandardCharsets.UTF_8);
-                    Matcher m = Pattern.compile("(?m)^\\s*version\\s*[:=]\\s*(.+)$").matcher(s);
+                    Matcher m =
+                            Pattern.compile("(?m)^\\s*version\\s*[:=]\\s*(.+)$").matcher(s);
                     if (m.find()) return m.group(1).trim();
                 }
             } else {
@@ -134,18 +146,21 @@ public abstract class AbstractAssetsTab {
                     Path p1 = fs.getPath("shaderpack.properties");
                     if (Files.exists(p1)) {
                         String s = Files.readString(p1, StandardCharsets.UTF_8);
-                        Matcher m = Pattern.compile("(?m)^\\s*version\\s*=\\s*(.+)$").matcher(s);
+                        Matcher m = Pattern.compile("(?m)^\\s*version\\s*=\\s*(.+)$")
+                                .matcher(s);
                         if (m.find()) return m.group(1).trim();
                     }
                     Path p2 = fs.getPath("shaderpack.txt");
                     if (Files.exists(p2)) {
                         String s = Files.readString(p2, StandardCharsets.UTF_8);
-                        Matcher m = Pattern.compile("(?m)^\\s*version\\s*[:=]\\s*(.+)$").matcher(s);
+                        Matcher m = Pattern.compile("(?m)^\\s*version\\s*[:=]\\s*(.+)$")
+                                .matcher(s);
                         if (m.find()) return m.group(1).trim();
                     }
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return "—";
     }
 
@@ -164,7 +179,8 @@ public abstract class AbstractAssetsTab {
                     if (Files.exists(p)) return Files.readAllBytes(p);
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return null;
     }
 

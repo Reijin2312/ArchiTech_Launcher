@@ -3,8 +3,6 @@
 
 package org.architech.launcher.managment;
 
-import org.architech.launcher.utils.SafePaths;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -13,27 +11,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import org.architech.launcher.utils.SafePaths;
 
 /** Validation policy for file paths supplied by the remote launcher manifest. */
 public final class ManifestPathPolicy {
-    private static final Set<String> PROTECTED_TOP_LEVEL = Set.of(
-            "launcher",
-            "neoforge",
-            "news"
-    );
+    private static final Set<String> PROTECTED_TOP_LEVEL = Set.of("launcher", "neoforge", "news");
 
-    private static final Set<String> RESERVED_NAMES = Set.of(
-            "manifest.json",
-            "manifest.json.tmp"
-    );
+    private static final Set<String> RESERVED_NAMES = Set.of("manifest.json", "manifest.json.tmp");
 
-    private ManifestPathPolicy() {
-    }
+    private ManifestPathPolicy() {}
 
     /**
-     * These categories are managed by other launcher components and must not be
-     * touched by the mods synchronizer. The check is deliberately tolerant of
-     * slash direction and case because the manifest is remote input.
+     * These categories are managed by other launcher components and must not be touched by the mods synchronizer. The
+     * check is deliberately tolerant of slash direction and case because the manifest is remote input.
      */
     public static boolean isProtectedTopLevel(String rawPath) {
         if (rawPath == null) {
@@ -50,9 +40,7 @@ public final class ManifestPathPolicy {
         SafePaths.resolveInside(root, normalized);
 
         String lower = normalized.toLowerCase(Locale.ROOT);
-        String topLevel = lower.contains("/")
-                ? lower.substring(0, lower.indexOf('/'))
-                : lower;
+        String topLevel = lower.contains("/") ? lower.substring(0, lower.indexOf('/')) : lower;
 
         if (PROTECTED_TOP_LEVEL.contains(topLevel)) {
             throw new IOException("Manifest path targets a protected directory: " + rawPath);
@@ -70,8 +58,8 @@ public final class ManifestPathPolicy {
     }
 
     /**
-     * Validates and normalizes all paths and rejects case-insensitive
-     * duplicates so the same manifest behaves safely on Windows, Linux and macOS.
+     * Validates and normalizes all paths and rejects case-insensitive duplicates so the same manifest behaves safely on
+     * Windows, Linux and macOS.
      */
     public static List<String> validateAll(Path root, Collection<String> rawPaths) throws IOException {
         if (rawPaths == null) {

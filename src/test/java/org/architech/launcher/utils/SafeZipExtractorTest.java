@@ -3,8 +3,10 @@
 
 package org.architech.launcher.utils;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -15,11 +17,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class SafeZipExtractorTest {
     @TempDir
@@ -29,8 +28,7 @@ class SafeZipExtractorTest {
     void extractsNestedFiles() throws Exception {
         Path zip = createZip(Map.of(
                 "bin/native.dll", "native-data".getBytes(StandardCharsets.UTF_8),
-                "readme.txt", "hello".getBytes(StandardCharsets.UTF_8)
-        ));
+                "readme.txt", "hello".getBytes(StandardCharsets.UTF_8)));
         Path destination = tempDir.resolve("out");
 
         SafeZipExtractor.extract(zip, destination);
@@ -41,9 +39,7 @@ class SafeZipExtractorTest {
 
     @Test
     void blocksZipSlipTraversal() throws Exception {
-        Path zip = createZip(Map.of(
-                "../escaped.txt", "owned".getBytes(StandardCharsets.UTF_8)
-        ));
+        Path zip = createZip(Map.of("../escaped.txt", "owned".getBytes(StandardCharsets.UTF_8)));
         Path destination = tempDir.resolve("out");
 
         assertThrows(IOException.class, () -> SafeZipExtractor.extract(zip, destination));
@@ -52,29 +48,19 @@ class SafeZipExtractorTest {
 
     @Test
     void blocksBackslashTraversal() throws Exception {
-        Path zip = createZip(Map.of(
-                "..\\escaped.txt", "owned".getBytes(StandardCharsets.UTF_8)
-        ));
+        Path zip = createZip(Map.of("..\\escaped.txt", "owned".getBytes(StandardCharsets.UTF_8)));
 
-        assertThrows(
-                IOException.class,
-                () -> SafeZipExtractor.extract(zip, tempDir.resolve("out"))
-        );
+        assertThrows(IOException.class, () -> SafeZipExtractor.extract(zip, tempDir.resolve("out")));
     }
 
     @Test
     void canExcludeMetaInfEntries() throws Exception {
         Path zip = createZip(Map.of(
                 "META-INF/MANIFEST.MF", "metadata".getBytes(StandardCharsets.UTF_8),
-                "native.dll", "native".getBytes(StandardCharsets.UTF_8)
-        ));
+                "native.dll", "native".getBytes(StandardCharsets.UTF_8)));
         Path destination = tempDir.resolve("out");
 
-        SafeZipExtractor.extract(
-                zip,
-                destination,
-                name -> !name.startsWith("META-INF/")
-        );
+        SafeZipExtractor.extract(zip, destination, name -> !name.startsWith("META-INF/"));
 
         assertFalse(Files.exists(destination.resolve("META-INF/MANIFEST.MF")));
         assertTrue(Files.exists(destination.resolve("native.dll")));
@@ -82,16 +68,11 @@ class SafeZipExtractorTest {
 
     @Test
     void enforcesPerEntryLimitAndDeletesTemporaryFile() throws Exception {
-        Path zip = createZip(Map.of(
-                "large.bin", new byte[64]
-        ));
+        Path zip = createZip(Map.of("large.bin", new byte[64]));
         Path destination = tempDir.resolve("out");
         SafeZipExtractor.Limits limits = new SafeZipExtractor.Limits(10, 32, 128);
 
-        assertThrows(
-                IOException.class,
-                () -> SafeZipExtractor.extract(zip, destination, ignored -> true, limits)
-        );
+        assertThrows(IOException.class, () -> SafeZipExtractor.extract(zip, destination, ignored -> true, limits));
         assertFalse(Files.exists(destination.resolve("large.bin")));
         if (Files.exists(destination)) {
             try (var files = Files.list(destination)) {
@@ -110,13 +91,7 @@ class SafeZipExtractorTest {
 
         assertThrows(
                 IOException.class,
-                () -> SafeZipExtractor.extract(
-                        zip,
-                        tempDir.resolve("out"),
-                        ignored -> true,
-                        limits
-                )
-        );
+                () -> SafeZipExtractor.extract(zip, tempDir.resolve("out"), ignored -> true, limits));
     }
 
     @Test
@@ -128,9 +103,7 @@ class SafeZipExtractorTest {
         } catch (UnsupportedOperationException | IOException | SecurityException unsupported) {
             return;
         }
-        Path zip = createZip(Map.of(
-                "link/escaped.txt", "owned".getBytes(StandardCharsets.UTF_8)
-        ));
+        Path zip = createZip(Map.of("link/escaped.txt", "owned".getBytes(StandardCharsets.UTF_8)));
 
         assertThrows(IOException.class, () -> SafeZipExtractor.extract(zip, destination));
         assertFalse(Files.exists(outside.resolve("escaped.txt")));
@@ -139,7 +112,7 @@ class SafeZipExtractorTest {
     private Path createZip(Map<String, byte[]> entries) throws IOException {
         Path zip = Files.createTempFile(tempDir, "archive-", ".zip");
         try (OutputStream fileOutput = Files.newOutputStream(zip);
-             ZipOutputStream zipOutput = new ZipOutputStream(fileOutput)) {
+                ZipOutputStream zipOutput = new ZipOutputStream(fileOutput)) {
             for (Map.Entry<String, byte[]> entry : entries.entrySet()) {
                 zipOutput.putNextEntry(new ZipEntry(entry.getKey()));
                 zipOutput.write(entry.getValue());

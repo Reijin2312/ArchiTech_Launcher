@@ -65,7 +65,6 @@ public class ServersDatWriter {
         out.writeByte(TAG_End);
     }
 
-
     private static void writeTagHeader(DataOutputStream out, int tagId, String name) throws IOException {
         out.writeByte(tagId);
         writeString(out, name);
@@ -77,5 +76,4 @@ public class ServersDatWriter {
         out.writeShort(utf.length);
         out.write(utf);
     }
-
 }

@@ -3,13 +3,13 @@
 
 package org.architech.launcher.managment;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import org.architech.launcher.ArchiTechLauncher;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -19,11 +19,10 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.concurrent.Executors;
-
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.architech.launcher.ArchiTechLauncher;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class ModsManagerIntegrationTest {
     @TempDir
@@ -83,9 +82,7 @@ class ModsManagerIntegrationTest {
         Path outside = tempDir.getParent().resolve("must-survive.txt");
         Files.writeString(outside, "keep");
         Files.writeString(
-                tempDir.resolve("manifest.json"),
-                "{\"files\":[{\"path\":\"../must-survive.txt\",\"size\":4}]}"
-        );
+                tempDir.resolve("manifest.json"), "{\"files\":[{\"path\":\"../must-survive.txt\",\"size\":4}]}");
 
         try (TestServer server = new TestServer("{\"files\":[]}", new byte[0])) {
             pointLauncherAt(server);
@@ -140,10 +137,7 @@ class ModsManagerIntegrationTest {
         TestServer(String manifest, byte[] file) throws IOException {
             this.manifest = manifest.getBytes(StandardCharsets.UTF_8);
             this.file = file;
-            this.server = HttpServer.create(
-                    new InetSocketAddress(InetAddress.getLoopbackAddress(), 0),
-                    0
-            );
+            this.server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
             server.createContext("/api/files/manifest", exchange -> send(exchange, 200, this.manifest));
             server.createContext("/api/files/file/mods/example.jar", exchange -> send(exchange, 200, this.file));
             server.setExecutor(Executors.newCachedThreadPool(runnable -> {

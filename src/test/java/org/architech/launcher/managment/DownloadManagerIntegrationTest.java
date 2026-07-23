@@ -3,9 +3,10 @@
 
 package org.architech.launcher.managment;
 
-import org.architech.launcher.utils.FileEntry;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -29,11 +30,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.architech.launcher.utils.FileEntry;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class DownloadManagerIntegrationTest {
     @TempDir
@@ -42,19 +41,10 @@ class DownloadManagerIntegrationTest {
     @Test
     void downloadsFileAtomicallyAndChecksSha256() throws Exception {
         byte[] body = "verified payload".getBytes(StandardCharsets.UTF_8);
-        try (MiniHttpServer server = new MiniHttpServer(Map.of(
-                "/file", Response.ok(body)
-        ))) {
+        try (MiniHttpServer server = new MiniHttpServer(Map.of("/file", Response.ok(body)))) {
             Path target = tempDir.resolve("downloads/file.bin");
-            FileEntry entry = new FileEntry(
-                    "test",
-                    "file.bin",
-                    server.url("/file"),
-                    target,
-                    body.length,
-                    null,
-                    sha256(body)
-            );
+            FileEntry entry =
+                    new FileEntry("test", "file.bin", server.url("/file"), target, body.length, null, sha256(body));
 
             DownloadManager manager = new DownloadManager();
             manager.setTotalBytesPlanned(body.length);
@@ -69,22 +59,12 @@ class DownloadManagerIntegrationTest {
     @Test
     void rejectsWrongHashAndDoesNotPublishPartialFile() throws Exception {
         byte[] body = "tampered payload".getBytes(StandardCharsets.UTF_8);
-        try (MiniHttpServer server = new MiniHttpServer(Map.of(
-                "/file", Response.ok(body)
-        ))) {
+        try (MiniHttpServer server = new MiniHttpServer(Map.of("/file", Response.ok(body)))) {
             Path target = tempDir.resolve("file.bin");
-            FileEntry entry = new FileEntry(
-                    "test",
-                    "file.bin",
-                    server.url("/file"),
-                    target,
-                    body.length,
-                    null,
-                    "00".repeat(32)
-            );
+            FileEntry entry =
+                    new FileEntry("test", "file.bin", server.url("/file"), target, body.length, null, "00".repeat(32));
 
-            List<FileEntry> failed = new DownloadManager()
-                    .downloadFilesInParallel(List.of(entry), 1, 1, false);
+            List<FileEntry> failed = new DownloadManager().downloadFilesInParallel(List.of(entry), 1, 1, false);
 
             assertEquals(List.of(entry), failed);
             assertFalse(Files.exists(target));
@@ -99,9 +79,7 @@ class DownloadManagerIntegrationTest {
         Path target = tempDir.resolve("file.bin");
         Files.write(target, oldBody);
 
-        try (MiniHttpServer server = new MiniHttpServer(Map.of(
-                "/file", Response.ok(badReplacement)
-        ))) {
+        try (MiniHttpServer server = new MiniHttpServer(Map.of("/file", Response.ok(badReplacement)))) {
             FileEntry entry = new FileEntry(
                     "test",
                     "file.bin",
@@ -109,11 +87,9 @@ class DownloadManagerIntegrationTest {
                     target,
                     badReplacement.length,
                     null,
-                    sha256("expected replacement".getBytes(StandardCharsets.UTF_8))
-            );
+                    sha256("expected replacement".getBytes(StandardCharsets.UTF_8)));
 
-            List<FileEntry> failed = new DownloadManager()
-                    .downloadFilesInParallel(List.of(entry), 1, 1, false);
+            List<FileEntry> failed = new DownloadManager().downloadFilesInParallel(List.of(entry), 1, 1, false);
 
             assertEquals(1, failed.size());
             assertArrayEquals(oldBody, Files.readAllBytes(target));
@@ -122,21 +98,12 @@ class DownloadManagerIntegrationTest {
 
     @Test
     void reportsHttpErrorsAsFailedDownloads() throws Exception {
-        try (MiniHttpServer server = new MiniHttpServer(Map.of(
-                "/missing", new Response(500, "server error".getBytes(StandardCharsets.UTF_8))
-        ))) {
+        try (MiniHttpServer server = new MiniHttpServer(
+                Map.of("/missing", new Response(500, "server error".getBytes(StandardCharsets.UTF_8))))) {
             Path target = tempDir.resolve("missing.bin");
-            FileEntry entry = new FileEntry(
-                    "test",
-                    "missing.bin",
-                    server.url("/missing"),
-                    target,
-                    0,
-                    null
-            );
+            FileEntry entry = new FileEntry("test", "missing.bin", server.url("/missing"), target, 0, null);
 
-            List<FileEntry> failed = new DownloadManager()
-                    .downloadFilesInParallel(List.of(entry), 1, 1, false);
+            List<FileEntry> failed = new DownloadManager().downloadFilesInParallel(List.of(entry), 1, 1, false);
 
             assertEquals(List.of(entry), failed);
             assertFalse(Files.exists(target));
@@ -160,19 +127,14 @@ class DownloadManagerIntegrationTest {
                         tempDir.resolve("parallel/file-" + index + ".bin"),
                         body.length,
                         null,
-                        sha256(body)
-                ));
+                        sha256(body)));
             }
 
-            List<FileEntry> failed = new DownloadManager()
-                    .downloadFilesInParallel(entries, 3, 1, false);
+            List<FileEntry> failed = new DownloadManager().downloadFilesInParallel(entries, 3, 1, false);
 
             assertTrue(failed.isEmpty());
             for (int index = 0; index < entries.size(); index++) {
-                assertEquals(
-                        "payload-" + index,
-                        Files.readString(entries.get(index).path)
-                );
+                assertEquals("payload-" + index, Files.readString(entries.get(index).path));
             }
         }
     }
@@ -207,8 +169,8 @@ class DownloadManagerIntegrationTest {
         }
 
         String url(String path) {
-            return "http://" + serverSocket.getInetAddress().getHostAddress()
-                    + ":" + serverSocket.getLocalPort() + path;
+            return "http://" + serverSocket.getInetAddress().getHostAddress() + ":" + serverSocket.getLocalPort()
+                    + path;
         }
 
         private void acceptLoop() {
@@ -226,14 +188,10 @@ class DownloadManagerIntegrationTest {
 
         private void handle(Socket socket) {
             try (socket;
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(
-                         socket.getInputStream(),
-                         StandardCharsets.US_ASCII
-                 ));
-                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                         socket.getOutputStream(),
-                         StandardCharsets.US_ASCII
-                 ))) {
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(socket.getInputStream(), StandardCharsets.US_ASCII));
+                    BufferedWriter writer = new BufferedWriter(
+                            new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.US_ASCII))) {
                 String requestLine = reader.readLine();
                 if (requestLine == null || requestLine.isBlank()) {
                     return;
@@ -245,10 +203,8 @@ class DownloadManagerIntegrationTest {
                     // Consume request headers.
                 }
 
-                Response response = responses.getOrDefault(
-                        path,
-                        new Response(404, "not found".getBytes(StandardCharsets.UTF_8))
-                );
+                Response response =
+                        responses.getOrDefault(path, new Response(404, "not found".getBytes(StandardCharsets.UTF_8)));
                 writer.write("HTTP/1.1 " + response.status() + " " + reason(response.status()) + "\r\n");
                 writer.write("Content-Length: " + response.body().length + "\r\n");
                 writer.write("Connection: close\r\n");

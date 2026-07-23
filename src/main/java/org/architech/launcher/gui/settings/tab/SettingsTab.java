@@ -3,6 +3,13 @@
 
 package org.architech.launcher.gui.settings.tab;
 
+import static org.architech.launcher.ArchiTechLauncher.*;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.util.*;
+import java.util.function.UnaryOperator;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -12,17 +19,10 @@ import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
-import org.architech.launcher.utils.Jsons;
-import org.architech.launcher.utils.logging.LogManager;
-import org.architech.launcher.utils.Utils;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.util.*;
-import java.util.function.UnaryOperator;
 import org.architech.launcher.ArchiTechLauncher;
-
-import static org.architech.launcher.ArchiTechLauncher.*;
+import org.architech.launcher.utils.Jsons;
+import org.architech.launcher.utils.Utils;
+import org.architech.launcher.utils.logging.LogManager;
 
 public class SettingsTab {
     private final Stage stage;
@@ -49,20 +49,25 @@ public class SettingsTab {
     private Slider soundVolumeSlider;
     private Slider scaleSlider;
 
-    public SettingsTab(Stage stage) { this.stage = stage; }
+    public SettingsTab(Stage stage) {
+        this.stage = stage;
+    }
 
     public Parent createContent() {
         BorderPane root = new BorderPane();
         root.getStyleClass().add("settings-pane");
 
         VBox box = new VBox(14);
-        box.setPadding(new Insets(0,16,16,16));
+        box.setPadding(new Insets(0, 16, 16, 16));
         box.getStyleClass().add("settings-card");
 
         // ---------- СИСТЕМА ----------
         box.getChildren().add(categoryHeader("Система"));
 
-        HBox gameDirRow = leftRow("Путь установки игры:", gameDirField = new TextField(GAME_DIR.toAbsolutePath().toString()), true);
+        HBox gameDirRow = leftRow(
+                "Путь установки игры:",
+                gameDirField = new TextField(GAME_DIR.toAbsolutePath().toString()),
+                true);
         Button browseGameDir = new Button("...");
         browseGameDir.getStyleClass().add("lookup");
         gameDirRow.getChildren().add(browseGameDir);
@@ -103,13 +108,13 @@ public class SettingsTab {
         themeCombo.getItems().addAll("Тёмная", "Светлая");
         themeCombo.getSelectionModel().selectFirst();
 
-        HBox scaleRow = leftRow("Масштаб UI:", scaleSlider = new Slider(50,200,100), false);
+        HBox scaleRow = leftRow("Масштаб UI:", scaleSlider = new Slider(50, 200, 100), false);
         Label scaleVal = new Label("100%");
         scaleSlider.valueProperty().addListener((obs, ov, nv) -> {
             double s = nv.doubleValue();
             scaleVal.setText((int) s + "%");
-            root.setScaleX(s/100.0);
-            root.setScaleY(s/100.0);
+            root.setScaleX(s / 100.0);
+            root.setScaleY(s / 100.0);
         });
         scaleRow.getChildren().add(scaleVal);
         box.getChildren().add(scaleRow);
@@ -121,10 +126,10 @@ public class SettingsTab {
         fullscreenCheck = new CheckBox("Полноэкранный режим");
         box.getChildren().addAll(autoUpdate, fullscreenCheck);
 
-        box.getChildren().add(leftRow("Лимит FPS:", fpsSpinner = new Spinner<>(30,240,60,1), false));
+        box.getChildren().add(leftRow("Лимит FPS:", fpsSpinner = new Spinner<>(30, 240, 60, 1), false));
         fpsSpinner.setEditable(true);
 
-        HBox ramRow = leftRow("Память (МБ):", ramSlider = new Slider(1024,16384,4096), false);
+        HBox ramRow = leftRow("Память (МБ):", ramSlider = new Slider(1024, 16384, 4096), false);
         ramSlider.setBlockIncrement(1024);
         ramSlider.setSnapToTicks(true);
         ramSlider.setShowTickMarks(true);
@@ -149,7 +154,8 @@ public class SettingsTab {
         });
 
         ramFormatter.valueProperty().addListener((obs, ov, nv) -> {
-            if (ramField.isFocused() && (ramField.getText() == null || ramField.getText().isEmpty())) return;
+            if (ramField.isFocused()
+                    && (ramField.getText() == null || ramField.getText().isEmpty())) return;
             if (nv == null) return;
             int newVal = Utils.roundRam(nv);
             int clamped = Math.max((int) ramSlider.getMin(), Math.min((int) ramSlider.getMax(), newVal));
@@ -164,22 +170,25 @@ public class SettingsTab {
         closeOnLaunch = new CheckBox("Закрывать лаунчер после запуска");
         box.getChildren().add(closeOnLaunch);
 
-        HBox winRow = leftRow("Размер окна:", new HBox(6, widthField = new TextField("854"), new Label("x"), heightField = new TextField("480")), true);
+        HBox winRow = leftRow(
+                "Размер окна:",
+                new HBox(6, widthField = new TextField("854"), new Label("x"), heightField = new TextField("480")),
+                true);
         box.getChildren().add(winRow);
 
         // ---------- СЕТЬ ----------
         box.getChildren().add(categoryHeader("Сеть"));
         box.getChildren().add(leftRow("Прокси:", proxyField = new TextField(), true));
-        box.getChildren().add(leftRow("HTTP таймаут (сек):", netTimeoutSpinner = new Spinner<>(5,120,30,5), false));
+        box.getChildren().add(leftRow("HTTP таймаут (сек):", netTimeoutSpinner = new Spinner<>(5, 120, 30, 5), false));
 
         // ---------- ДОПОЛНИТЕЛЬНО ----------
         box.getChildren().add(categoryHeader("Дополнительно"));
-        box.getChildren().add(leftRow("Громкость:", soundVolumeSlider = new Slider(0,100,80), false));
+        box.getChildren().add(leftRow("Громкость:", soundVolumeSlider = new Slider(0, 100, 80), false));
 
         Label jvmLabel = new Label("Аргументы JVM:");
         jvmArgsArea = new TextArea();
         jvmArgsArea.setPrefRowCount(3);
-        VBox.setMargin(jvmLabel, new Insets(8,0,0,0));
+        VBox.setMargin(jvmLabel, new Insets(8, 0, 0, 0));
         box.getChildren().addAll(jvmLabel, jvmArgsArea);
 
         ScrollPane scroll = new ScrollPane(box);
@@ -212,9 +221,16 @@ public class SettingsTab {
     private TextFormatter<Integer> getIntegerTextFormatter() {
         UnaryOperator<TextFormatter.Change> filter = change -> change;
         StringConverter<Integer> intConv = new StringConverter<>() {
-            @Override public String toString(Integer i) { return i == null ? "" : i + " МБ"; }
-            @Override public Integer fromString(String s) {  String digits = s.replaceAll("\\D", "");
-                return digits.isEmpty() ? 0 : Integer.parseInt(digits); }
+            @Override
+            public String toString(Integer i) {
+                return i == null ? "" : i + " МБ";
+            }
+
+            @Override
+            public Integer fromString(String s) {
+                String digits = s.replaceAll("\\D", "");
+                return digits.isEmpty() ? 0 : Integer.parseInt(digits);
+            }
         };
         return new TextFormatter<>(intConv, Utils.roundRam((int) ramSlider.getValue()), filter);
     }
@@ -224,7 +240,7 @@ public class SettingsTab {
         HBox row = new HBox(10, lbl, control);
         row.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(control, grow ? Priority.ALWAYS : Priority.NEVER);
-        if (control instanceof TextField) ((TextField)control).setPrefHeight(28);
+        if (control instanceof TextField) ((TextField) control).setPrefHeight(28);
 
         if (control instanceof ComboBox<?> cb) {
             cb.setMinHeight(28);
@@ -246,14 +262,14 @@ public class SettingsTab {
         HBox line = new HBox();
         line.setStyle("-fx-background-color: rgba(255,255,255,0.25);");
         line.setMinHeight(1);
-        VBox.setMargin(label, new Insets(12,0,2,0));
+        VBox.setMargin(label, new Insets(12, 0, 2, 0));
         VBox wrap = new VBox(label, line);
         wrap.setAlignment(Pos.CENTER);
         return wrap;
     }
 
     private void saveConfig() {
-        Map<String,Object> cfg = new LinkedHashMap<>();
+        Map<String, Object> cfg = new LinkedHashMap<>();
         cfg.put("gameDir", gameDirField.getText());
         cfg.put("javaPath", javaField.getText());
         cfg.put("gpu", gpuCombo.getValue());
@@ -293,13 +309,13 @@ public class SettingsTab {
     private void loadConfig() {
         if (!Files.exists(CONFIG_PATH)) return;
         try (Reader r = Files.newBufferedReader(CONFIG_PATH, StandardCharsets.UTF_8)) {
-            Map<?,?> cfg = Jsons.MAPPER.readValue(r, Map.class);
+            Map<?, ?> cfg = Jsons.MAPPER.readValue(r, Map.class);
             if (cfg == null) return;
             if (cfg.containsKey("gameDir")) gameDirField.setText(String.valueOf(cfg.get("gameDir")));
             if (cfg.containsKey("javaPath")) javaField.setText(String.valueOf(cfg.get("javaPath")));
             if (cfg.containsKey("gpu")) gpuCombo.setValue(String.valueOf(cfg.get("gpu")));
-            if (cfg.containsKey("maxMemory")) ramSlider.setValue(((Number)cfg.get("maxMemory")).doubleValue());
-            if (cfg.containsKey("closeOnLaunch")) closeOnLaunch.setSelected((Boolean)cfg.get("closeOnLaunch"));
+            if (cfg.containsKey("maxMemory")) ramSlider.setValue(((Number) cfg.get("maxMemory")).doubleValue());
+            if (cfg.containsKey("closeOnLaunch")) closeOnLaunch.setSelected((Boolean) cfg.get("closeOnLaunch"));
             if (cfg.containsKey("winWidth")) widthField.setText(String.valueOf(cfg.get("winWidth")));
             if (cfg.containsKey("winHeight")) heightField.setText(String.valueOf(cfg.get("winHeight")));
             if (cfg.containsKey("language")) {
@@ -307,14 +323,17 @@ public class SettingsTab {
                 GAME_LANGUAGE_TAG = ArchiTechLauncher.mapLanguageTag(languageCombo.getValue());
             }
             if (cfg.containsKey("theme")) themeCombo.setValue(String.valueOf(cfg.get("theme")));
-            if (cfg.containsKey("fullscreen")) fullscreenCheck.setSelected((Boolean)cfg.get("fullscreen"));
-            if (cfg.containsKey("fpsLimit")) fpsSpinner.getValueFactory().setValue(((Number)cfg.get("fpsLimit")).intValue());
-            if (cfg.containsKey("autoUpdate")) autoUpdate.setSelected((Boolean)cfg.get("autoUpdate"));
+            if (cfg.containsKey("fullscreen")) fullscreenCheck.setSelected((Boolean) cfg.get("fullscreen"));
+            if (cfg.containsKey("fpsLimit"))
+                fpsSpinner.getValueFactory().setValue(((Number) cfg.get("fpsLimit")).intValue());
+            if (cfg.containsKey("autoUpdate")) autoUpdate.setSelected((Boolean) cfg.get("autoUpdate"));
             if (cfg.containsKey("jvmArgs")) jvmArgsArea.setText(String.valueOf(cfg.get("jvmArgs")));
             if (cfg.containsKey("proxy")) proxyField.setText(String.valueOf(cfg.get("proxy")));
-            if (cfg.containsKey("netTimeout")) netTimeoutSpinner.getValueFactory().setValue(((Number)cfg.get("netTimeout")).intValue());
-            if (cfg.containsKey("soundVolume")) soundVolumeSlider.setValue(((Number)cfg.get("soundVolume")).doubleValue());
-            if (cfg.containsKey("uiScale")) scaleSlider.setValue(((Number)cfg.get("uiScale")).doubleValue());
+            if (cfg.containsKey("netTimeout"))
+                netTimeoutSpinner.getValueFactory().setValue(((Number) cfg.get("netTimeout")).intValue());
+            if (cfg.containsKey("soundVolume"))
+                soundVolumeSlider.setValue(((Number) cfg.get("soundVolume")).doubleValue());
+            if (cfg.containsKey("uiScale")) scaleSlider.setValue(((Number) cfg.get("uiScale")).doubleValue());
         } catch (IOException e) {
             new Alert(Alert.AlertType.ERROR, "Ошибка загрузки файла настроек: " + e.getMessage()).showAndWait();
         }
@@ -381,6 +400,4 @@ public class SettingsTab {
             throw new RuntimeException("Не удалось создать дефолтный конфиг: " + e.getMessage(), e);
         }
     }
-
 }
-

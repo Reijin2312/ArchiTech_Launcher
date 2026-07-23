@@ -3,11 +3,9 @@
 
 package org.architech.launcher.utils;
 
+import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
+
 import com.sun.management.OperatingSystemMXBean;
-import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.gui.error.ErrorPanel;
-import org.architech.launcher.utils.logging.LogManager;
-import javax.net.ssl.SSLContext;
 import java.awt.*;
 import java.io.*;
 import java.lang.management.ManagementFactory;
@@ -29,8 +27,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-
-import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
+import javax.net.ssl.SSLContext;
+import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.gui.error.ErrorPanel;
+import org.architech.launcher.utils.logging.LogManager;
 
 public class Utils {
 
@@ -57,7 +57,10 @@ public class Utils {
             if (code == 200 && len >= 0) return len;
 
             if (code == 405 || len < 0) {
-                try { c.disconnect(); } catch (Exception ignored) {}
+                try {
+                    c.disconnect();
+                } catch (Exception ignored) {
+                }
                 c = (HttpURLConnection) u.openConnection();
                 c.setRequestMethod("GET");
                 c.setInstanceFollowRedirects(true);
@@ -71,15 +74,21 @@ public class Utils {
                     if (cr != null) {
                         int slash = cr.lastIndexOf('/');
                         if (slash >= 0) {
-                            try { return Long.parseLong(cr.substring(slash + 1).trim()); }
-                            catch (NumberFormatException ignored) {}
+                            try {
+                                return Long.parseLong(cr.substring(slash + 1).trim());
+                            } catch (NumberFormatException ignored) {
+                            }
                         }
                     }
                 }
             }
         } catch (Exception ignored) {
         } finally {
-            if (c != null) try { c.disconnect(); } catch (Exception ignored) {}
+            if (c != null)
+                try {
+                    c.disconnect();
+                } catch (Exception ignored) {
+                }
         }
         return 0L;
     }
@@ -130,11 +139,11 @@ public class Utils {
                 Runtime rt = Runtime.getRuntime();
 
                 if (os.contains("win")) {
-                    rt.exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
+                    rt.exec(new String[] {"rundll32", "url.dll,FileProtocolHandler", uri.toString()});
                 } else if (os.contains("mac")) {
-                    rt.exec(new String[]{"open", uri.toString()});
+                    rt.exec(new String[] {"open", uri.toString()});
                 } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                    rt.exec(new String[]{"xdg-open", uri.toString()});
+                    rt.exec(new String[] {"xdg-open", uri.toString()});
                 } else {
                     throw new UnsupportedOperationException("Неизвестная ОС: " + os);
                 }
@@ -155,12 +164,12 @@ public class Utils {
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
                     Desktop.getDesktop().open(dir);
                 } else {
-                    rt.exec(new String[]{"explorer", dir.getAbsolutePath()});
+                    rt.exec(new String[] {"explorer", dir.getAbsolutePath()});
                 }
             } else if (os.contains("mac")) {
-                rt.exec(new String[]{"open", dir.getAbsolutePath()});
+                rt.exec(new String[] {"open", dir.getAbsolutePath()});
             } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                rt.exec(new String[]{"/usr/bin/xdg-open", dir.getAbsolutePath()});
+                rt.exec(new String[] {"/usr/bin/xdg-open", dir.getAbsolutePath()});
             } else {
                 throw new UnsupportedOperationException("Неизвестная ОС: " + os);
             }
@@ -172,7 +181,9 @@ public class Utils {
     }
 
     public static Path findJava21() {
-        String[] searchDirs = {"C:/Program Files/Java", "C:/Program Files (x86)/Java", "/usr/lib/jvm", "/Library/Java/JavaVirtualMachines"};
+        String[] searchDirs = {
+            "C:/Program Files/Java", "C:/Program Files (x86)/Java", "/usr/lib/jvm", "/Library/Java/JavaVirtualMachines"
+        };
         for (String base : searchDirs) {
             File dir = new File(base);
             if (!dir.exists()) continue;
@@ -235,7 +246,8 @@ public class Utils {
                             result.add(line.split(":")[1].trim());
                         }
                     } else {
-                        if (line.toLowerCase().contains("vga") || line.toLowerCase().contains("3d")) {
+                        if (line.toLowerCase().contains("vga")
+                                || line.toLowerCase().contains("3d")) {
                             String[] parts = line.split(":", 2);
                             if (parts.length == 2) result.add(parts[1].trim());
                         }
@@ -263,7 +275,7 @@ public class Utils {
     }
 
     public static int roundRam(int raw) {
-        return (int) Math.round(raw/1024.0) * 1024;
+        return (int) Math.round(raw / 1024.0) * 1024;
     }
 
     public static String sha1Hex(String data) {
@@ -284,7 +296,7 @@ public class Utils {
     public static String sha1Hex(Path path) throws Exception {
         MessageDigest md = MessageDigest.getInstance("SHA-1");
         try (InputStream fis = Files.newInputStream(path);
-             DigestInputStream dis = new DigestInputStream(fis, md)) {
+                DigestInputStream dis = new DigestInputStream(fis, md)) {
             byte[] buf = new byte[8192];
             while (dis.read(buf) != -1) {}
         }
@@ -316,7 +328,7 @@ public class Utils {
     public static String sha256Hex(Path path) throws Exception {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         try (InputStream fis = Files.newInputStream(path);
-             DigestInputStream dis = new DigestInputStream(fis, md)) {
+                DigestInputStream dis = new DigestInputStream(fis, md)) {
             byte[] buf = new byte[8192];
             while (dis.read(buf) != -1) {}
         }
@@ -340,6 +352,4 @@ public class Utils {
             return null;
         }
     }
-
 }
-

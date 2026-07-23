@@ -3,9 +3,6 @@
 
 package org.architech.launcher.gui.player;
 
-import javafx.scene.image.Image;
-import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.authentication.account.Account;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -13,6 +10,9 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import javafx.scene.image.Image;
+import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.authentication.account.Account;
 
 public final class AvatarImage {
     private static final Map<String, Image> CACHE = new ConcurrentHashMap<>();
@@ -47,12 +47,12 @@ public final class AvatarImage {
                 String json = new String(c.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
                 String av = findField(json, "avatarUrl");
                 if (av != null && !av.isBlank()) {
-                    String url = av.startsWith("http") ? av
-                            : (ArchiTechLauncher.FRONTEND_URL + av);
+                    String url = av.startsWith("http") ? av : (ArchiTechLauncher.FRONTEND_URL + av);
                     return loadUrlCached(url, size);
                 }
             }
-        } catch (Exception ignore) {}
+        } catch (Exception ignore) {
+        }
 
         String enc = URLEncoder.encode(username, StandardCharsets.UTF_8);
         String url = "https://minotar.net/avatar/" + enc + "/" + size + ".png";
@@ -88,7 +88,8 @@ public final class AvatarImage {
     private static Image loadFallback() {
         try (InputStream is = AvatarImage.class.getResourceAsStream("/images/icon.jpg")) {
             if (is != null) return new Image(is);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return new Image("https://crafatar.com/avatars/00000000000000000000000000000000?size=16&overlay");
     }
 }

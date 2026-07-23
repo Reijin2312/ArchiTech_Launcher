@@ -3,6 +3,7 @@
 
 package org.architech.launcher.gui.error;
 
+import java.util.Objects;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -15,13 +16,9 @@ import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.authentication.auth.BrowserAuth;
 import org.architech.launcher.gui.LauncherUI;
 
-import java.util.Objects;
-
 public class AuthExpiredPanel {
 
-    /**
-     * Показывает уведомление о том, что сессия истекла и требуется повторный вход
-     */
+    /** Показывает уведомление о том, что сессия истекла и требуется повторный вход */
     public static void showAuthExpiredDialog(Runnable onRelogin) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle("Сессия истекла");
@@ -36,26 +33,26 @@ public class AuthExpiredPanel {
         // Добавляем иконку с замком
         ImageView iconView = new ImageView();
         try {
-            Image lockIcon = new Image(
-                    Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))
-            );
+            Image lockIcon =
+                    new Image(Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg")));
             iconView.setImage(lockIcon);
             iconView.setFitWidth(48);
             iconView.setFitHeight(48);
             iconView.setPreserveRatio(true);
             alert.setGraphic(iconView);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // Дополнительная информация
         Label infoLabel = new Label("Это могло произойти по следующим причинам:");
         infoLabel.setStyle("-fx-text-fill: #cccccc; -fx-font-weight: bold;");
-        
+
         Label reason1 = new Label("• Токен авторизации истек");
         reason1.setStyle("-fx-text-fill: #aaaaaa;");
-        
+
         Label reason2 = new Label("• Вы вышли из аккаунта на другом устройстве");
         reason2.setStyle("-fx-text-fill: #aaaaaa;");
-        
+
         Label reason3 = new Label("• Пароль был изменен");
         reason3.setStyle("-fx-text-fill: #aaaaaa;");
 
@@ -73,13 +70,14 @@ public class AuthExpiredPanel {
         // Кастомные кнопки
         ButtonType loginButton = new ButtonType("Войти", ButtonBar.ButtonData.OK_DONE);
         ButtonType cancelButton = new ButtonType("Позже", ButtonBar.ButtonData.CANCEL_CLOSE);
-        
+
         alert.getButtonTypes().setAll(loginButton, cancelButton);
 
         // Стилизация кнопок
         Node loginNode = pane.lookupButton(loginButton);
         if (loginNode instanceof Button btn) {
-            btn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 16;");
+            btn.setStyle(
+                    "-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 16;");
         }
 
         Node cancelNode = pane.lookupButton(cancelButton);
@@ -92,10 +90,10 @@ public class AuthExpiredPanel {
 
         Stage stage = (Stage) pane.getScene().getWindow();
         try {
-            stage.getIcons().add(new Image(
-                    Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))
-            ));
-        } catch (Exception ignored) {}
+            stage.getIcons()
+                    .add(new Image(Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))));
+        } catch (Exception ignored) {
+        }
         stage.setResizable(false);
 
         alert.showAndWait().ifPresent(response -> {
@@ -111,9 +109,7 @@ public class AuthExpiredPanel {
         });
     }
 
-    /**
-     * Компактное уведомление в стиле тоста (опциональная альтернатива)
-     */
+    /** Компактное уведомление в стиле тоста (опциональная альтернатива) */
     public static void showQuickAuthExpiredNotification() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Уведомление");
@@ -129,10 +125,10 @@ public class AuthExpiredPanel {
 
         Stage stage = (Stage) pane.getScene().getWindow();
         try {
-            stage.getIcons().add(new Image(
-                    Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))
-            ));
-        } catch (Exception ignored) {}
+            stage.getIcons()
+                    .add(new Image(Objects.requireNonNull(LauncherUI.class.getResourceAsStream("/images/icon.jpg"))));
+        } catch (Exception ignored) {
+        }
 
         alert.show();
     }

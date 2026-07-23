@@ -37,22 +37,28 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
         SettingsTab allSettingsUI = new SettingsTab(stage);
         BackgroundsTab bgUI = new BackgroundsTab(stage);
 
-        Tab modsTab      = new Tab("Моды",        modsUI.createContent());
-        Tab resourceTab  = new Tab("Ресурспаки",  rpUI.createContent());
-        Tab shadersTab   = new Tab("Шейдеры",     shUI.createContent());
-        Tab settingsTab  = new Tab("Настройки",   allSettingsUI.createContent());
-        Tab backgroundsTab = new Tab("Фоны",      bgUI.createContent());
+        Tab modsTab = new Tab("Моды", modsUI.createContent());
+        Tab resourceTab = new Tab("Ресурспаки", rpUI.createContent());
+        Tab shadersTab = new Tab("Шейдеры", shUI.createContent());
+        Tab settingsTab = new Tab("Настройки", allSettingsUI.createContent());
+        Tab backgroundsTab = new Tab("Фоны", bgUI.createContent());
         tabs.getTabs().addAll(modsTab, resourceTab, shadersTab, settingsTab, backgroundsTab);
 
-        modsTab.setOnSelectionChanged(e -> { if (modsTab.isSelected()) modsUI.replayAnimations(); });
-        resourceTab.setOnSelectionChanged(e -> { if (resourceTab.isSelected()) rpUI.replayAnimations(); });
-        shadersTab.setOnSelectionChanged(e -> { if (shadersTab.isSelected()) shUI.replayAnimations(); });
+        modsTab.setOnSelectionChanged(e -> {
+            if (modsTab.isSelected()) modsUI.replayAnimations();
+        });
+        resourceTab.setOnSelectionChanged(e -> {
+            if (resourceTab.isSelected()) rpUI.replayAnimations();
+        });
+        shadersTab.setOnSelectionChanged(e -> {
+            if (shadersTab.isSelected()) shUI.replayAnimations();
+        });
 
         tabs.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (n == modsTab)       DiscordIntegration.update("В лаунчере", "Просматривает моды");
+            if (n == modsTab) DiscordIntegration.update("В лаунчере", "Просматривает моды");
             else if (n == shadersTab) DiscordIntegration.update("В лаунчере", "Просматривает шейдер-паки");
             else if (n == resourceTab) DiscordIntegration.update("В лаунчере", "Просматривает ресурс-паки");
-            else                      DiscordIntegration.update("В лаунчере", "Просматривает настройки");
+            else DiscordIntegration.update("В лаунчере", "Просматривает настройки");
         });
 
         BorderPane wrapper = new BorderPane();
@@ -82,14 +88,15 @@ public record MainSettingsUI(Stage stage, Scene parentScene) {
 
         Platform.runLater(() -> {
             Tab cur = tabs.getSelectionModel().getSelectedItem();
-            if      (cur == modsTab)      DiscordIntegration.update("В лаунчере", "Просматривает моды");
-            else if (cur == shadersTab)   DiscordIntegration.update("В лаунчере", "Просматривает шейдер-паки");
-            else if (cur == resourceTab)  DiscordIntegration.update("В лаунчере", "Просматривает ресурс-паки");
-            else                          DiscordIntegration.update("В лаунчере", "Просматривает настройки");
+            if (cur == modsTab) DiscordIntegration.update("В лаунчере", "Просматривает моды");
+            else if (cur == shadersTab) DiscordIntegration.update("В лаунчере", "Просматривает шейдер-паки");
+            else if (cur == resourceTab) DiscordIntegration.update("В лаунчере", "Просматривает ресурс-паки");
+            else DiscordIntegration.update("В лаунчере", "Просматривает настройки");
         });
     }
 
     private void styleMainButton(Button btn) {
-        btn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+        btn.setStyle(
+                "-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
     }
 }

@@ -4,13 +4,13 @@
 package org.architech.launcher.utils.serverinfo;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.architech.launcher.utils.Jsons;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import org.architech.launcher.utils.Jsons;
 
 public final class ArchiTechServerInfo {
     public record ServerStatus(int online, int max, int pingMs, String motd, List<String> sample) {}
@@ -53,7 +53,6 @@ public final class ArchiTechServerInfo {
                 throw new IOException("Unexpected packetId " + packetId);
             }
 
-
             JsonNode root = Jsons.MAPPER.readTree(json);
             JsonNode players = root.path("players");
             int online = players.path("online").asInt(0);
@@ -86,7 +85,8 @@ public final class ArchiTechServerInfo {
                             if (name != null && !name.isBlank()) sampleNames.add(name);
                         } else if (item.isObject()) {
                             String name = item.path("name").asText(null);
-                            if ((name == null || name.isBlank())) name = item.path("id").asText(null);
+                            if ((name == null || name.isBlank()))
+                                name = item.path("id").asText(null);
                             if (name != null && !name.isBlank()) sampleNames.add(name);
                         } else {
                             String name = item.asText(null);

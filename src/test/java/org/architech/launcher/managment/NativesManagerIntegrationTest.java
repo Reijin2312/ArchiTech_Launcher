@@ -3,9 +3,9 @@
 
 package org.architech.launcher.managment;
 
-import org.architech.launcher.utils.FileEntry;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -16,10 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.architech.launcher.utils.FileEntry;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class NativesManagerIntegrationTest {
     @TempDir
@@ -33,8 +32,7 @@ class NativesManagerIntegrationTest {
 
         Path zip = createZip(Map.of(
                 "current/native.dll", "current".getBytes(StandardCharsets.UTF_8),
-                "META-INF/MANIFEST.MF", "ignored".getBytes(StandardCharsets.UTF_8)
-        ));
+                "META-INF/MANIFEST.MF", "ignored".getBytes(StandardCharsets.UTF_8)));
         FileEntry entry = new FileEntry("natives", "natives", "unused", zip, Files.size(zip), null);
 
         new NativesManager(tempDir, "test-version").prepareNatives(List.of(entry));
@@ -47,22 +45,18 @@ class NativesManagerIntegrationTest {
 
     @Test
     void blocksZipSlipThroughManagerIntegration() throws Exception {
-        Path zip = createZip(Map.of(
-                "../../escaped.dll", "owned".getBytes(StandardCharsets.UTF_8)
-        ));
+        Path zip = createZip(Map.of("../../escaped.dll", "owned".getBytes(StandardCharsets.UTF_8)));
         FileEntry entry = new FileEntry("natives", "natives", "unused", zip, Files.size(zip), null);
 
         assertThrows(
-                IOException.class,
-                () -> new NativesManager(tempDir, "test-version").prepareNatives(List.of(entry))
-        );
+                IOException.class, () -> new NativesManager(tempDir, "test-version").prepareNatives(List.of(entry)));
         assertFalse(Files.exists(tempDir.resolve("escaped.dll")));
     }
 
     private Path createZip(Map<String, byte[]> entries) throws IOException {
         Path zip = Files.createTempFile(tempDir, "natives-", ".zip");
         try (OutputStream output = Files.newOutputStream(zip);
-             ZipOutputStream zipOutput = new ZipOutputStream(output)) {
+                ZipOutputStream zipOutput = new ZipOutputStream(output)) {
             for (Map.Entry<String, byte[]> entry : entries.entrySet()) {
                 zipOutput.putNextEntry(new ZipEntry(entry.getKey()));
                 zipOutput.write(entry.getValue());

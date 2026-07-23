@@ -3,11 +3,8 @@
 
 package org.architech.launcher.managment;
 
-import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.utils.FileEntry;
-import org.architech.launcher.utils.Jsons;
-import org.architech.launcher.utils.logging.LogManager;
-import org.architech.launcher.utils.Utils;
+import static org.architech.launcher.ArchiTechLauncher.UI;
+
 import java.io.*;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -20,8 +17,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static org.architech.launcher.ArchiTechLauncher.UI;
+import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.utils.FileEntry;
+import org.architech.launcher.utils.Jsons;
+import org.architech.launcher.utils.Utils;
+import org.architech.launcher.utils.logging.LogManager;
 
 public class NeoForgeManager {
 
@@ -32,9 +32,9 @@ public class NeoForgeManager {
         if (Files.exists(profile)) return;
         LogManager.getLogger().info("Создаю фейковый профиль лаунчера...");
         Files.createDirectories(gameDir);
-        Map<String,Object> root = new LinkedHashMap<>();
-        Map<String,Object> profiles = new LinkedHashMap<>();
-        Map<String,Object> p = new LinkedHashMap<>();
+        Map<String, Object> root = new LinkedHashMap<>();
+        Map<String, Object> profiles = new LinkedHashMap<>();
+        Map<String, Object> p = new LinkedHashMap<>();
         p.put("name", "NeoForge-Installer-Fake");
         p.put("gameDir", gameDir.toAbsolutePath().toString());
         p.put("lastVersionId", (suggestedVersion == null ? "1.21.1" : suggestedVersion) + "-neoforge");
@@ -46,7 +46,8 @@ public class NeoForgeManager {
         root.put("authenticationDatabase", new LinkedHashMap<>());
 
         String json = Jsons.PRETTY.writeValueAsString(root);
-        Files.writeString(profile, json, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        Files.writeString(
+                profile, json, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     public static boolean isNeoForgeInstalledAndValid(Path gameDir) {
@@ -73,7 +74,8 @@ public class NeoForgeManager {
             }
             for (InstalledManifest.Entry e : im.files) {
                 if (e == null || e.path == null || e.sha256 == null) {
-                    LogManager.getLogger().warning("Найдена некорректная запись в installed.json, считаю установку невалидной.");
+                    LogManager.getLogger()
+                            .warning("Найдена некорректная запись в installed.json, считаю установку невалидной.");
                     return false;
                 }
                 Path p = gameDir.resolve(e.path);
@@ -81,9 +83,7 @@ public class NeoForgeManager {
                     LogManager.getLogger().severe("Neoforge установлен неправильно ;( отсутствует " + p);
                     return false;
                 }
-                String actual = (e.sha256 != null && !e.sha256.isBlank())
-                        ? Utils.sha256Hex(p)
-                        : Utils.sha1Hex(p);
+                String actual = (e.sha256 != null && !e.sha256.isBlank()) ? Utils.sha256Hex(p) : Utils.sha1Hex(p);
                 if (!actual.equalsIgnoreCase(e.sha256)) {
                     LogManager.getLogger().severe("Neoforge установлен неправильно ;( sha256 не совпадает для " + p);
                     return false;
@@ -96,7 +96,6 @@ public class NeoForgeManager {
             return false;
         }
     }
-
 
     public static void ensureInstalledAndReady(Path gameDir, String mcVersion) throws Exception {
         String latest = fetchPinnedServerVersionAndSave(gameDir);
@@ -129,7 +128,8 @@ public class NeoForgeManager {
                         Files.deleteIfExists(p);
                         if (UI != null) UI.updateProgress("Удаляю старый инсталлятор", 0.3);
                         LogManager.getLogger().info("Удаляю старый инсталлятор: " + p);
-                    } catch (Exception ignore) {}
+                    } catch (Exception ignore) {
+                    }
                 }
             }
         } catch (Exception e) {
@@ -152,7 +152,12 @@ public class NeoForgeManager {
         if (UI != null) UI.updateProgress("Установка neoforge...", 0.5);
 
         String javaBin = Utils.isWindows() ? "java.exe" : "java";
-        ProcessBuilder pb = new ProcessBuilder(ArchiTechLauncher.JAVA_PATH.resolve("bin").resolve(javaBin).toString(), "-jar", installer.toString(), "--installClient", gameDir.toString());
+        ProcessBuilder pb = new ProcessBuilder(
+                ArchiTechLauncher.JAVA_PATH.resolve("bin").resolve(javaBin).toString(),
+                "-jar",
+                installer.toString(),
+                "--installClient",
+                gameDir.toString());
 
         pb.directory(gameDir.toFile());
         pb.redirectErrorStream(true);
@@ -173,12 +178,14 @@ public class NeoForgeManager {
             throw new IOException("Инсталлятор не создал ни одного файла neoforge, откат...");
         }
 
-        boolean foundVersion = im.files.stream().anyMatch(e -> e.path.contains("/libraries/net/neoforged/neoforge/" + latest) ||
-                        e.path.contains("/versions/neoforge-" + latest + "/")
-        );
+        boolean foundVersion = im.files.stream()
+                .anyMatch(e -> e.path.contains("/libraries/net/neoforged/neoforge/" + latest)
+                        || e.path.contains("/versions/neoforge-" + latest + "/"));
 
         if (!foundVersion) {
-            LogManager.getLogger().warning("Не обнаружено явного следа версии " + latest + " в scanInstalledNeoForge — но продолжаю, т.к. файлы есть.");
+            LogManager.getLogger()
+                    .warning("Не обнаружено явного следа версии " + latest
+                            + " в scanInstalledNeoForge — но продолжаю, т.к. файлы есть.");
         }
 
         im.version = latest;
@@ -187,14 +194,19 @@ public class NeoForgeManager {
 
         Path out = manifestDir.resolve("installed.json");
         Path tmp = manifestDir.resolve("installed.json.tmp");
-        Files.writeString(tmp, Jsons.PRETTY.writeValueAsString(im), StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        Files.writeString(
+                tmp,
+                Jsons.PRETTY.writeValueAsString(im),
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING);
         try {
             Files.move(tmp, out, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception ex) {
             Files.move(tmp, out, StandardCopyOption.REPLACE_EXISTING);
         }
-        LogManager.getLogger().info("NeoForge установлен, записан manifest (" + im.files.size() + " файлов) версия=" + im.version);
-
+        LogManager.getLogger()
+                .info("NeoForge установлен, записан manifest (" + im.files.size() + " файлов) версия=" + im.version);
 
         if (UI != null) UI.updateProgress("NeoForge установлен и проверен", 1.0);
     }
@@ -218,7 +230,12 @@ public class NeoForgeManager {
             if (ver.isEmpty()) return null;
             Path manifestDir = gameDir.resolve(MANIFEST_DIR);
             Files.createDirectories(manifestDir);
-            Files.writeString(manifestDir.resolve("server_version"), ver, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            Files.writeString(
+                    manifestDir.resolve("server_version"),
+                    ver,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING);
             LogManager.getLogger().info("Версия neoforge на сервере: " + ver);
             return ver;
         } catch (Exception ex) {
@@ -252,10 +269,15 @@ public class NeoForgeManager {
     }
 
     private static boolean isAllowedInPath(char c) {
-        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-                c == '-' || c == '_' || c == '.' || c == '~') return true;
-        return c == '!' || c == '$' || c == '&' || c == '\'' || c == '(' || c == ')' ||
-                c == '*' || c == '+' || c == ',' || c == ';' || c == '=' || c == ':' || c == '@';
+        if ((c >= 'A' && c <= 'Z')
+                || (c >= 'a' && c <= 'z')
+                || (c >= '0' && c <= '9')
+                || c == '-'
+                || c == '_'
+                || c == '.'
+                || c == '~') return true;
+        return c == '!' || c == '$' || c == '&' || c == '\'' || c == '(' || c == ')' || c == '*' || c == '+' || c == ','
+                || c == ';' || c == '=' || c == ':' || c == '@';
     }
 
     public static String getInstalledVersion(Path gameDir) {
@@ -275,7 +297,8 @@ public class NeoForgeManager {
             LogManager.getLogger().info("Установленная версия neoforge " + gameDir + " " + im.version);
             return im.version;
         } catch (Exception ex) {
-            LogManager.getLogger().severe("Ошибка получения установленной версии neoforge " + gameDir + " " + ex.getMessage());
+            LogManager.getLogger()
+                    .severe("Ошибка получения установленной версии neoforge " + gameDir + " " + ex.getMessage());
             return null;
         }
     }
@@ -285,7 +308,8 @@ public class NeoForgeManager {
         String installedVersion = null;
         try {
             if (Files.exists(manifest)) {
-                InstalledManifest im = Jsons.MAPPER.readValue(Files.readString(manifest, StandardCharsets.UTF_8), InstalledManifest.class);
+                InstalledManifest im = Jsons.MAPPER.readValue(
+                        Files.readString(manifest, StandardCharsets.UTF_8), InstalledManifest.class);
                 installedVersion = (im != null) ? im.version : null;
             }
         } catch (Exception e) {
@@ -301,7 +325,9 @@ public class NeoForgeManager {
                             .max(Comparator.naturalOrder());
                     if (last.isPresent()) {
                         installedVersion = last.get().getFileName().toString().substring("neoforge-".length());
-                        LogManager.getLogger().info("uninstallInstalled: обнаружена версия для удаления из папки versions: " + installedVersion);
+                        LogManager.getLogger()
+                                .info("uninstallInstalled: обнаружена версия для удаления из папки versions: "
+                                        + installedVersion);
                     }
                 }
             } catch (Exception e) {
@@ -313,18 +339,26 @@ public class NeoForgeManager {
             try {
                 Utils.deleteDirectory(gameDir.resolve("versions").resolve("neoforge-" + installedVersion));
             } catch (Exception ex) {
-                LogManager.getLogger().warning("Не удалось удалить versions/neoforge-" + installedVersion + " : " + ex.getMessage());
+                LogManager.getLogger()
+                        .warning("Не удалось удалить versions/neoforge-" + installedVersion + " : " + ex.getMessage());
             }
             try {
-                Utils.deleteDirectory(gameDir.resolve("libraries/net/neoforged/neoforge").resolve(installedVersion));
+                Utils.deleteDirectory(
+                        gameDir.resolve("libraries/net/neoforged/neoforge").resolve(installedVersion));
             } catch (Exception ex) {
-                LogManager.getLogger().warning("Не удалось удалить libraries/net/neoforged/neoforge/" + installedVersion + " : " + ex.getMessage());
+                LogManager.getLogger()
+                        .warning("Не удалось удалить libraries/net/neoforged/neoforge/" + installedVersion + " : "
+                                + ex.getMessage());
             }
         } else {
             LogManager.getLogger().warning("Не найдено, какую версию удалять — пропускаю удаление директорий версий.");
         }
 
-        try { Files.deleteIfExists(manifest); } catch (Exception e) { LogManager.getLogger().warning("Не удалось удалить installed.json: " + e.getMessage()); }
+        try {
+            Files.deleteIfExists(manifest);
+        } catch (Exception e) {
+            LogManager.getLogger().warning("Не удалось удалить installed.json: " + e.getMessage());
+        }
     }
 
     private static String readProcessAllOutputWithEncodingFallback(InputStream in) throws IOException {
@@ -336,10 +370,16 @@ public class NeoForgeManager {
 
         String s = new String(all, StandardCharsets.UTF_8);
         if (seemsBinaryOrGarbage(s)) {
-            try { s = new String(all, Charset.forName("windows-1251")); } catch (Exception ignored) {}
+            try {
+                s = new String(all, Charset.forName("windows-1251"));
+            } catch (Exception ignored) {
+            }
         }
         if (seemsBinaryOrGarbage(s)) {
-            try { s = new String(all, Charset.forName("CP866")); } catch (Exception ignored) {}
+            try {
+                s = new String(all, Charset.forName("CP866"));
+            } catch (Exception ignored) {
+            }
         }
         return s;
     }
@@ -348,7 +388,9 @@ public class NeoForgeManager {
         if (s == null || s.isBlank()) return false;
         long repl = s.chars().filter(ch -> ch == '\uFFFD').count();
         if (repl > 3) return true;
-        long nonPrintable = s.chars().filter(ch -> ch < 32 && ch != '\n' && ch != '\r' && ch != '\t').count();
+        long nonPrintable = s.chars()
+                .filter(ch -> ch < 32 && ch != '\n' && ch != '\r' && ch != '\t')
+                .count();
         return nonPrintable > 10;
     }
 
@@ -364,7 +406,7 @@ public class NeoForgeManager {
                 String sha = Utils.sha256Hex(p);
                 Path rel = gameDir.relativize(p);
                 InstalledManifest.Entry e = new InstalledManifest.Entry();
-                e.path = rel.toString().replace('\\','/');
+                e.path = rel.toString().replace('\\', '/');
                 e.sha256 = sha;
                 e.sha1 = null;
                 im.files.add(e);
@@ -374,9 +416,7 @@ public class NeoForgeManager {
         };
 
         if (Files.exists(libRoot)) {
-            Files.walk(libRoot)
-                    .filter(p -> p.toString().endsWith(".jar"))
-                    .forEach(add);
+            Files.walk(libRoot).filter(p -> p.toString().endsWith(".jar")).forEach(add);
         }
 
         if (Files.exists(versionsRoot)) {
@@ -386,7 +426,8 @@ public class NeoForgeManager {
                         .forEach(vdir -> {
                             try {
                                 Files.walk(vdir)
-                                        .filter(p -> p.toString().endsWith(".jar") || p.toString().endsWith(".json"))
+                                        .filter(p -> p.toString().endsWith(".jar")
+                                                || p.toString().endsWith(".json"))
                                         .forEach(add);
                             } catch (Exception e) {
                                 LogManager.getLogger().warning("Ошибка сканирования " + vdir + " : " + e.getMessage());
@@ -406,6 +447,11 @@ public class NeoForgeManager {
         public String installedAt;
         public String version;
         public List<Entry> files;
-        public static class Entry { public String path; public String sha1; public String sha256; }
+
+        public static class Entry {
+            public String path;
+            public String sha1;
+            public String sha256;
+        }
     }
 }

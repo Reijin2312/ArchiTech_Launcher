@@ -3,26 +3,27 @@
 
 package org.architech.launcher;
 
+import static org.architech.launcher.ArchiTechLauncher.CONFIG_PATH;
+import static org.architech.launcher.ArchiTechLauncher.JAVA_PATH;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.util.*;
+import java.util.Locale;
+import java.util.zip.*;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.authentication.account.AccountStore;
 import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.Jsons;
-import org.architech.launcher.utils.Utils;
 import org.architech.launcher.utils.SafePaths;
 import org.architech.launcher.utils.SafeZipExtractor;
+import org.architech.launcher.utils.Utils;
 import org.architech.launcher.utils.logging.LogManager;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.io.*;
-import java.util.*;
-import java.util.Locale;
-import java.util.zip.*;
-import static org.architech.launcher.ArchiTechLauncher.CONFIG_PATH;
-import static org.architech.launcher.ArchiTechLauncher.JAVA_PATH;
 
 public class MinecraftLauncher {
 
@@ -74,10 +75,12 @@ public class MinecraftLauncher {
         Account acc = AccountManager.getCurrentAccount();
         ensureSecretsLoaded(acc);
         placeholders.put("auth_player_name", acc == null || acc.getUsername() == null ? "" : acc.getUsername());
-        placeholders.put("auth_uuid",      acc == null || acc.getUuid() == null      ? "" : acc.getUuid().replace("-", ""));
+        placeholders.put(
+                "auth_uuid",
+                acc == null || acc.getUuid() == null ? "" : acc.getUuid().replace("-", ""));
         placeholders.put("auth_access_token", acc == null || acc.getAccessToken() == null ? "" : acc.getAccessToken());
 
-        //placeholders.put("user_type", acc.userType);
+        // placeholders.put("user_type", acc.userType);
 
         placeholders.put("version_type", "release");
         placeholders.put("launcher_name", "custom");
@@ -85,7 +88,8 @@ public class MinecraftLauncher {
         placeholders.put("classpath", String.join(File.pathSeparator, classpathEntries));
         placeholders.put("clientid", "");
         placeholders.put("auth_xuid", "");
-        Locale locale = Locale.forLanguageTag(ArchiTechLauncher.GAME_LANGUAGE_TAG == null ? "en-US" : ArchiTechLauncher.GAME_LANGUAGE_TAG);
+        Locale locale = Locale.forLanguageTag(
+                ArchiTechLauncher.GAME_LANGUAGE_TAG == null ? "en-US" : ArchiTechLauncher.GAME_LANGUAGE_TAG);
         args.add("-Duser.language=" + locale.getLanguage());
         if (!locale.getCountry().isEmpty()) args.add("-Duser.country=" + locale.getCountry());
 
@@ -194,12 +198,8 @@ public class MinecraftLauncher {
     }
 
     private static void extractNatives(
-            Path gameDir,
-            List<JsonNode> versionChain,
-            Path nativesDir,
-            String osName,
-            String osArch
-    ) throws IOException {
+            Path gameDir, List<JsonNode> versionChain, Path nativesDir, String osName, String osArch)
+            throws IOException {
         String osKey;
         if (osName.contains("win")) {
             osKey = "windows";
@@ -227,20 +227,15 @@ public class MinecraftLauncher {
                     continue;
                 }
 
-                String nativeClassifier = natives.get(osKey)
-                        .asText()
-                        .replace("${arch}", archBits);
-                JsonNode artifact = library.path("downloads")
-                        .path("classifiers")
-                        .path(nativeClassifier);
+                String nativeClassifier = natives.get(osKey).asText().replace("${arch}", archBits);
+                JsonNode artifact =
+                        library.path("downloads").path("classifiers").path(nativeClassifier);
                 if (!artifact.hasNonNull("path")) {
                     continue;
                 }
 
                 Path nativeArchive = SafePaths.resolveInside(
-                        librariesRoot,
-                        artifact.get("path").asText()
-                );
+                        librariesRoot, artifact.get("path").asText());
                 SafePaths.verifyNoSymlinkParents(librariesRoot, nativeArchive);
                 SafePaths.rejectSymbolicLink(nativeArchive);
 
@@ -251,13 +246,13 @@ public class MinecraftLauncher {
                 SafeZipExtractor.extract(
                         nativeArchive,
                         nativesDir,
-                        name -> !name.toUpperCase(Locale.ROOT).startsWith("META-INF/")
-                );
+                        name -> !name.toUpperCase(Locale.ROOT).startsWith("META-INF/"));
             }
         }
     }
 
-    private static void addProcessedArg(JsonNode el, List<String> target, Map<String, String> placeholders, String osName, String osArch) {
+    private static void addProcessedArg(
+            JsonNode el, List<String> target, Map<String, String> placeholders, String osName, String osArch) {
         if (el == null) return;
 
         if (el.isTextual()) {
@@ -272,7 +267,7 @@ public class MinecraftLauncher {
             if (ruleObj.has("rules")) {
                 boolean allow = false;
                 ArrayNode rules = (ArrayNode) ruleObj.get("rules");
-                for (JsonNode  r : rules) {
+                for (JsonNode r : rules) {
                     if (!r.isObject()) continue;
                     String action = r.has("action") ? r.get("action").asText() : "allow";
                     boolean ruleMatch = true;
@@ -303,7 +298,9 @@ public class MinecraftLauncher {
                     }
                 }
                 if (allow) {
-                    JsonNode value = ruleObj.has("value") ? ruleObj.get("value") : ruleObj.has("values") ? ruleObj.get("values") : null;
+                    JsonNode value = ruleObj.has("value")
+                            ? ruleObj.get("value")
+                            : ruleObj.has("values") ? ruleObj.get("values") : null;
                     if (value != null) {
                         if (value.isTextual()) {
                             String val = replacePlaceholders(value.asText(), placeholders);
@@ -319,7 +316,9 @@ public class MinecraftLauncher {
                     }
                 }
             } else {
-                JsonNode value = ruleObj.has("value") ? ruleObj.get("value") : ruleObj.has("values") ? ruleObj.get("values") : null;
+                JsonNode value = ruleObj.has("value")
+                        ? ruleObj.get("value")
+                        : ruleObj.has("values") ? ruleObj.get("values") : null;
                 if (value != null) {
                     if (value.isTextual()) {
                         String val = replacePlaceholders(value.asText(), placeholders);
@@ -348,7 +347,7 @@ public class MinecraftLauncher {
         return input;
     }
 
-        private static void ensureSecretsLoaded(Account acc) {
+    private static void ensureSecretsLoaded(Account acc) {
         if (acc == null) return;
         try {
             AccountStore.getSecret(acc, "mcAccessToken").ifPresent(acc::setAccessToken);

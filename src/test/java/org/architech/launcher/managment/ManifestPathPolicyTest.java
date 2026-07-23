@@ -3,15 +3,14 @@
 
 package org.architech.launcher.managment;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class ManifestPathPolicyTest {
     @TempDir
@@ -19,10 +18,7 @@ class ManifestPathPolicyTest {
 
     @Test
     void normalizesSafeManifestPath() throws Exception {
-        assertEquals(
-                "mods/example.jar",
-                ManifestPathPolicy.validate(tempDir, "mods\\example.jar")
-        );
+        assertEquals("mods/example.jar", ManifestPathPolicy.validate(tempDir, "mods\\example.jar"));
     }
 
     @Test
@@ -51,19 +47,12 @@ class ManifestPathPolicyTest {
     void rejectsCaseInsensitiveDuplicatesForCrossPlatformSafety() {
         assertThrows(
                 IOException.class,
-                () -> ManifestPathPolicy.validateAll(
-                        tempDir,
-                        List.of("mods/Example.jar", "mods/example.jar")
-                )
-        );
+                () -> ManifestPathPolicy.validateAll(tempDir, List.of("mods/Example.jar", "mods/example.jar")));
     }
 
     @Test
     void returnsNormalizedImmutablePathList() throws Exception {
-        List<String> result = ManifestPathPolicy.validateAll(
-                tempDir,
-                List.of("mods\\one.jar", "config/two.toml")
-        );
+        List<String> result = ManifestPathPolicy.validateAll(tempDir, List.of("mods\\one.jar", "config/two.toml"));
 
         assertEquals(List.of("mods/one.jar", "config/two.toml"), result);
         assertThrows(UnsupportedOperationException.class, () -> result.add("another"));

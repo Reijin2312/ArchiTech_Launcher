@@ -3,17 +3,12 @@
 
 package org.architech.launcher.authentication.auth;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
+import static org.architech.launcher.ArchiTechLauncher.FRONTEND_URL;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import javafx.application.Platform;
-import javafx.scene.control.Button;
-import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.authentication.account.Account;
-import org.architech.launcher.authentication.account.AccountManager;
-import org.architech.launcher.gui.error.ErrorPanel;
-import org.architech.launcher.utils.Utils;
-
-import java.awt.Desktop;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URI;
@@ -25,14 +20,16 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
-import static org.architech.launcher.ArchiTechLauncher.FRONTEND_URL;
+import javafx.application.Platform;
+import javafx.scene.control.Button;
+import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.authentication.account.Account;
+import org.architech.launcher.authentication.account.AccountManager;
+import org.architech.launcher.gui.error.ErrorPanel;
+import org.architech.launcher.utils.Utils;
 
 public final class BrowserAuth {
 
@@ -83,7 +80,8 @@ public final class BrowserAuth {
                 .POST(HttpRequest.BodyPublishers.ofString("{}", UTF_8))
                 .build();
         HttpResponse<String> beginResp = HTTP.send(beginReq, HttpResponse.BodyHandlers.ofString(UTF_8));
-        if (beginResp.statusCode() / 100 != 2) throw new IllegalStateException("device begin failed: " + beginResp.statusCode());
+        if (beginResp.statusCode() / 100 != 2)
+            throw new IllegalStateException("device begin failed: " + beginResp.statusCode());
         JsonNode begin = M.readTree(beginResp.body());
         String deviceCode = textOrNull(begin, "deviceCode");
         String pollToken = textOrNull(begin, "pollToken");
@@ -154,10 +152,12 @@ public final class BrowserAuth {
             if (r.statusCode() / 100 == 2) {
                 JsonNode me = M.readTree(r.body());
                 if (me.hasNonNull("username")) a.setUsername(me.get("username").asText());
-                if (me.hasNonNull("avatarUrl")) a.setAvatarUrl(me.get("avatarUrl").asText());
+                if (me.hasNonNull("avatarUrl"))
+                    a.setAvatarUrl(me.get("avatarUrl").asText());
                 if (me.hasNonNull("skinUrl")) a.setSkinUrl(me.get("skinUrl").asText());
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         return a;
     }
@@ -172,20 +172,20 @@ public final class BrowserAuth {
     }
 
     private static void openInBrowser(URI uri) throws Exception {
-//        if (Desktop.isDesktopSupported()) {
-//            Desktop.getDesktop().browse(uri);
-//            return;
-//        }
-//        String u = uri.toString();
-//        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-//        if (os.contains("win")) new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", u).start();
-//        else if (os.contains("mac")) new ProcessBuilder("open", u).start();
-//        else new ProcessBuilder("xdg-open", u).start();
+        //        if (Desktop.isDesktopSupported()) {
+        //            Desktop.getDesktop().browse(uri);
+        //            return;
+        //        }
+        //        String u = uri.toString();
+        //        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        //        if (os.contains("win")) new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", u).start();
+        //        else if (os.contains("mac")) new ProcessBuilder("open", u).start();
+        //        else new ProcessBuilder("xdg-open", u).start();
 
         Utils.openInBrowser(uri.toString());
     }
 
-    private static String textOrNull(JsonNode n, String f){
+    private static String textOrNull(JsonNode n, String f) {
         if (n == null) return null;
         JsonNode x = n.path(f);
         return x.isMissingNode() || x.isNull() ? null : x.asText();
@@ -199,9 +199,14 @@ public final class BrowserAuth {
         }
     }
 
-    private static String stack(Throwable t){
-        try (var sw = new StringWriter(); var pw = new PrintWriter(sw)) { t.printStackTrace(pw); return sw.toString(); }
-        catch (Exception e){ return t.getMessage(); }
+    private static String stack(Throwable t) {
+        try (var sw = new StringWriter();
+                var pw = new PrintWriter(sw)) {
+            t.printStackTrace(pw);
+            return sw.toString();
+        } catch (Exception e) {
+            return t.getMessage();
+        }
     }
 
     private record DeviceSession(String deviceCode, String pollToken, int expiresIn) {}

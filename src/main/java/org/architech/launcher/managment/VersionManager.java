@@ -3,18 +3,17 @@
 
 package org.architech.launcher.managment;
 
+import static java.nio.file.StandardOpenOption.*;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.nio.file.*;
+import java.util.*;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.Utils;
 import org.architech.launcher.utils.logging.LogManager;
-
-import java.nio.file.*;
-import java.util.*;
-
-import static java.nio.file.StandardOpenOption.*;
 
 public class VersionManager {
 
@@ -122,7 +121,10 @@ public class VersionManager {
                     if (hash == null) continue;
                     String sub = hash.length() >= 2 ? hash.substring(0, 2) : "";
                     String assetUrl = "https://resources.download.minecraft.net/" + sub + "/" + hash;
-                    Path assetPath = ArchiTechLauncher.ASSETS_DIR.resolve("objects").resolve(sub).resolve(hash);
+                    Path assetPath = ArchiTechLauncher.ASSETS_DIR
+                            .resolve("objects")
+                            .resolve(sub)
+                            .resolve(hash);
                     validateFile(assetPath, size2, hash);
                     list.add(new FileEntry("asset", "Asset: " + logicalName, assetUrl, assetPath, size2, hash));
                 }
@@ -182,7 +184,6 @@ public class VersionManager {
     private static String get(JsonNode o, String k, String def) {
         return (o != null && o.has(k)) ? o.get(k).asText() : def;
     }
-
 
     private static long getLong(JsonNode o) {
         return (o != null && o.has("size")) ? o.get("size").asLong() : -1L;

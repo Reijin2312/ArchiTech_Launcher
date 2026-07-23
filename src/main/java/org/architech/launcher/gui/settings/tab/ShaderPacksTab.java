@@ -3,6 +3,13 @@
 
 package org.architech.launcher.gui.settings.tab;
 
+import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.List;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -18,13 +25,6 @@ import javafx.scene.layout.*;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.gui.error.ErrorPanel;
 import org.architech.launcher.utils.logging.LogManager;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.architech.launcher.ArchiTechLauncher.GAME_DIR;
 
 public class ShaderPacksTab extends AbstractAssetsTab {
 
@@ -38,17 +38,20 @@ public class ShaderPacksTab extends AbstractAssetsTab {
         this.modsListRef = list;
 
         Path packsDir = GAME_DIR.resolve("shaderpacks");
-        try { Files.createDirectories(packsDir); } catch (Exception ignored) {}
+        try {
+            Files.createDirectories(packsDir);
+        } catch (Exception ignored) {
+        }
 
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setStyle("-fx-font-weight: bold; -fx-padding: 4 0 8 0;");
-        header.getChildren().addAll(
-                fixedHeaderLabel("Название", COL_NAME),
-                fixedHeaderLabel("Версия",   COL_VER),
-                fixedHeaderLabel("Обновлён", COL_DATE),
-                fixedHeaderLabel("Активен",  COL_TOGGLE)
-        );
+        header.getChildren()
+                .addAll(
+                        fixedHeaderLabel("Название", COL_NAME),
+                        fixedHeaderLabel("Версия", COL_VER),
+                        fixedHeaderLabel("Обновлён", COL_DATE),
+                        fixedHeaderLabel("Активен", COL_TOGGLE));
         this.modsHeaderRef = header;
 
         ProgressIndicator loading = new ProgressIndicator();
@@ -57,7 +60,8 @@ public class ShaderPacksTab extends AbstractAssetsTab {
         loadingHolder.setPadding(new Insets(24));
         root.setCenter(loadingHolder);
 
-        record PackMeta(Path path, String fileName, boolean disabled, String displayName, String version, String lastUpdated) {}
+        record PackMeta(
+                Path path, String fileName, boolean disabled, String displayName, String version, String lastUpdated) {}
 
         ArchiTechLauncher.submitBackground(() -> {
             List<PackMeta> metas = new ArrayList<>();
@@ -75,7 +79,8 @@ public class ShaderPacksTab extends AbstractAssetsTab {
                         String lastUpdated = formatFileTime(Files.getLastModifiedTime(p));
                         metas.add(new PackMeta(p, fn, disabled, visible, version, lastUpdated));
                     } catch (Exception exInner) {
-                        LogManager.getLogger().warning("shader packs: read meta failed for " + p + ": " + exInner.getMessage());
+                        LogManager.getLogger()
+                                .warning("shader packs: read meta failed for " + p + ": " + exInner.getMessage());
                     }
                 }
             } catch (Exception ex) {
@@ -99,7 +104,8 @@ public class ShaderPacksTab extends AbstractAssetsTab {
                     icon.setPreserveRatio(true);
                     try (InputStream is = getClass().getResourceAsStream("/img/mod_placeholder.png")) {
                         if (is != null) icon.setImage(new Image(is));
-                    } catch (Exception ignore) {}
+                    } catch (Exception ignore) {
+                    }
 
                     Label nameLabel = new Label(m.displayName());
                     nameLabel.setGraphic(icon);
@@ -115,8 +121,8 @@ public class ShaderPacksTab extends AbstractAssetsTab {
                     toggle.getStyleClass().add("mods-checkbox");
                     toggle.setSelected(!m.disabled());
 
-                    final String[] fileName = { m.fileName() };
-                    final boolean[] disabled = { m.disabled() };
+                    final String[] fileName = {m.fileName()};
+                    final boolean[] disabled = {m.disabled()};
 
                     toggle.selectedProperty().addListener((obs, oldVal, val) -> {
                         try {
@@ -131,7 +137,8 @@ public class ShaderPacksTab extends AbstractAssetsTab {
                             } else if (!val && !disabled[0]) {
                                 Path newName = packsDir.resolve(fileName[0] + ".disabled");
                                 Files.move(current, newName, StandardCopyOption.REPLACE_EXISTING);
-                                nameLabel.setText(newName.getFileName().toString().replace(".disabled", ""));
+                                nameLabel.setText(
+                                        newName.getFileName().toString().replace(".disabled", ""));
                                 fileName[0] = newName.getFileName().toString();
                                 disabled[0] = true;
                                 row.getStyleClass().add("disabled");
@@ -142,12 +149,12 @@ public class ShaderPacksTab extends AbstractAssetsTab {
                         }
                     });
 
-                    row.getChildren().addAll(
-                            fixedCell(nameLabel, COL_NAME, Pos.CENTER_LEFT),
-                            fixedCell(versionLabel, COL_VER, Pos.CENTER),
-                            fixedCell(dateLabel, COL_DATE, Pos.CENTER),
-                            fixedCell(toggle, COL_TOGGLE, Pos.CENTER)
-                    );
+                    row.getChildren()
+                            .addAll(
+                                    fixedCell(nameLabel, COL_NAME, Pos.CENTER_LEFT),
+                                    fixedCell(versionLabel, COL_VER, Pos.CENTER),
+                                    fixedCell(dateLabel, COL_DATE, Pos.CENTER),
+                                    fixedCell(toggle, COL_TOGGLE, Pos.CENTER));
 
                     list.getChildren().add(row);
 
@@ -156,7 +163,10 @@ public class ShaderPacksTab extends AbstractAssetsTab {
                         byte[] bytes = robustLoadShaderPackIconBytes(m.path());
                         if (bytes != null && bytes.length > 0) {
                             Platform.runLater(() -> {
-                                try { icon.setImage(new Image(new ByteArrayInputStream(bytes))); } catch (Exception ignored) {}
+                                try {
+                                    icon.setImage(new Image(new ByteArrayInputStream(bytes)));
+                                } catch (Exception ignored) {
+                                }
                             });
                         }
                     });

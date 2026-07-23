@@ -3,6 +3,12 @@
 
 package org.architech.launcher.gui.player;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -16,13 +22,6 @@ import javafx.stage.Popup;
 import javafx.stage.Window;
 import javafx.util.Duration;
 import org.architech.launcher.ArchiTechLauncher;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayersPopup {
 
@@ -62,7 +61,8 @@ public class PlayersPopup {
         Platform.runLater(() -> {
             VBox content = new VBox(6);
             content.setPadding(new Insets(6));
-            content.setStyle("-fx-background-color: rgba(24,24,24,0.95); -fx-padding: 6; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.04); -fx-border-radius:6;");
+            content.setStyle(
+                    "-fx-background-color: rgba(24,24,24,0.95); -fx-padding: 6; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.04); -fx-border-radius:6;");
             content.setPrefWidth(220);
 
             if (latestOnlinePlayers.isEmpty()) {
@@ -127,11 +127,12 @@ public class PlayersPopup {
         final Object guard = new Object();
         iv.getProperties().put("head.guard", guard);
 
-        loadHead(name, size).whenComplete((img, err) -> Platform.runLater(() -> {
-            if (iv.getProperties().get("head.guard") != guard) return;
-            if (err == null && img != null) iv.setImage(img);
-            else if (fallback != null) iv.setImage(fallback);
-        }));
+        loadHead(name, size)
+                .whenComplete((img, err) -> Platform.runLater(() -> {
+                    if (iv.getProperties().get("head.guard") != guard) return;
+                    if (err == null && img != null) iv.setImage(img);
+                    else if (fallback != null) iv.setImage(fallback);
+                }));
     }
 
     private static void warmupHeads(Collection<String> names) {
@@ -140,5 +141,4 @@ public class PlayersPopup {
             for (String n : names) loadHead(n, 20);
         });
     }
-
 }

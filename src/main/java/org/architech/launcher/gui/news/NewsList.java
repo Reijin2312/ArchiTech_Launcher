@@ -4,6 +4,12 @@
 package org.architech.launcher.gui.news;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.TranslateTransition;
@@ -22,12 +28,6 @@ import org.architech.launcher.utils.FileEntry;
 import org.architech.launcher.utils.Jsons;
 import org.architech.launcher.utils.Utils;
 import org.architech.launcher.utils.logging.LogManager;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 
 public class NewsList {
 
@@ -168,10 +168,12 @@ public class NewsList {
                 node.setTranslateY(10);
 
                 FadeTransition ft = new FadeTransition(Duration.millis(400), node);
-                ft.setFromValue(0); ft.setToValue(1);
+                ft.setFromValue(0);
+                ft.setToValue(1);
 
                 TranslateTransition tt = new TranslateTransition(Duration.millis(400), node);
-                tt.setFromY(10); tt.setToY(0);
+                tt.setFromY(10);
+                tt.setToY(0);
 
                 ft.setDelay(Duration.millis(i * 100));
                 tt.setDelay(Duration.millis(i * 100));
@@ -181,5 +183,4 @@ public class NewsList {
             }
         });
     }
-
 }

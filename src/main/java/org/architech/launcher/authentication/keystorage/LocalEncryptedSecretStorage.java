@@ -4,12 +4,6 @@
 package org.architech.launcher.authentication.keystorage;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.architech.launcher.utils.Jsons;
-import org.architech.launcher.utils.logging.LogManager;
-
-import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -21,10 +15,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import org.architech.launcher.utils.Jsons;
+import org.architech.launcher.utils.logging.LogManager;
 
 /**
- * Simple AES-GCM encrypted secret storage that keeps data next to .account.json.
- * Does not depend on OS keyrings or external services; uses a locally generated key file.
+ * Simple AES-GCM encrypted secret storage that keeps data next to .account.json. Does not depend on OS keyrings or
+ * external services; uses a locally generated key file.
  */
 public class LocalEncryptedSecretStorage implements SecretStorage {
     private static final int KEY_LEN = 32;
@@ -84,7 +83,10 @@ public class LocalEncryptedSecretStorage implements SecretStorage {
             if (loaded != null) encrypted.putAll(loaded);
         } catch (Exception e) {
             LogManager.getLogger().warning("Failed to parse existing secrets store, recreating: " + e.getMessage());
-            try { Files.deleteIfExists(storeFile); } catch (Exception ignored) {}
+            try {
+                Files.deleteIfExists(storeFile);
+            } catch (Exception ignored) {
+            }
             encrypted.clear();
         }
     }
@@ -169,6 +171,9 @@ public class LocalEncryptedSecretStorage implements SecretStorage {
     }
 
     private static void safeDelete(Path p) {
-        try { Files.deleteIfExists(p); } catch (Exception ignored) {}
+        try {
+            Files.deleteIfExists(p);
+        } catch (Exception ignored) {
+        }
     }
 }

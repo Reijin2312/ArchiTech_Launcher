@@ -19,8 +19,12 @@ public class FileEntry {
     }
 
     public FileEntry(String kind, String name, String url, Path path, long size, String sha1, String sha256) {
-        this.kind = kind; this.name = name; this.url = url; this.path = path;
-        this.size = size; this.sha1 = sha1; this.sha256 = sha256;
+        this.kind = kind;
+        this.name = name;
+        this.url = url;
+        this.path = path;
+        this.size = size;
+        this.sha1 = sha1;
+        this.sha256 = sha256;
     }
 }
-

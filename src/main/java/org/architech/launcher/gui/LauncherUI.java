@@ -3,6 +3,19 @@
 
 package org.architech.launcher.gui;
 
+import static org.architech.launcher.ArchiTechLauncher.LAUNCHER_DIR;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import javafx.animation.Animation;
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
+import javafx.animation.ParallelTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -12,36 +25,23 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
-import javafx.animation.ScaleTransition;
-import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
-import javafx.animation.TranslateTransition;
-import javafx.animation.Animation;
-import javafx.animation.Interpolator;
 import javafx.util.Duration;
 import org.architech.launcher.ArchiTechLauncher;
 import org.architech.launcher.authentication.account.Account;
 import org.architech.launcher.authentication.account.AccountManager;
 import org.architech.launcher.authentication.auth.BrowserAuth;
 import org.architech.launcher.discord.DiscordIntegration;
-import org.architech.launcher.gui.player.PlayersPopup;
-import org.architech.launcher.gui.player.AvatarImage;
 import org.architech.launcher.gui.news.NewsList;
+import org.architech.launcher.gui.player.AvatarImage;
+import org.architech.launcher.gui.player.PlayersPopup;
 import org.architech.launcher.gui.settings.MainSettingsUI;
 import org.architech.launcher.gui.timer.Timer;
-import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
 import org.architech.launcher.utils.Utils;
-import javafx.scene.paint.Color;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-
-import static org.architech.launcher.ArchiTechLauncher.LAUNCHER_DIR;
+import org.architech.launcher.utils.serverinfo.ArchiTechServerInfo;
 
 public class LauncherUI {
     private final Button launchBtn;
@@ -171,7 +171,8 @@ public class LauncherUI {
         checkUpdates.getStyleClass().add("small-button");
         checkUpdates.setOnAction(e -> updateHandler.run());
 
-        Image telegramIcon = new Image(Objects.requireNonNull(getClass().getResource("/images/tg.png")).toExternalForm());
+        Image telegramIcon = new Image(
+                Objects.requireNonNull(getClass().getResource("/images/tg.png")).toExternalForm());
         ImageView telegramView = new ImageView(telegramIcon);
         telegramView.setFitWidth(20);
         telegramView.setFitHeight(20);
@@ -194,21 +195,21 @@ public class LauncherUI {
         controls.setAlignment(Pos.CENTER);
         BorderPane left = new BorderPane();
 
-        //MinecraftSkinView view = new MinecraftSkinView();
-        //view.setPrefHeight(300);
-        //view.setMaxWidth(Double.MAX_VALUE);
-        //BorderPane.setMargin(view, new Insets(0, 0, 16, 0));
-        //left.setTop(view);
+        // MinecraftSkinView view = new MinecraftSkinView();
+        // view.setPrefHeight(300);
+        // view.setMaxWidth(Double.MAX_VALUE);
+        // BorderPane.setMargin(view, new Insets(0, 0, 16, 0));
+        // left.setTop(view);
 
-        //var acc = AccountManager.getCurrentAccount();
-        //if (acc != null && acc.getUsername() != null) {
+        // var acc = AccountManager.getCurrentAccount();
+        // if (acc != null && acc.getUsername() != null) {
         //    view.setSkinUrl(BACKEND_URL + acc.getSkinUrl());
-        //} else {
+        // } else {
         //    view.setSkinUrl("Steve");
-        //}
+        // }
 
-       // assert acc != null;
-       // System.out.println(acc.getSkinUrl());
+        // assert acc != null;
+        // System.out.println(acc.getSkinUrl());
 
         left.setBottom(controls);
         root.setLeft(left);
@@ -216,32 +217,39 @@ public class LauncherUI {
         buttons.setMaxWidth(Double.MAX_VALUE);
         VBox.setVgrow(buttons, Priority.NEVER);
 
-        for (Button b : new Button[]{openFolder, checkUpdates, faqBtn, settingsBtn}) {
+        for (Button b : new Button[] {openFolder, checkUpdates, faqBtn, settingsBtn}) {
             b.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(b, Priority.ALWAYS);
         }
 
-        ArchiTechLauncher.scheduledExecutor.scheduleAtFixedRate(() -> {
-            try {
-                ArchiTechServerInfo.ServerStatus s = ArchiTechServerInfo.fetchStatus(ArchiTechLauncher.MINESERVER_URL, 25565, 3000);
-                Platform.runLater(() -> {
-                    onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
-                    pingLabelField.setText("Пинг: " + s.pingMs() + " ms");
-                    PlayersPopup.latestOnlinePlayers = (s.sample() == null) ? Collections.emptyList() : List.copyOf(s.sample());
-                    if (s.pingMs() <= 100) pingDotField.setFill(Color.GREEN);
-                    else if (s.pingMs() <= 250) pingDotField.setFill(Color.GOLD);
-                    else pingDotField.setFill(Color.ORANGERED);
-                });
-            } catch (Throwable t) {
-                Platform.runLater(() -> {
-                    onlineLabelField.setText("Онлайн: —");
-                    pingLabelField.setText("Пинг: —");
-                    pingDotField.setFill(Color.GRAY);
-                });
-            }
-        }, 0, 10, TimeUnit.SECONDS);
+        ArchiTechLauncher.scheduledExecutor.scheduleAtFixedRate(
+                () -> {
+                    try {
+                        ArchiTechServerInfo.ServerStatus s =
+                                ArchiTechServerInfo.fetchStatus(ArchiTechLauncher.MINESERVER_URL, 25565, 3000);
+                        Platform.runLater(() -> {
+                            onlineLabelField.setText("Онлайн: " + s.online() + "/" + s.max());
+                            pingLabelField.setText("Пинг: " + s.pingMs() + " ms");
+                            PlayersPopup.latestOnlinePlayers =
+                                    (s.sample() == null) ? Collections.emptyList() : List.copyOf(s.sample());
+                            if (s.pingMs() <= 100) pingDotField.setFill(Color.GREEN);
+                            else if (s.pingMs() <= 250) pingDotField.setFill(Color.GOLD);
+                            else pingDotField.setFill(Color.ORANGERED);
+                        });
+                    } catch (Throwable t) {
+                        Platform.runLater(() -> {
+                            onlineLabelField.setText("Онлайн: —");
+                            pingLabelField.setText("Пинг: —");
+                            pingDotField.setFill(Color.GRAY);
+                        });
+                    }
+                },
+                0,
+                10,
+                TimeUnit.SECONDS);
 
-        Image newsLogo = new Image(Objects.requireNonNull(getClass().getResource("/images/logo.png")).toExternalForm());
+        Image newsLogo = new Image(Objects.requireNonNull(getClass().getResource("/images/logo.png"))
+                .toExternalForm());
         ImageView newsLogoView = new ImageView(newsLogo);
         newsLogoView.setPreserveRatio(true);
         newsLogoView.setFitHeight(100);
@@ -359,19 +367,30 @@ public class LauncherUI {
         root.setStyle("-fx-background-color: linear-gradient(to bottom, #1e1e1e, #2a2a2a);");
 
         stage.setTitle("ArchiTech - лаунчер");
-        stage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResource("/images/icon.jpg")).toExternalForm()));
+        stage.getIcons()
+                .add(new Image(Objects.requireNonNull(getClass().getResource("/images/icon.jpg"))
+                        .toExternalForm()));
 
         mainScene = new Scene(root, 900, 560);
-        mainScene.getStylesheets().addAll(
-                Objects.requireNonNull(getClass().getResource("/css/MainScreen.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/layout.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/components.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/controls.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/Tabs.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/scroll.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/backgrounds.css")).toExternalForm(),
-                Objects.requireNonNull(getClass().getResource("/css/theme-dark.css")).toExternalForm()
-        );
+        mainScene
+                .getStylesheets()
+                .addAll(
+                        Objects.requireNonNull(getClass().getResource("/css/MainScreen.css"))
+                                .toExternalForm(),
+                        Objects.requireNonNull(getClass().getResource("/css/layout.css"))
+                                .toExternalForm(),
+                        Objects.requireNonNull(getClass().getResource("/css/components.css"))
+                                .toExternalForm(),
+                        Objects.requireNonNull(getClass().getResource("/css/controls.css"))
+                                .toExternalForm(),
+                        Objects.requireNonNull(getClass().getResource("/css/Tabs.css"))
+                                .toExternalForm(),
+                        Objects.requireNonNull(getClass().getResource("/css/scroll.css"))
+                                .toExternalForm(),
+                        Objects.requireNonNull(getClass().getResource("/css/backgrounds.css"))
+                                .toExternalForm(),
+                        Objects.requireNonNull(getClass().getResource("/css/theme-dark.css"))
+                                .toExternalForm());
 
         stage.setScene(mainScene);
         stage.show();
@@ -382,11 +401,9 @@ public class LauncherUI {
     private void rebuildAccountMenu() {
         accountMenu.getItems().clear();
         MenuItem signIn = new MenuItem("Войти…");
-        signIn.setOnAction(e -> BrowserAuth.openLogin(accountBtn, this::updateUsernameField)
-        );
+        signIn.setOnAction(e -> BrowserAuth.openLogin(accountBtn, this::updateUsernameField));
         MenuItem signUp = new MenuItem("Регистрация…");
-        signUp.setOnAction(e -> BrowserAuth.openRegister(accountBtn, this::updateUsernameField)
-        );
+        signUp.setOnAction(e -> BrowserAuth.openRegister(accountBtn, this::updateUsernameField));
         accountMenu.getItems().addAll(signIn, signUp);
     }
 
@@ -407,12 +424,15 @@ public class LauncherUI {
     private void startPingAnimation() {
         try {
             ScaleTransition st = new ScaleTransition(Duration.millis(1400), pingDotField);
-            st.setFromX(1.0); st.setFromY(1.0);
-            st.setToX(1.25);  st.setToY(1.25);
+            st.setFromX(1.0);
+            st.setFromY(1.0);
+            st.setToX(1.25);
+            st.setToY(1.25);
             st.setAutoReverse(true);
             st.setCycleCount(ScaleTransition.INDEFINITE);
             st.play();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void startShineAnimation(Pane shine, Region wrapper) {
@@ -441,7 +461,8 @@ public class LauncherUI {
 
             wrapper.widthProperty().addListener((obs, o, n) -> refresh.run());
             Platform.runLater(refresh);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void startLaunchShineAnimation(Pane shine, Region wrapper) {
@@ -470,7 +491,8 @@ public class LauncherUI {
 
             wrapper.widthProperty().addListener((obs, o, n) -> refresh.run());
             Platform.runLater(refresh);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private void animateAccountMenuHide() {
@@ -508,17 +530,20 @@ public class LauncherUI {
                 int percent = (int) (progress01 * 100);
                 percentLabel.setText(percent + "%");
             }
-            progressBar.setProgress(progress01 < 0 ? ProgressIndicator.INDETERMINATE_PROGRESS : Utils.clamp01(progress01));
+            progressBar.setProgress(
+                    progress01 < 0 ? ProgressIndicator.INDETERMINATE_PROGRESS : Utils.clamp01(progress01));
         });
     }
 
     public void setLaunchingState(boolean launching) {
         Platform.runLater(() -> {
             if (launching) {
-                launchBtn.setStyle("-fx-background-color: #939393; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+                launchBtn.setStyle(
+                        "-fx-background-color: #939393; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
                 launchBtn.setText("ОТМЕНА");
             } else {
-                launchBtn.setStyle("-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+                launchBtn.setStyle(
+                        "-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
                 launchBtn.setText("ЗАПУСТИТЬ");
             }
         });
@@ -535,6 +560,4 @@ public class LauncherUI {
         Path p = LAUNCHER_DIR.resolve("backgrounds").resolve(ArchiTechLauncher.LAUNCHER_BACKGROUND);
         if (Files.exists(p)) applyBackground(p);
     }
-
 }
-

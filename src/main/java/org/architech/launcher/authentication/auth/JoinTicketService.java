@@ -3,12 +3,13 @@
 
 package org.architech.launcher.authentication.auth;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
+import static org.architech.launcher.ArchiTechLauncher.FRONTEND_URL;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.architech.launcher.ArchiTechLauncher;
-import org.architech.launcher.authentication.account.Account;
-import org.architech.launcher.authentication.account.AccountManager;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -16,10 +17,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.architech.launcher.ArchiTechLauncher.BACKEND_URL;
-import static org.architech.launcher.ArchiTechLauncher.FRONTEND_URL;
+import org.architech.launcher.ArchiTechLauncher;
+import org.architech.launcher.authentication.account.Account;
+import org.architech.launcher.authentication.account.AccountManager;
 
 public final class JoinTicketService {
     private static final ObjectMapper M = new ObjectMapper();
@@ -61,11 +61,7 @@ public final class JoinTicketService {
             throw new IOException("Join ticket request failed: HTTP " + r.statusCode());
         }
         JsonNode n = M.readTree(r.body());
-        return new JoinTicket(
-                textOrNull(n, "joinId"),
-                textOrNull(n, "expiresAt"),
-                textOrNull(n, "clientIp")
-        );
+        return new JoinTicket(textOrNull(n, "joinId"), textOrNull(n, "expiresAt"), textOrNull(n, "clientIp"));
     }
 
     public static boolean consume(Account acc, String joinId) {
