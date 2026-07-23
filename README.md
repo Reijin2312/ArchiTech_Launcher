@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="https://architech-mc.ru/">Website</a>
+  <a href="https://architech-mc.com/">Website</a>
   ·
   <a href="https://t.me/archi_tech_official">Telegram</a>
   ·
@@ -267,7 +267,7 @@ Please report security-sensitive issues privately instead of publishing working 
 
 ## Support
 
-* Website: [architech-mc.ru](https://architech-mc.ru/)
+* Website: [architech-mc.com](https://architech-mc.com/)
 * Community and announcements: [ArchiTech Telegram](https://t.me/archi_tech_official)
 * Bugs and feature requests: [GitHub Issues](https://github.com/Reijin2312/ArchiTech_Launcher/issues)
 
