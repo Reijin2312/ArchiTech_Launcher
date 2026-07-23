@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Raijin2312
+// SPDX-License-Identifier: GPL-3.0-only
+
 package org.architech.launcher.managment;
 
 import org.architech.launcher.ArchiTechLauncher;

@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Raijin2312
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
+
 .mods-pane .backgrounds-top { -fx-padding: 8 16 8 16; }
 .background-tile {
     -fx-background-color: rgba(40,40,40,0.6);
